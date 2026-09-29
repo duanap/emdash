@@ -2,67 +2,188 @@
 	"$schema": "https://emdashcms.com/seed.schema.json",
 	"version": "1",
 	"meta": {
-		"name": "Blog Starter",
-		"description": "A blog with posts and pages",
-		"author": "EmDash"
+		"name": "duanap的小破站",
+		"description": "个人博客：文章、生活记录与作品",
+		"author": "duanap"
 	},
 	"settings": {
-		"title": "My Blog",
-		"tagline": "Thoughts on building for the web"
+		"title": "duanap的小破站",
+		"tagline": "记录技术与生活。"
 	},
 	"collections": [
 		{
 			"slug": "posts",
-			"label": "Posts",
-			"labelSingular": "Post",
+			"label": "文章",
+			"labelSingular": "文章",
 			"urlPattern": "/posts/{slug}",
 			"supports": ["drafts", "revisions", "preview", "scheduling", "search", "seo"],
 			"commentsEnabled": true,
 			"fields": [
 				{
 					"slug": "title",
-					"label": "Title",
+					"label": "标题",
 					"type": "string",
 					"required": true,
 					"searchable": true
 				},
 				{
 					"slug": "featured_image",
-					"label": "Featured Image",
+					"label": "封面图",
 					"type": "image"
 				},
 				{
 					"slug": "content",
-					"label": "Content",
+					"label": "正文",
 					"type": "portableText",
 					"searchable": true
 				},
 				{
 					"slug": "excerpt",
-					"label": "Excerpt",
-					"type": "text"
+					"label": "摘要",
+					"type": "text",
+					"searchable": true
 				}
 			]
 		},
 		{
 			"slug": "pages",
-			"label": "Pages",
-			"labelSingular": "Page",
+			"label": "页面",
+			"labelSingular": "页面",
 			"urlPattern": "/pages/{slug}",
 			"supports": ["drafts", "revisions", "preview", "search", "seo"],
 			"fields": [
 				{
 					"slug": "title",
-					"label": "Title",
+					"label": "标题",
 					"type": "string",
 					"required": true,
 					"searchable": true
 				},
 				{
 					"slug": "content",
-					"label": "Content",
+					"label": "正文",
 					"type": "portableText",
 					"searchable": true
+				}
+			]
+		},
+		{
+			"slug": "life",
+			"label": "生活记录",
+			"labelSingular": "生活记录",
+			"urlPattern": "/life/{slug}",
+			"supports": ["drafts", "revisions", "preview", "scheduling", "search", "seo"],
+			"commentsEnabled": true,
+			"fields": [
+				{
+					"slug": "title",
+					"label": "标题",
+					"type": "string",
+					"required": true,
+					"searchable": true
+				},
+				{
+					"slug": "featured_image",
+					"label": "封面图",
+					"type": "image"
+				},
+				{
+					"slug": "content",
+					"label": "正文",
+					"type": "portableText",
+					"searchable": true
+				},
+				{
+					"slug": "record_date",
+					"label": "记录日期",
+					"type": "datetime"
+				}
+			]
+		},
+		{
+			"slug": "projects",
+			"label": "作品",
+			"labelSingular": "作品",
+			"urlPattern": "/projects/{slug}",
+			"supports": ["drafts", "revisions", "preview", "search", "seo"],
+			"commentsEnabled": false,
+			"fields": [
+				{
+					"slug": "title",
+					"label": "名称",
+					"type": "string",
+					"required": true,
+					"searchable": true
+				},
+				{
+					"slug": "summary",
+					"label": "摘要",
+					"type": "text",
+					"searchable": true
+				},
+				{
+					"slug": "cover_image",
+					"label": "封面图",
+					"type": "image"
+				},
+				{
+					"slug": "content",
+					"label": "详细介绍",
+					"type": "portableText",
+					"searchable": true
+				},
+				{
+					"slug": "tech",
+					"label": "技术栈",
+					"type": "multiSelect",
+					"validation": {
+						"options": [
+							"Vue",
+							"React",
+							"Astro",
+							"TypeScript",
+							"JavaScript",
+							"Node.js",
+							"Fastify",
+							"Vite",
+							"Rust",
+							"Python",
+							"Go",
+							"SQLite"
+						]
+					}
+				},
+				{
+					"slug": "preview_url",
+					"label": "预览链接",
+					"type": "url"
+				},
+				{
+					"slug": "repo_url",
+					"label": "仓库地址",
+					"type": "url"
+				},
+				{
+					"slug": "featured",
+					"label": "精选",
+					"type": "boolean"
+				},
+				{
+					"slug": "sort_order",
+					"label": "排序",
+					"type": "integer"
+				},
+				{
+					"slug": "screenshots",
+					"label": "截图",
+					"type": "repeater",
+					"validation": {
+						"maxItems": 12,
+						"subFields": [
+							{ "slug": "image", "label": "图片", "type": "image", "required": true },
+							{ "slug": "caption", "label": "说明", "type": "string" }
+						]
+					}
 				}
 			]
 		}
@@ -70,112 +191,109 @@
 	"taxonomies": [
 		{
 			"name": "category",
-			"label": "Categories",
-			"labelSingular": "Category",
+			"label": "分类",
+			"labelSingular": "分类",
 			"hierarchical": true,
 			"collections": ["posts"],
 			"terms": [
-				{
-					"slug": "development",
-					"label": "Development"
-				},
-				{
-					"slug": "design",
-					"label": "Design"
-				},
-				{
-					"slug": "notes",
-					"label": "Notes"
-				}
+				{ "slug": "tech-notes", "label": "技术笔记" },
+				{ "slug": "project-log", "label": "作品记录" },
+				{ "slug": "deployment", "label": "部署记录" },
+				{ "slug": "resources", "label": "资源收藏" },
+				{ "slug": "design-review", "label": "设计复盘" }
 			]
 		},
 		{
 			"name": "tag",
-			"label": "Tags",
-			"labelSingular": "Tag",
+			"label": "标签",
+			"labelSingular": "标签",
 			"hierarchical": false,
-			"collections": ["posts"],
+			"collections": ["posts", "life"],
 			"terms": [
-				{
-					"slug": "webdev",
-					"label": "Web Development"
-				},
-				{
-					"slug": "opinion",
-					"label": "Opinion"
-				},
-				{
-					"slug": "tools",
-					"label": "Tools"
-				},
-				{
-					"slug": "creativity",
-					"label": "Creativity"
-				}
+				{ "slug": "astro", "label": "Astro" },
+				{ "slug": "emdash", "label": "EmDash" },
+				{ "slug": "vue", "label": "Vue" },
+				{ "slug": "typescript", "label": "TypeScript" },
+				{ "slug": "self-hosting", "label": "自托管" },
+				{ "slug": "photography", "label": "摄影" },
+				{ "slug": "reading", "label": "读书" },
+				{ "slug": "gears", "label": "数码" }
+			]
+		},
+		{
+			"name": "life_category",
+			"label": "生活分类",
+			"labelSingular": "生活分类",
+			"hierarchical": false,
+			"collections": ["life"],
+			"terms": [
+				{ "slug": "daily", "label": "日常记录" },
+				{ "slug": "travel", "label": "旅行见闻" },
+				{ "slug": "photo", "label": "摄影作品" },
+				{ "slug": "essay", "label": "生活随笔" },
+				{ "slug": "reading-notes", "label": "阅读笔记" }
+			]
+		},
+		{
+			"name": "project_type",
+			"label": "项目类型",
+			"labelSingular": "项目类型",
+			"hierarchical": false,
+			"collections": ["projects"],
+			"terms": [
+				{ "slug": "open-source", "label": "开源项目" },
+				{ "slug": "personal", "label": "个人项目" },
+				{ "slug": "tools", "label": "小工具" }
 			]
 		}
 	],
 	"bylines": [
 		{
-			"id": "byline-editorial",
-			"slug": "emdash-editorial",
-			"displayName": "EmDash Editorial"
-		},
-		{
-			"id": "byline-guest",
-			"slug": "guest-contributor",
-			"displayName": "Guest Contributor",
-			"isGuest": true
+			"id": "byline-duanap",
+			"slug": "duanap",
+			"displayName": "duanap"
 		}
 	],
 	"menus": [
 		{
 			"name": "primary",
-			"label": "Primary Navigation",
+			"label": "主导航",
 			"items": [
-				{
-					"type": "custom",
-					"label": "Home",
-					"url": "/"
-				},
-				{
-					"type": "custom",
-					"label": "About",
-					"url": "/pages/about"
-				},
-				{
-					"type": "custom",
-					"label": "Posts",
-					"url": "/posts"
-				}
+				{ "type": "custom", "label": "首页", "url": "/" },
+				{ "type": "custom", "label": "文章", "url": "/posts" },
+				{ "type": "custom", "label": "生活", "url": "/life" },
+				{ "type": "custom", "label": "作品", "url": "/projects" },
+				{ "type": "custom", "label": "归档", "url": "/archives" },
+				{ "type": "custom", "label": "关于", "url": "/about" },
+				{ "type": "custom", "label": "友链", "url": "/friends" }
 			]
 		}
 	],
 	"widgetAreas": [
 		{
 			"name": "sidebar",
-			"label": "Sidebar",
-			"description": "Widget area displayed on single post pages",
+			"label": "侧边栏",
+			"description": "文章详情页右侧边栏",
 			"widgets": [
 				{
 					"type": "component",
 					"componentId": "core:search",
-					"title": "Search"
+					"title": "搜索"
 				},
 				{
 					"type": "component",
 					"componentId": "core:categories",
-					"title": "Categories"
+					"title": "分类"
 				},
 				{
 					"type": "component",
 					"componentId": "core:tags",
-					"title": "Tags"
+					"title": "标签"
 				},
 				{
 					"type": "component",
 					"componentId": "core:recent-posts",
-					"title": "Recent Posts",
+					"title": "最近文章",
 					"settings": {
 						"count": 5,
 						"showDate": true
@@ -184,7 +302,7 @@
 				{
 					"type": "component",
 					"componentId": "core:archives",
-					"title": "Archives",
+					"title": "归档",
 					"settings": {
 						"type": "monthly",
 						"limit": 6
@@ -194,12 +312,12 @@
 		},
 		{
 			"name": "footer",
-			"label": "Footer",
-			"description": "Widget area displayed in the site footer",
+			"label": "页脚",
+			"description": "页脚小部件区域",
 			"widgets": [
 				{
 					"type": "content",
-					"title": "About",
+					"title": "关于本站",
 					"content": [
 						{
 							"_type": "block",
@@ -207,11 +325,11 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "A blog about software, design, and the occasional stray thought.",
-									"_key": "k1"
+									"text": "记录技术与生活，偶尔写点长文。基于 Astro 与 EmDash 构建。",
+									"_key": "fk1"
 								}
 							],
-							"_key": "k0"
+							"_key": "fk0"
 						}
 					]
 				}
@@ -221,22 +339,16 @@
 	"sections": [
 		{
 			"slug": "newsletter-signup",
-			"title": "Newsletter Signup",
-			"description": "A call-to-action block for newsletter subscriptions",
-			"keywords": ["newsletter", "subscribe", "email", "cta"],
+			"title": "订阅入口",
+			"description": "订阅提示块",
+			"keywords": ["newsletter", "subscribe", "email"],
 			"source": "theme",
 			"content": [
 				{
 					"_type": "block",
 					"style": "h3",
-					"children": [
-						{
-							"_type": "span",
-							"text": "Stay in the loop",
-							"_key": "k1"
-						}
-					],
-					"_key": "k0"
+					"children": [{ "_type": "span", "text": "保持联系", "_key": "sk1" }],
+					"_key": "sk0"
 				},
 				{
 					"_type": "block",
@@ -244,18 +356,18 @@
 					"children": [
 						{
 							"_type": "span",
-							"text": "Get notified when new posts are published. No spam, unsubscribe anytime.",
-							"_key": "k3"
+							"text": "发布新文章时会第一时间更新，欢迎通过 RSS 订阅。",
+							"_key": "sk3"
 						}
 					],
-					"_key": "k2"
+					"_key": "sk2"
 				}
 			]
 		},
 		{
 			"slug": "about-author",
-			"title": "About the Author",
-			"description": "Brief author bio for use in posts or pages",
+			"title": "作者简介",
+			"description": "用于文章或页面的作者简介块",
 			"keywords": ["author", "bio", "about"],
 			"source": "theme",
 			"content": [
@@ -265,11 +377,11 @@
 					"children": [
 						{
 							"_type": "span",
-							"text": "A software developer who writes about building things on the web. Based somewhere with good coffee and reliable internet.",
-							"_key": "k1"
+							"text": "开发者，喜欢折腾自托管服务，偶尔拍照、写字。这里是我的数字花园。",
+							"_key": "sk5"
 						}
 					],
-					"_key": "k0"
+					"_key": "sk4"
 				}
 			]
 		}
@@ -277,11 +389,11 @@
 	"content": {
 		"pages": [
 			{
-				"id": "about",
+				"id": "page-about",
 				"slug": "about",
 				"status": "published",
 				"data": {
-					"title": "About",
+					"title": "关于我",
 					"content": [
 						{
 							"_type": "block",
@@ -289,11 +401,17 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "A place for writing about software, design, and the occasional stray thought. No posting schedule, no newsletter funnel. Just things I wanted to write down.",
-									"_key": "k1"
+									"text": "你好，我是 duanap，一名对 Web 开发和自托管服务感兴趣的开发者。这里是我的小破站，用来记录技术、生活，以及那些不想忘掉的事情。",
+									"_key": "ak1"
 								}
 							],
-							"_key": "k0"
+							"_key": "ak0"
+						},
+						{
+							"_type": "block",
+							"style": "h2",
+							"children": [{ "_type": "span", "text": "这个站", "_key": "ak3" }],
+							"_key": "ak2"
 						},
 						{
 							"_type": "block",
@@ -301,11 +419,97 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Built with Astro and EmDash. The source is open if you want to see how it works.",
-									"_key": "k3"
+									"text": "站点基于 Astro 与 EmDash 构建，前台服务端渲染，内容存放在 SQLite 中，跑在一台自己的服务器上。旧版是 Vue 3 + Fastify 的全自研方案，迁移的记录都写在文章里。",
+									"_key": "ak5"
 								}
 							],
-							"_key": "k2"
+							"_key": "ak4"
+						},
+						{
+							"_type": "block",
+							"style": "h2",
+							"children": [{ "_type": "span", "text": "我在做什么", "_key": "ak7" }],
+							"_key": "ak6"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "写代码、折腾服务器、给开源项目提 PR。最近在把博客逐步迁移到 Astro 生态，也在维护几个小工具。兴趣来了会拍照、读书、手冲咖啡。",
+									"_key": "ak9"
+								}
+							],
+							"_key": "ak8"
+						},
+						{
+							"_type": "block",
+							"style": "blockquote",
+							"children": [
+								{
+									"_type": "span",
+									"text": "把喜欢的事情做完，把做完的事情写下来。",
+									"_key": "ak11"
+								}
+							],
+							"_key": "ak10"
+						}
+					]
+				}
+			},
+			{
+				"id": "page-friends",
+				"slug": "friends",
+				"status": "published",
+				"data": {
+					"title": "友情链接",
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "这里收录朋友们的小站（占位内容，后续在后台维护）。",
+									"_key": "frk1"
+								}
+							],
+							"_key": "frk0"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{ "_type": "span", "text": "示例站点 A —— ", "_key": "frk3" },
+								{
+									"_type": "span",
+									"text": "https://example.com",
+									"_key": "frk4",
+									"marks": ["link-1"]
+								}
+							],
+							"_key": "frk2",
+							"markDefs": [
+								{ "_key": "link-1", "_type": "link", "href": "https://example.com" }
+							]
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{ "_type": "span", "text": "示例站点 B —— ", "_key": "frk6" },
+								{
+									"_type": "span",
+									"text": "https://example.org",
+									"_key": "frk7",
+									"marks": ["link-2"]
+								}
+							],
+							"_key": "frk5",
+							"markDefs": [
+								{ "_key": "link-2", "_type": "link", "href": "https://example.org" }
+							]
 						}
 					]
 				}
@@ -313,19 +517,13 @@
 		],
 		"posts": [
 			{
-				"id": "post-1",
-				"slug": "building-for-the-long-term",
+				"id": "post-zh-1",
+				"slug": "why-move-to-astro-emdash",
 				"status": "published",
 				"data": {
-					"title": "Building for the Long Term",
-					"excerpt": "The frameworks will change. The databases will change. What survives is the clarity of your thinking.",
-					"featured_image": {
-						"$media": {
-							"url": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=1200&h=800&fit=crop",
-							"alt": "Code on a monitor in a dark room",
-							"filename": "building-long-term.jpg"
-						}
-					},
+					"title": "为什么把博客迁移到 Astro + EmDash",
+					"excerpt": "旧站是 Vue 3 + Fastify 的全自研方案，运转良好，但内容后台、媒体库和 SEO 都要自己养。这次迁移想解决什么，又想保留什么。",
+					"featured_image": { "src": "/covers/cover-1.svg", "alt": "墨绿色渐变占位封面" },
 					"content": [
 						{
 							"_type": "block",
@@ -333,11 +531,11 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Every few years the industry collectively decides that everything we've been doing is wrong and there's a better way. New frameworks, new paradigms, new build tools. The churn is relentless, and if you're not careful, you spend more time migrating than building.",
-									"_key": "k1"
+									"text": "旧博客跑了两三年，Vue 3 + Fastify + SQLite 的组合一直很稳。但要发一篇文章，我要在自制的 Markdown 编辑器里写，图片上传、草稿、SEO 文件生成全是自己维护的代码。系统的能力上限，就是我业余维护精力的上限。",
+									"_key": "p1k1"
 								}
 							],
-							"_key": "k0"
+							"_key": "p1k0"
 						},
 						{
 							"_type": "block",
@@ -345,23 +543,17 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "I've been writing software long enough to have seen several of these cycles. jQuery to Backbone to Angular to React to whatever comes next. Each transition felt urgent at the time. Looking back, the things that actually mattered were rarely about the framework.",
-									"_key": "k3"
+									"text": "EmDash 吸引我的地方在于：它把内容模型、管理后台、REST API、媒体库这些「基建」做成了 Astro 的一部分，而前台页面仍然是普通的 Astro 组件。我可以用模板的文章卡片起步，再逐页替换成自己想要的样子，不需要一次性重写。",
+									"_key": "p1k3"
 								}
 							],
-							"_key": "k2"
+							"_key": "p1k2"
 						},
 						{
 							"_type": "block",
 							"style": "h2",
-							"children": [
-								{
-									"_type": "span",
-									"text": "What survives",
-									"_key": "k5"
-								}
-							],
-							"_key": "k4"
+							"children": [{ "_type": "span", "text": "迁移策略", "_key": "p1k5" }],
+							"_key": "p1k4"
 						},
 						{
 							"_type": "block",
@@ -369,66 +561,37 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Clean data models survive. Clear boundaries between systems survive. Good naming survives. The decision to keep things simple when you could have made them clever - that definitely survives.",
-									"_key": "k7"
+									"text": "分阶段走：先把新站跑起来，再搬文章、生活记录和作品，会员与互动功能最后处理。旧站全程在线，新站验证完毕才切流量。每一步都可回滚。",
+									"_key": "p1k7"
 								}
 							],
-							"_key": "k6"
+							"_key": "p1k6"
 						},
 						{
 							"_type": "block",
-							"style": "normal",
+							"style": "blockquote",
 							"children": [
 								{
 									"_type": "span",
-									"text": "What doesn't survive is code that was written to impress, abstractions built for problems that never materialized, and architectures designed around a framework's opinions rather than the domain's reality.",
-									"_key": "k9"
+									"text": "先让系统跑起来，再让它变得好看，最后让它变得可靠。",
+									"_key": "p1k9"
 								}
 							],
-							"_key": "k8"
-						},
-						{
-							"_type": "block",
-							"style": "normal",
-							"children": [
-								{
-									"_type": "span",
-									"text": "The best code I've written is boring. It reads like prose, does one thing well, and doesn't require a PhD in category theory to understand. The worst code I've written was technically impressive at the time.",
-									"_key": "k11"
-								}
-							],
-							"_key": "k10"
+							"_key": "p1k8"
 						}
 					]
 				},
-				"bylines": [
-					{
-						"byline": "byline-editorial"
-					},
-					{
-						"byline": "byline-guest",
-						"roleLabel": "Guest essay"
-					}
-				],
-				"taxonomies": {
-					"category": ["development"],
-					"tag": ["opinion"]
-				}
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "category": ["tech-notes"], "tag": ["astro", "emdash"] }
 			},
 			{
-				"id": "post-2",
-				"slug": "the-case-for-static",
+				"id": "post-zh-2",
+				"slug": "emdash-content-model-101",
 				"status": "published",
 				"data": {
-					"title": "The Case for Static",
-					"excerpt": "Static sites aren't a step backwards. They're what you get when you take performance and simplicity seriously.",
-					"featured_image": {
-						"$media": {
-							"url": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1200&h=800&fit=crop",
-							"alt": "Laptop and coffee on a wooden table",
-							"filename": "case-for-static.jpg"
-						}
-					},
+					"title": "EmDash 内容模型入门：集合、字段与 seed",
+					"excerpt": "EmDash 的内容模型存在数据库里，seed 文件是它的第一入口。这篇文章整理集合、字段类型和分类法的最小可用写法。",
+					"featured_image": { "src": "/covers/cover-3.svg", "alt": "深绿渐变占位封面" },
 					"content": [
 						{
 							"_type": "block",
@@ -436,35 +599,17 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "There's a certain irony in the fact that the web started static, went dynamic, and is now swinging back toward static again. But the static sites of today aren't the hand-coded HTML pages of 1998. They're generated, optimized, and deployed to edge networks that serve them in milliseconds.",
-									"_key": "k1"
+									"text": "在 EmDash 里，一个「集合」就是一张真实的数据表，字段是表里的列，不是 EAV 那种万能键值表。定义集合有两种入口：管理后台的 Content Types 界面，或者项目里的 seed 文件，两者改的是同一个模型。",
+									"_key": "p2k1"
 								}
 							],
-							"_key": "k0"
-						},
-						{
-							"_type": "block",
-							"style": "normal",
-							"children": [
-								{
-									"_type": "span",
-									"text": "The pitch for server-rendered everything was compelling: dynamic content, personalization, real-time data. But most sites don't need most of that most of the time. A blog post doesn't need to be rendered on every request. A product page doesn't change every second.",
-									"_key": "k3"
-								}
-							],
-							"_key": "k2"
+							"_key": "p2k0"
 						},
 						{
 							"_type": "block",
 							"style": "h2",
-							"children": [
-								{
-									"_type": "span",
-									"text": "The performance argument",
-									"_key": "k5"
-								}
-							],
-							"_key": "k4"
+							"children": [{ "_type": "span", "text": "常用字段类型", "_key": "p2k3" }],
+							"_key": "p2k2"
 						},
 						{
 							"_type": "block",
@@ -472,11 +617,11 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "A static file served from a CDN is as fast as the web gets. No cold starts, no database queries, no server-side rendering overhead. The Time to First Byte is essentially the network latency to your nearest edge node. You can't beat physics.",
-									"_key": "k7"
+									"text": "string 适合标题，text 适合长一点的摘要，portableText 是富文本正文，image 存的是对象而不是字符串，multiSelect 配合 validation.options 可以做技术栈标签，repeater 用来做截图列表这种「一组重复的小结构」。",
+									"_key": "p2k5"
 								}
 							],
-							"_key": "k6"
+							"_key": "p2k4"
 						},
 						{
 							"_type": "block",
@@ -484,38 +629,25 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "And when you do need dynamic behavior, you can add it surgically. An island of interactivity in a sea of static HTML. The best of both worlds, without paying the cost of either at all times.",
-									"_key": "k9"
+									"text": "分类法（taxonomy）不属于某个字段，而是独立声明后挂到集合上。hierarchical 的分类像目录树，flat 的标签像云。slug 一旦定下来就不要改，它是条目在 URL 里的稳定标识。",
+									"_key": "p2k7"
 								}
 							],
-							"_key": "k8"
+							"_key": "p2k6"
 						}
 					]
 				},
-				"bylines": [
-					{
-						"byline": "byline-editorial"
-					}
-				],
-				"taxonomies": {
-					"category": ["development"],
-					"tag": ["webdev", "opinion"]
-				}
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "category": ["tech-notes"], "tag": ["emdash"] }
 			},
 			{
-				"id": "post-3",
-				"slug": "learning-in-public",
+				"id": "post-zh-3",
+				"slug": "from-fastify-to-astro-server",
 				"status": "published",
 				"data": {
-					"title": "Learning in Public",
-					"excerpt": "Writing about what you're learning is the fastest way to find out what you don't actually understand.",
-					"featured_image": {
-						"$media": {
-							"url": "https://images.unsplash.com/photo-1432821596592-e2c18b78144f?w=1200&h=800&fit=crop",
-							"alt": "Notebook and pen on a desk",
-							"filename": "learning-in-public.jpg"
-						}
-					},
+					"title": "从 Fastify 到 Astro Server：部署架构的演化",
+					"excerpt": "同样是 Node 常驻进程 + Nginx 反代，Astro 的 server 输出让路由的责任发生了变化。记录一次部署架构的平滑过渡。",
+					"featured_image": { "src": "/covers/cover-5.svg", "alt": "墨绿深色渐变占位封面" },
 					"content": [
 						{
 							"_type": "block",
@@ -523,35 +655,17 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "I started writing about things I was learning not because I had anything original to say, but because I kept forgetting what I'd figured out. The blog posts were notes to my future self, published publicly more out of laziness than courage.",
-									"_key": "k1"
+									"text": "旧站的形态是：Vite 构建出纯静态前端，Fastify 提供 API 和 SEO 文件，Nginx 把两者拼在一起。新站收敛成一个 Astro server：页面、API（包括管理后台）都是它的一部分，部署只需要 node ./dist/server/entry.mjs。",
+									"_key": "p3k1"
 								}
 							],
-							"_key": "k0"
-						},
-						{
-							"_type": "block",
-							"style": "normal",
-							"children": [
-								{
-									"_type": "span",
-									"text": "What I didn't expect was how much the writing itself would accelerate the learning. There's a particular kind of clarity that comes from trying to explain something to someone else. The gaps in your understanding, which you can happily ignore when the knowledge lives only in your head, become painfully obvious when you try to put it into sentences.",
-									"_key": "k3"
-								}
-							],
-							"_key": "k2"
+							"_key": "p3k0"
 						},
 						{
 							"_type": "block",
 							"style": "h2",
-							"children": [
-								{
-									"_type": "span",
-									"text": "The fear of being wrong",
-									"_key": "k5"
-								}
-							],
-							"_key": "k4"
+							"children": [{ "_type": "span", "text": "过渡期的共存", "_key": "p3k3" }],
+							"_key": "p3k2"
 						},
 						{
 							"_type": "block",
@@ -559,11 +673,11 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "The biggest barrier isn't time or writing skill. It's the fear of publishing something that turns out to be wrong. But here's the thing: being wrong publicly is one of the most efficient ways to learn. Someone will correct you, often kindly, and you'll remember that correction forever.",
-									"_key": "k7"
+									"text": "过渡期两个服务并存：旧站继续占用 4321，新站跑在 4322，Nginx 只切换域名的 upstream。数据库各自独立，谁也不碰谁的 SQLite 文件。这样切流量变成了一行配置的事，回滚也是。",
+									"_key": "p3k5"
 								}
 							],
-							"_key": "k6"
+							"_key": "p3k4"
 						},
 						{
 							"_type": "block",
@@ -571,33 +685,25 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "The posts that helped me most weren't written by experts. They were written by people one step ahead of me on the same path, in language that hadn't yet been polished into abstraction. There's a place for that kind of writing, and it's more valuable than most people realize.",
-									"_key": "k9"
+									"text": "唯一要小心的是 CDN 缓存：切换后记得刷新边缘缓存，否则一部分访客会继续看到旧页面，排查起来很迷惑。",
+									"_key": "p3k7"
 								}
 							],
-							"_key": "k8"
+							"_key": "p3k6"
 						}
 					]
 				},
-				"taxonomies": {
-					"category": ["notes"],
-					"tag": ["opinion"]
-				}
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "category": ["deployment"], "tag": ["self-hosting"] }
 			},
 			{
-				"id": "post-4",
-				"slug": "small-tools-big-impact",
+				"id": "post-zh-4",
+				"slug": "portable-text-rendering-pipeline",
 				"status": "published",
 				"data": {
-					"title": "Small Tools, Big Impact",
-					"excerpt": "The best developer tools do one thing well and get out of your way. A love letter to focused software.",
-					"featured_image": {
-						"$media": {
-							"url": "https://images.unsplash.com/photo-1575026615908-666710ae5e47?w=1200&h=800&fit=crop",
-							"alt": "Wrenches and hand tools hanging on a workshop wall",
-							"filename": "small-tools.jpg"
-						}
-					},
+					"title": "用 Portable Text 重写 Markdown 渲染管线",
+					"excerpt": "旧站正文存 Markdown，前端用一份手写的解析器渲染。迁移到 Portable Text 之后，渲染、净化和可视化编辑都换了形状。",
+					"featured_image": { "src": "/covers/cover-2.svg", "alt": "赭石渐变占位封面" },
 					"content": [
 						{
 							"_type": "block",
@@ -605,11 +711,11 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "There's a class of software that doesn't get enough appreciation. Not the frameworks or the platforms or the IDEs, but the small, sharp tools that solve one problem so well you stop thinking about them. They become invisible, which is the highest compliment you can pay a tool.",
-									"_key": "k1"
+									"text": "旧站最「手工」的部分是正文渲染：一份自己写的 Markdown 转 HTML，再接一段 DOMParser 净化和代码块包装。它能跑，但每种新语法都是一段新的正则。",
+									"_key": "p4k1"
 								}
 							],
-							"_key": "k0"
+							"_key": "p4k0"
 						},
 						{
 							"_type": "block",
@@ -617,23 +723,17 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "I'm talking about things like ripgrep, which searches code so fast it changed how I think about searching. Or jq, which makes JSON feel like a first-class data format in the terminal. Or curl, which has been quietly powering the internet's plumbing for decades.",
-									"_key": "k3"
+									"text": "Portable Text 把正文变成了结构化数据：段落、标题、引用都是带类型的块，渲染器按类型分发，不用再解析字符串。历史文章迁移时用脚本把 Markdown 转成块数组，一次转换，之后前台只认数据。",
+									"_key": "p4k3"
 								}
 							],
-							"_key": "k2"
+							"_key": "p4k2"
 						},
 						{
 							"_type": "block",
 							"style": "h2",
-							"children": [
-								{
-									"_type": "span",
-									"text": "The Unix philosophy, revisited",
-									"_key": "k5"
-								}
-							],
-							"_key": "k4"
+							"children": [{ "_type": "span", "text": "得与失", "_key": "p4k5" }],
+							"_key": "p4k4"
 						},
 						{
 							"_type": "block",
@@ -641,45 +741,24 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Do one thing well. The advice is old enough to be a cliche, but the best modern tools still follow it. They don't try to be platforms. They don't have plugin ecosystems or configuration languages or startup wizards. They do their job and they compose with other tools that do theirs.",
-									"_key": "k7"
+									"text": "得到的是统一渲染和后台可视化编辑；失去的是 Markdown 的书写自由。折中办法是在编辑器里继续用 Markdown 写，发布前转换——写作习惯不变，存储形状变了。",
+									"_key": "p4k7"
 								}
 							],
-							"_key": "k6"
-						},
-						{
-							"_type": "block",
-							"style": "normal",
-							"children": [
-								{
-									"_type": "span",
-									"text": "The temptation is always to add more. One more feature, one more option, one more integration. But every addition is a decision someone has to make, a path through the code that has to be maintained, a thing that can break. The best tools resist this. They stay small, and in staying small, they stay reliable.",
-									"_key": "k9"
-								}
-							],
-							"_key": "k8"
+							"_key": "p4k6"
 						}
 					]
 				},
-				"taxonomies": {
-					"category": ["development"],
-					"tag": ["tools"]
-				}
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "category": ["tech-notes"], "tag": ["astro"] }
 			},
 			{
-				"id": "post-5",
-				"slug": "designing-with-constraints",
+				"id": "post-zh-5",
+				"slug": "three-details-of-dark-mode",
 				"status": "published",
 				"data": {
-					"title": "Designing with Constraints",
-					"excerpt": "Limitations aren't obstacles to creativity. They're the structure that makes creativity possible.",
-					"featured_image": {
-						"$media": {
-							"url": "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=1200&h=800&fit=crop",
-							"alt": "Pencils and design tools on a desk",
-							"filename": "designing-with-constraints.jpg"
-						}
-					},
+					"title": "暗色模式的三个细节",
+					"excerpt": "暗色不是把颜色反过来。整理这次改主题时踩过的三个坑：色方案声明、自定义属性的解析时机，以及切换时的闪烁。",
 					"content": [
 						{
 							"_type": "block",
@@ -687,11 +766,11 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Give a designer a blank canvas and unlimited time, and they'll often produce something mediocre. Give them a tight brief, a small screen, and a deadline, and they'll surprise you. This isn't a paradox - it's how creativity actually works.",
-									"_key": "k1"
+									"text": "第一是 color-scheme 声明：它不只影响页面颜色，还影响表单控件和滚动条的默认外观。模板用 light-dark() 配合 html 上的 class 来钉住色方案，比写两套变量干净得多。",
+									"_key": "p5k1"
 								}
 							],
-							"_key": "k0"
+							"_key": "p5k0"
 						},
 						{
 							"_type": "block",
@@ -699,23 +778,11 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Constraints force decisions. When you can't use more than two typefaces, you have to choose carefully. When the page has to load in under a second, every element earns its place. When the interface has to work on a 320px screen, you discover what's truly essential.",
-									"_key": "k3"
+									"text": "第二是自定义属性里 light-dark() 的解析时机：它跟着定义处的元素的 color-scheme 走，所以 :root 上的 class 要在首帧之前就位，否则会闪一下错误的主题。内联在 head 里的小脚本就是干这个的。",
+									"_key": "p5k3"
 								}
 							],
-							"_key": "k2"
-						},
-						{
-							"_type": "block",
-							"style": "h2",
-							"children": [
-								{
-									"_type": "span",
-									"text": "Embracing the box",
-									"_key": "k5"
-								}
-							],
-							"_key": "k4"
+							"_key": "p5k2"
 						},
 						{
 							"_type": "block",
@@ -723,45 +790,25 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "The web itself is a constraint. HTML flows in one direction. CSS has a box model. Browsers have viewport sizes and font rendering quirks. You can fight these constraints or you can work with them, and the results are dramatically different.",
-									"_key": "k7"
+									"text": "第三是中文排版：负字距是给拉丁字母准备的，汉字贴得太近反而难读，暗色模式下尤其明显。把 tracking 归零，行高放宽一点点，屏幕上就舒服多了。",
+									"_key": "p5k5"
 								}
 							],
-							"_key": "k6"
-						},
-						{
-							"_type": "block",
-							"style": "normal",
-							"children": [
-								{
-									"_type": "span",
-									"text": "The designs I admire most don't look like they were forced through a framework. They look like they grew naturally from the medium, respecting its grain rather than working against it. That only happens when you treat constraints as creative partners rather than enemies.",
-									"_key": "k9"
-								}
-							],
-							"_key": "k8"
+							"_key": "p5k4"
 						}
 					]
 				},
-				"taxonomies": {
-					"category": ["design"],
-					"tag": ["creativity"]
-				}
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "category": ["design-review"], "tag": ["astro"] }
 			},
 			{
-				"id": "post-6",
-				"slug": "a-weekend-with-a-side-project",
+				"id": "post-zh-6",
+				"slug": "self-hosted-toolbox-2026",
 				"status": "published",
 				"data": {
-					"title": "A Weekend with a Side Project",
-					"excerpt": "No stakeholders, no deadlines, no Jira tickets. Just you and a dumb idea that might turn into something.",
-					"featured_image": {
-						"$media": {
-							"url": "https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=1200&h=800&fit=crop",
-							"alt": "Code on a screen with a dark theme",
-							"filename": "weekend-side-project.jpg"
-						}
-					},
+					"title": "我的自托管工具箱（2026 版）",
+					"excerpt": "一台 VPS 上跑着的东西：反代、WAF、几个常驻服务，以及备份。每年整理一次，防止清单烂在收藏夹里。",
+					"featured_image": { "src": "/covers/cover-6.svg", "alt": "赭石深色渐变占位封面" },
 					"content": [
 						{
 							"_type": "block",
@@ -769,35 +816,17 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Saturday morning. Coffee's made, the house is quiet, and I've got an idea that's been nagging at me all week. Not a good idea, necessarily - just a persistent one. A small tool that does a thing I keep doing manually. How hard could it be?",
-									"_key": "k1"
+									"text": "入口是 Nginx，前面挂一层 EdgeOne 做 CDN，源站前面再挡一层雷池 WAF。应用都是 systemd 管理的 Node 常驻进程，日志交给 journald。没有容器——单机场景下 systemd 够用，少一层抽象少一份心智负担。",
+									"_key": "p6k1"
 								}
 							],
-							"_key": "k0"
-						},
-						{
-							"_type": "block",
-							"style": "normal",
-							"children": [
-								{
-									"_type": "span",
-									"text": "This is the best kind of programming. No requirements document, no sprint planning, no pull request reviews. Just a text editor and a problem. The freedom to make terrible architectural decisions, rewrite everything twice, and follow tangents that turn out to be dead ends.",
-									"_key": "k3"
-								}
-							],
-							"_key": "k2"
+							"_key": "p6k0"
 						},
 						{
 							"_type": "block",
 							"style": "h2",
-							"children": [
-								{
-									"_type": "span",
-									"text": "Why side projects matter",
-									"_key": "k5"
-								}
-							],
-							"_key": "k4"
+							"children": [{ "_type": "span", "text": "备份策略", "_key": "p6k3" }],
+							"_key": "p6k2"
 						},
 						{
 							"_type": "block",
@@ -805,45 +834,24 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Side projects are where you learn things your day job would never teach you. Not because the problems are harder, but because you're free to take risks. Try a language you've never used. Build something without a framework. Deploy to a platform you've only read about. The stakes are zero, which makes the learning maximum.",
-									"_key": "k7"
+									"text": "SQLite 文件和上传目录每天打包，异地同步一份。加密密钥这类丢了就完不成的秘密，单独放在密码管理器里。备份的有效性靠每季度一次的恢复演练确认，不靠直觉。",
+									"_key": "p6k5"
 								}
 							],
-							"_key": "k6"
-						},
-						{
-							"_type": "block",
-							"style": "normal",
-							"children": [
-								{
-									"_type": "span",
-									"text": "By Sunday evening, the thing sort of works. It's rough, the error handling is nonexistent, and the README is a single sentence. But it solves the problem I set out to solve, and I learned three things I didn't know on Friday. Not a bad weekend.",
-									"_key": "k9"
-								}
-							],
-							"_key": "k8"
+							"_key": "p6k4"
 						}
 					]
 				},
-				"taxonomies": {
-					"category": ["development"],
-					"tag": ["creativity"]
-				}
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "category": ["resources"], "tag": ["self-hosting"] }
 			},
 			{
-				"id": "post-7",
-				"slug": "notes-on-simplicity",
+				"id": "post-zh-7",
+				"slug": "old-blog-migration-checklist",
 				"status": "published",
 				"data": {
-					"title": "Notes on Simplicity",
-					"excerpt": "Simplicity isn't the absence of complexity. It's the result of understanding a problem well enough to solve it cleanly.",
-					"featured_image": {
-						"$media": {
-							"url": "https://images.unsplash.com/photo-1559051668-e1fa58f25786?w=1200&h=800&fit=crop",
-							"alt": "Geometric pattern carved into white paper",
-							"filename": "notes-on-simplicity.jpg"
-						}
-					},
+					"title": "旧站数据迁移清单：文章、生活与作品",
+					"excerpt": "迁移不是复制文件：Markdown 要转换，图片要入库，旧的数字 ID 和新的 ULID 之间要留好映射。这是我正在执行的清单。",
 					"content": [
 						{
 							"_type": "block",
@@ -851,11 +859,11 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Every piece of software starts simple. A few files, a clear purpose, a small surface area. Then features get added, edge cases get handled, and before long you're looking at something that requires a diagram to understand. This isn't inevitable, but it takes discipline to prevent.",
-									"_key": "k1"
+									"text": "文章按 slug 迁移，URL 模式改成与旧站一致，保住搜索引擎的收录；生活记录旧站用数字 ID 做 URL，迁移时把 ID 直接写进新 slug，链接就不会断。",
+									"_key": "p7k1"
 								}
 							],
-							"_key": "k0"
+							"_key": "p7k0"
 						},
 						{
 							"_type": "block",
@@ -863,23 +871,11 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "The hard part of simplicity isn't the initial design. It's the ongoing resistance to complication. Every feature request, every bug fix, every refactor is an opportunity to add complexity. Saying no is the most important design skill, and the least celebrated.",
-									"_key": "k3"
+									"text": "正文走脚本从 Markdown 转 Portable Text，代码块、表格、图片逐项抽查；图片通过媒体 API 上传，替换正文里的旧路径。",
+									"_key": "p7k3"
 								}
 							],
-							"_key": "k2"
-						},
-						{
-							"_type": "block",
-							"style": "h2",
-							"children": [
-								{
-									"_type": "span",
-									"text": "Removing as a feature",
-									"_key": "k5"
-								}
-							],
-							"_key": "k4"
+							"_key": "p7k2"
 						},
 						{
 							"_type": "block",
@@ -887,38 +883,24 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "The best version of a product often has fewer features than the previous one. Not because features were missing, but because someone had the courage to remove things that weren't earning their keep. Every feature has a cost - in maintenance, in cognitive load, in the weight of the interface.",
-									"_key": "k7"
+									"text": "点赞和收藏按「目标类型 + 目标 ID」关联旧数据，导入脚本会导出一张新旧 ID 映射表存档——互动数据一旦对不上号，用户的收藏就成了孤儿。宁多花一小时对账，不省这一步。",
+									"_key": "p7k5"
 								}
 							],
-							"_key": "k6"
-						},
-						{
-							"_type": "block",
-							"style": "normal",
-							"children": [
-								{
-									"_type": "span",
-									"text": "Simplicity is a practice, not a destination. You never arrive at simple. You just keep asking: is this necessary? Could this be clearer? Is there a way to solve this problem by removing something instead of adding something? The answer is yes more often than you'd expect.",
-									"_key": "k9"
-								}
-							],
-							"_key": "k8"
+							"_key": "p7k4"
 						}
 					]
 				},
-				"taxonomies": {
-					"category": ["notes"],
-					"tag": ["opinion"]
-				}
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "category": ["project-log"], "tag": ["emdash", "vue"] }
 			},
 			{
-				"id": "post-draft",
-				"slug": "work-in-progress",
+				"id": "post-zh-draft",
+				"slug": "qq-login-plugin-wip",
 				"status": "draft",
 				"data": {
-					"title": "Work in Progress",
-					"excerpt": "This post is still being written.",
+					"title": "（草稿）把 QQ 登录做成 EmDash 插件的思路",
+					"excerpt": "会员体系是博客里最「业务」的部分，Discuzz 式的 OAuth 身份表怎么映射到 EmDash 的插件存储，还在想。",
 					"content": [
 						{
 							"_type": "block",
@@ -926,14 +908,282 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "This is a draft post that won't appear in the public listing.",
-									"_key": "k1"
+									"text": "这篇还在写：插件 hooks 能不能覆盖 OAuth 回调、插件存储放身份绑定表、前台岛屿处理登录态。写完再发。",
+									"_key": "pdk1"
 								}
 							],
-							"_key": "k0"
+							"_key": "pdk0"
 						}
 					]
-				}
+				},
+				"taxonomies": { "category": ["tech-notes"], "tag": ["emdash"] }
+			}
+		],
+		"life": [
+			{
+				"id": "life-1",
+				"slug": "weekend-botanical-garden",
+				"status": "published",
+				"data": {
+					"title": "周末去了趟植物园",
+					"record_date": "2026-09-20T10:00:00Z",
+					"featured_image": { "src": "/covers/cover-4.svg", "alt": "绿意渐变占位封面" },
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "难得完整的周末，去了城郊的植物园。温室里的蕨类长得放肆，热带区湿气扑面，相机快门按了不少。出门透口气，回来写代码都顺畅了些。（占位内容）",
+									"_key": "l1k1"
+								}
+							],
+							"_key": "l1k0"
+						}
+					]
+				},
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "life_category": ["daily"], "tag": ["photography"] }
+			},
+			{
+				"id": "life-2",
+				"slug": "new-keyboard-hhkb",
+				"status": "published",
+				"data": {
+					"title": "新键盘到了：静电容初体验",
+					"record_date": "2026-09-15T20:30:00Z",
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "纠结了很久还是下手了静电容。手感确实软，码字一晚上手指不累，就是声音比想象中大，晚上得配个消音垫。慢适应中。（占位内容）",
+									"_key": "l2k1"
+								}
+							],
+							"_key": "l2k0"
+						}
+					]
+				},
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "life_category": ["daily"], "tag": ["gears"] }
+			},
+			{
+				"id": "life-3",
+				"slug": "reading-smart-notes",
+				"status": "published",
+				"data": {
+					"title": "读完《卡片笔记写作法》",
+					"record_date": "2026-09-08T21:00:00Z",
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "核心观点其实朴素：笔记的价值在连接而不在收集。正好博客 migration 系列在写，试了试卡片法整理大纲，思路确实不容易散。（占位内容）",
+									"_key": "l3k1"
+								}
+							],
+							"_key": "l3k0"
+						}
+					]
+				},
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "life_category": ["reading-notes"], "tag": ["reading"] }
+			},
+			{
+				"id": "life-4",
+				"slug": "autumn-hiking",
+				"status": "published",
+				"data": {
+					"title": "秋天的第一场徒步",
+					"record_date": "2026-09-02T08:00:00Z",
+					"featured_image": { "src": "/covers/cover-2.svg", "alt": "赭石渐变占位封面" },
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "山还没完全变色，但风已经是秋天的了。十二公里，山顶吃了自带的三明治。腿酸两天，值。（占位内容）",
+									"_key": "l4k1"
+								}
+							],
+							"_key": "l4k0"
+						}
+					]
+				},
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "life_category": ["travel"] }
+			},
+			{
+				"id": "life-5",
+				"slug": "pourover-yirgacheffe",
+				"status": "published",
+				"data": {
+					"title": "手冲笔记：耶加雪菲",
+					"record_date": "2026-08-25T07:40:00Z",
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "15 克粉，92 度水，两段式注水。这批豆子的花香比上次明显，酸质明亮不刺激。记录一下参数，下次微调研磨度。（占位内容）",
+									"_key": "l5k1"
+								}
+							],
+							"_key": "l5k0"
+						}
+					]
+				},
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "life_category": ["daily"] }
+			},
+			{
+				"id": "life-6",
+				"slug": "sunset-photos",
+				"status": "published",
+				"data": {
+					"title": "拍了一组晚霞",
+					"record_date": "2026-08-18T19:10:00Z",
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "傍晚天突然烧起来，抓起相机冲到天台。晚霞的层次一两分钟就变了，拍到第三张的时候最惊艳的那一档已经过去了。差一点和错过，大概就是摄影。（占位内容）",
+									"_key": "l6k1"
+								}
+							],
+							"_key": "l6k0"
+						}
+					]
+				},
+				"bylines": [{ "byline": "byline-duanap" }],
+				"taxonomies": { "life_category": ["photo"], "tag": ["photography"] }
+			}
+		],
+		"projects": [
+			{
+				"id": "proj-1",
+				"slug": "blog-front",
+				"status": "published",
+				"data": {
+					"title": "blog-front · 旧版博客",
+					"summary": "Vue 3 + Fastify + Drizzle/SQLite 的全自研博客，本站的前身，承载了两三年的内容。",
+					"cover_image": { "src": "/covers/cover-1.svg", "alt": "墨绿渐变占位封面" },
+					"tech": ["Vue", "TypeScript", "Node.js", "Fastify", "SQLite"],
+					"repo_url": "https://github.com/duanap/blog-front",
+					"featured": true,
+					"sort_order": 1,
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "从零实现的内容管理：文章、生活记录、作品三个板块，会员 QQ 登录，点赞收藏评论，自研 Markdown 渲染器和后台。这个项目让我把一条完整的 Web 产品链路走了一遍。（占位介绍）",
+									"_key": "pr1k1"
+								}
+							],
+							"_key": "pr1k0"
+						}
+					]
+				},
+				"taxonomies": { "project_type": ["open-source"] }
+			},
+			{
+				"id": "proj-2",
+				"slug": "emdash-blog",
+				"status": "published",
+				"data": {
+					"title": "emdash-blog · 新站基座",
+					"summary": "基于 Astro 与 EmDash 的新博客：内容模型、管理后台与前台主题定制，正在逐步迁移中。",
+					"cover_image": { "src": "/covers/cover-3.svg", "alt": "深绿渐变占位封面" },
+					"tech": ["Astro", "TypeScript", "Node.js"],
+					"repo_url": "https://github.com/duanap/emdash",
+					"preview_url": "https://blog.duanap.cn",
+					"featured": true,
+					"sort_order": 2,
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "你现在看到的这个站点。核心包通过 workspace 链接进 monorepo，内容模型用 seed 定义，前台是可自由替换的 Astro 组件。（占位介绍）",
+									"_key": "pr2k1"
+								}
+							],
+							"_key": "pr2k0"
+						}
+					]
+				},
+				"taxonomies": { "project_type": ["personal"] }
+			},
+			{
+				"id": "proj-3",
+				"slug": "qq-bot-placeholder",
+				"status": "published",
+				"data": {
+					"title": "QQ 机器人（占位）",
+					"summary": "一个群管与小游戏机器人，占位项目卡片，用于验证作品列表功能。",
+					"tech": ["Node.js", "TypeScript"],
+					"sort_order": 3,
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "这是占位内容：验证无封面、无链接项目的卡片回退展示。",
+									"_key": "pr3k1"
+								}
+							],
+							"_key": "pr3k0"
+						}
+					]
+				},
+				"taxonomies": { "project_type": ["personal"] }
+			},
+			{
+				"id": "proj-4",
+				"slug": "widget-lib-placeholder",
+				"status": "published",
+				"data": {
+					"title": "小组件库（占位）",
+					"summary": "若干零散的 Web Components 小组件合集，占位项目卡片。",
+					"tech": ["TypeScript", "Vite"],
+					"sort_order": 4,
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "这是占位内容：用于验证项目类型筛选与排序。",
+									"_key": "pr4k1"
+								}
+							],
+							"_key": "pr4k0"
+						}
+					]
+				},
+				"taxonomies": { "project_type": ["tools"] }
 			}
 		]
 	}

@@ -10,9 +10,26 @@ const query = Astro.url.searchParams.get("q")?.trim() || "";
 // filtering in JS. FTS scales as the post count grows, returns ranked
 // results, and handles tokenization/stemming. Templates that grep all
 // post bodies in JS quickly become unusable past a few hundred posts.
+const SEARCH_COLLECTIONS = ["posts", "life", "projects", "pages"] as const;
 const { items: results } = query
-	? await search(query, { collections: ["posts"], limit: 30 })
+	? await search(query, { collections: [...SEARCH_COLLECTIONS], limit: 30 })
 	: { items: [] };
+
+// Result URLs depend on which collection the hit came from.
+const COLLECTION_BASES: Record<string, string> = {
+	posts: "/posts/",
+	life: "/life/",
+	projects: "/projects/",
+	pages: "/pages/",
+};
+const COLLECTION_LABELS: Record<string, string> = {
+	posts: "文章",
+	life: "生活",
+	projects: "作品",
+	pages: "页面",
+};
+const hrefFor = (result: (typeof results)[number]) =>
+	`${COLLECTION_BASES[result.collection] ?? "/posts/"}${result.slug ?? result.id}`;
 ---
 
 <Base
@@ -51,11 +68,11 @@ const { items: results } = query
 				<ol class="search-results">
 					{results.map((result) => (
 						<li class="search-result">
-							<a
-								href={`/posts/${result.slug ?? result.id}`}
-								class="result-link"
-							>
-								<h2 class="result-title">{result.title ?? "Untitled"}</h2>
+							<a href={hrefFor(result)} class="result-link">
+								<span class="result-collection">
+									{COLLECTION_LABELS[result.collection] ?? result.collection}
+								</span>
+								<h2 class="result-title">{result.title ?? "未命名"}</h2>
 								{result.snippet && (
 									<p class="result-snippet" set:html={result.snippet} />
 								)}
@@ -164,6 +181,16 @@ const { items: results } = query
 		display: block;
 		text-decoration: none;
 		color: inherit;
+	}
+
+	.result-collection {
+		display: inline-block;
+		padding: 2px var(--spacing-2);
+		margin-bottom: var(--spacing-2);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+		background: var(--color-surface);
+		border-radius: var(--radius);
 	}
 
 	.result-title {
