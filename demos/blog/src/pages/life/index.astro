@@ -1,0 +1,216 @@
+---
+import {
+	getEmDashCollection,
+	getTermsForEntries,
+	getTaxonomyTermsWithCacheHint,
+} from "emdash";
+import Base from "../../layouts/Base.astro";
+import PostCard from "../../components/PostCard.astro";
+import { getReadingTime } from "../../utils/reading-time";
+import { toDate } from "../../utils/date";
+
+// Optional category filter: /life?cat=daily
+const activeCat = Astro.url.searchParams.get("cat") || undefined;
+
+const termsResult = await getTaxonomyTermsWithCacheHint("life_category", {
+	includeCounts: true,
+});
+const categories = termsResult.data;
+const activeTerm = activeCat
+	? categories.find((c) => c.slug === activeCat)
+	: undefined;
+
+const cursor = Astro.url.searchParams.get("cursor") || undefined;
+const {
+	entries: records,
+	cacheHint,
+	nextCursor,
+} = await getEmDashCollection("life", {
+	where: activeTerm ? { life_category: activeTerm.slug } : undefined,
+	orderBy: { record_date: "desc" },
+	limit: 20,
+	cursor,
+});
+
+if (Astro.cache?.enabled) {
+	Astro.cache.set(termsResult.cacheHint);
+	Astro.cache.set(cacheHint);
+}
+
+// One batched query for tags across all listed records (avoids N+1).
+const tagsByEntry = await getTermsForEntries(
+	"life",
+	records.map((r) => r.data.id),
+	"tag",
+);
+
+const recordsWithTags = records.map((record) => ({
+	record,
+	tags: (tagsByEntry.get(record.data.id) ?? []).map((t) => ({
+		slug: t.slug,
+		label: t.label,
+	})),
+}));
+---
+
+<Base
+	title="生活记录"
+	description="日常、旅行、摄影与读书的碎片记录"
+>
+	<div class="life-page">
+		<header class="page-header">
+			<h1 class="page-title">生活记录</h1>
+			<p class="page-description">
+				{activeTerm ? activeTerm.label : "全部"} · 共 {records.length} 条
+			</p>
+		</header>
+
+		{
+			categories.length > 0 && (
+				<nav class="cat-filter" aria-label="生活分类过滤">
+					<a href="/life" class:list={["cat-chip", { active: !activeTerm }]}>
+						全部
+					</a>
+					{categories.map((cat) => (
+						<a
+							href={`/life?cat=${cat.slug}`}
+							class:list={["cat-chip", { active: activeTerm?.slug === cat.slug }]}
+						>
+							{cat.label}
+						</a>
+					))}
+				</nav>
+			)
+		}
+
+		{
+			recordsWithTags.length === 0 ? (
+				<p class="empty">这个分类下还没有记录。</p>
+			) : (
+				<div class="life-grid">
+					{recordsWithTags.map(({ record, tags }) => (
+						<PostCard
+							title={record.data.title ?? "未命名"}
+							featuredImage={record.data.featured_image}
+							href={`/life/${record.id}`}
+							date={toDate(record.data.record_date ?? record.data.publishedAt)}
+							readingTime={getReadingTime(record.data.content)}
+							tags={tags}
+							tagBasePath="/life/tag"
+							edit={record.edit}
+						/>
+					))}
+				</div>
+			)
+		}
+
+		<nav class="pagination" aria-label="分页">
+			{
+				activeTerm && cursor && (
+					<a href={`/life?cat=${activeTerm.slug}`}>第一页</a>
+				)
+			}
+			{
+				!activeTerm && cursor && <a href="/life">第一页</a>
+			}
+			{
+				nextCursor && (
+					<a
+						href={`/life?cursor=${encodeURIComponent(nextCursor)}${
+							activeTerm ? `&cat=${activeTerm.slug}` : ""
+						}`}
+					>
+						下一页
+					</a>
+				)
+			}
+		</nav>
+	</div>
+</Base>
+
+<style>
+	.life-page {
+		max-width: var(--wide-width);
+		margin: 0 auto;
+		padding: var(--spacing-8) var(--spacing-6) var(--spacing-16);
+	}
+
+	.page-header {
+		margin-bottom: var(--spacing-8);
+	}
+
+	.page-title {
+		font-size: var(--font-size-4xl);
+		font-weight: var(--font-weight-display);
+	}
+
+	.page-description {
+		margin-top: var(--spacing-2);
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.cat-filter {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--spacing-2);
+		margin-bottom: var(--spacing-10);
+	}
+
+	.cat-chip {
+		display: inline-block;
+		padding: var(--tag-padding-y) var(--spacing-3);
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+		background: var(--color-surface);
+		border-radius: 999px;
+		text-decoration: none;
+		transition:
+			color var(--transition-fast),
+			background var(--transition-fast);
+	}
+
+	.cat-chip:hover {
+		color: var(--color-text);
+		background: var(--color-border);
+	}
+
+	.cat-chip.active {
+		color: var(--color-on-brand);
+		background: var(--color-brand);
+	}
+
+	.life-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: var(--spacing-12) var(--spacing-8);
+	}
+
+	.empty {
+		color: var(--color-muted);
+		padding: var(--spacing-16) 0;
+		text-align: center;
+	}
+
+	.pagination {
+		display: flex;
+		justify-content: center;
+		gap: var(--spacing-6);
+		margin-top: var(--spacing-12);
+		font-size: var(--font-size-sm);
+	}
+
+	@media (max-width: 900px) {
+		.life-grid {
+			grid-template-columns: repeat(2, 1fr);
+			gap: var(--spacing-8) var(--spacing-6);
+		}
+	}
+
+	@media (max-width: 600px) {
+		.life-grid {
+			grid-template-columns: 1fr;
+			gap: var(--spacing-8);
+		}
+	}
+</style>

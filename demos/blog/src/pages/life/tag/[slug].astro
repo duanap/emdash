@@ -1,0 +1,181 @@
+---
+import {
+	getTaxonomyTermsWithCacheHint,
+	getEmDashCollection,
+	getTermsForEntries,
+	decodeSlug,
+} from "emdash";
+import Base from "../../../layouts/Base.astro";
+import PostCard from "../../../components/PostCard.astro";
+import { getReadingTime } from "../../../utils/reading-time";
+import { toDate } from "../../../utils/date";
+
+const slug = decodeSlug(Astro.params.slug);
+const termsResult = await getTaxonomyTermsWithCacheHint("tag", {
+	includeCounts: false,
+});
+const term = slug ? termsResult.data.find((item) => item.slug === slug) : null;
+
+if (!term) {
+	return Astro.redirect("/404");
+}
+
+const cursor = Astro.url.searchParams.get("cursor") || undefined;
+const {
+	entries: records,
+	cacheHint,
+	nextCursor,
+} = await getEmDashCollection("life", {
+	where: { tag: term.slug },
+	orderBy: { record_date: "desc" },
+	limit: 20,
+	cursor,
+});
+
+if (Astro.cache?.enabled) {
+	Astro.cache.set(termsResult.cacheHint);
+	Astro.cache.set(cacheHint);
+}
+
+const tagsByEntry = await getTermsForEntries(
+	"life",
+	records.map((r) => r.data.id),
+	"tag",
+);
+const filteredRecords = records.map((record) => ({
+	record,
+	tags: (tagsByEntry.get(record.data.id) ?? []).map((t) => ({
+		slug: t.slug,
+		label: t.label,
+	})),
+}));
+---
+
+<Base
+	title={`标签「${term.label}」下的生活记录`}
+	description={`标签为「${term.label}」的全部生活记录`}
+>
+	<section class="life-tag-page">
+		<header class="archive-header">
+			<span class="archive-label">生活标签</span>
+			<h1 class="archive-title">{term.label}</h1>
+		</header>
+
+		{
+			filteredRecords.length === 0 ? (
+				<p class="no-records">该标签下暂无生活记录。</p>
+			) : (
+				<div class="life-grid">
+					{filteredRecords.map(({ record, tags }) => (
+						<PostCard
+							title={record.data.title ?? "未命名"}
+							featuredImage={record.data.featured_image}
+							href={`/life/${record.id}`}
+							date={toDate(record.data.record_date ?? record.data.publishedAt)}
+							readingTime={getReadingTime(record.data.content)}
+							tags={tags}
+							tagBasePath="/life/tag"
+							edit={record.edit}
+						/>
+					))}
+				</div>
+			)
+		}
+
+		<nav class="pagination" aria-label="分页">
+			{
+				cursor && <a href={`/life/tag/${term.slug}`}>第一页</a>
+			}
+			{
+				nextCursor && (
+					<a
+						href={`/life/tag/${term.slug}?cursor=${encodeURIComponent(nextCursor)}`}
+					>
+						下一页
+					</a>
+				)
+			}
+		</nav>
+
+		<p class="back-link">
+			<a href="/life">← 返回生活记录</a>
+		</p>
+	</section>
+</Base>
+
+<style>
+	.life-tag-page {
+		max-width: var(--wide-width);
+		margin: 0 auto;
+		padding: var(--spacing-8) var(--spacing-6) var(--spacing-16);
+	}
+
+	.archive-header {
+		margin-bottom: var(--spacing-10);
+		padding-bottom: var(--spacing-4);
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+
+	.archive-label {
+		display: block;
+		font-size: var(--font-size-xs);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wider);
+		color: var(--color-accent);
+		margin-bottom: var(--spacing-2);
+	}
+
+	.archive-title {
+		font-size: var(--font-size-3xl);
+		font-weight: var(--font-weight-display);
+	}
+
+	.life-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: var(--spacing-12) var(--spacing-8);
+	}
+
+	.no-records {
+		color: var(--color-muted);
+		padding: var(--spacing-16) 0;
+		text-align: center;
+	}
+
+	.pagination {
+		display: flex;
+		justify-content: center;
+		gap: var(--spacing-6);
+		margin-top: var(--spacing-12);
+		font-size: var(--font-size-sm);
+	}
+
+	.back-link {
+		margin-top: var(--spacing-8);
+		font-size: var(--font-size-sm);
+	}
+
+	.back-link a {
+		color: var(--color-muted);
+		text-decoration: none;
+	}
+
+	.back-link a:hover {
+		color: var(--color-text);
+	}
+
+	@media (max-width: 900px) {
+		.life-grid {
+			grid-template-columns: repeat(2, 1fr);
+			gap: var(--spacing-8) var(--spacing-6);
+		}
+	}
+
+	@media (max-width: 600px) {
+		.life-grid {
+			grid-template-columns: 1fr;
+			gap: var(--spacing-8);
+		}
+	}
+</style>

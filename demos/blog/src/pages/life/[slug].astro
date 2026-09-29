@@ -1,0 +1,442 @@
+---
+import {
+	getEmDashEntry,
+	getEmDashCollection,
+	getTermsForEntries,
+	getSeoMeta,
+	decodeSlug,
+	getSiteSettings,
+} from "emdash";
+import { Image, PortableText } from "emdash/ui";
+import { Comments, CommentForm } from "emdash/ui/comments";
+import Base from "../../layouts/Base.astro";
+import PostCard from "../../components/PostCard.astro";
+import { getReadingTime } from "../../utils/reading-time";
+import { resolveBlogSiteIdentity } from "../../utils/site-identity";
+import { formatDateZh, toDate } from "../../utils/date";
+
+const slug = decodeSlug(Astro.params.slug);
+
+if (!slug) {
+	return Astro.redirect("/404");
+}
+
+const { entry: record, cacheHint } = await getEmDashEntry("life", slug);
+
+if (!record) {
+	return Astro.redirect("/404");
+}
+
+if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
+
+const recordDate = formatDateZh(record.data.record_date ?? record.data.publishedAt);
+
+const { siteTitle } = resolveBlogSiteIdentity(await getSiteSettings());
+
+function getImageUrl(img: unknown): string | undefined {
+	if (!img || typeof img !== "object") return undefined;
+	const image = img as Record<string, unknown>;
+	if (typeof image.src === "string" && image.src) {
+		return image.src.startsWith("http")
+			? image.src
+			: `${Astro.url.origin}${image.src}`;
+	}
+	return undefined;
+}
+
+const seo = getSeoMeta(record, {
+	siteTitle,
+	siteUrl: Astro.url.origin,
+	path: Astro.url.pathname.replace(/\/$/, ""),
+	defaultOgImage: getImageUrl(record.data.featured_image),
+});
+
+const readingTime = getReadingTime(record.data.content);
+const tags = record.data.terms?.tag ?? [];
+
+// A few more recent records for the "more" strip.
+const { entries: recent, cacheHint: recentCacheHint } =
+	await getEmDashCollection("life", {
+		orderBy: { record_date: "desc" },
+		limit: 4,
+	});
+if (Astro.cache?.enabled) Astro.cache.set(recentCacheHint);
+const otherRecords = recent.filter((r) => r.id !== record.id).slice(0, 3);
+
+const otherTagsByEntry = await getTermsForEntries(
+	"life",
+	otherRecords.map((r) => r.data.id),
+	"tag",
+);
+const otherRecordsWithTags = otherRecords.map((r) => ({
+	record: r,
+	tags: (otherTagsByEntry.get(r.data.id) ?? []).map((t) => ({
+		slug: t.slug,
+		label: t.label,
+	})),
+}));
+---
+
+<Base
+	title={seo.title}
+	pageTitle={seo.ogTitle}
+	description={seo.description}
+	image={seo.ogImage}
+	canonical={seo.canonical}
+	robots={seo.robots}
+	type="article"
+	publishedTime={
+		toDate(record.data.record_date ?? record.data.publishedAt)?.toISOString() ??
+		null
+	}
+	modifiedTime={record.data.updatedAt.toISOString()}
+	content={{ collection: "life", id: record.data.id, slug }}
+>
+	<article class="life-article">
+		{
+			record.data.featured_image && (
+				<div class="article-hero" {...record.edit.featured_image}>
+					<Image image={record.data.featured_image} />
+				</div>
+			)
+		}
+
+		<div class="article-grid">
+			<aside class="article-meta-col">
+				<div class="meta-sticky">
+					{
+						recordDate && (
+							<div class="meta-block">
+								<span class="meta-label">记录于</span>
+								<time class="meta-value">{recordDate}</time>
+							</div>
+						)
+					}
+					<div class="meta-block">
+						<span class="meta-label">阅读时长</span>
+						<span class="meta-value">{readingTime} 分钟</span>
+					</div>
+					{
+						tags.length > 0 && (
+							<div class="meta-block">
+								<span class="meta-label">标签</span>
+								<div class="meta-tags">
+									{tags.map((t) => (
+										<a href={`/life/tag/${t.slug}`} class="meta-tag">
+											{t.label}
+										</a>
+									))}
+								</div>
+							</div>
+						)
+					}
+					<div class="meta-block">
+						<span class="meta-label">返回</span>
+						<a href="/life" class="meta-value back-link">← 全部生活记录</a>
+					</div>
+				</div>
+			</aside>
+
+			<div class="article-main">
+				<header class="article-header">
+					<div class="article-meta">
+						{recordDate && <time>{recordDate}</time>}
+						{recordDate && <span class="meta-dot" />}
+						<span>{readingTime} 分钟</span>
+					</div>
+					<h1 class="article-title" {...record.edit.title}>
+						{record.data.title}
+					</h1>
+				</header>
+
+				<div class="article-content">
+					<PortableText value={record.data.content} />
+				</div>
+
+				<div class="article-comments">
+					<Comments collection="life" contentId={record.data.id} threaded />
+					<CommentForm collection="life" contentId={record.data.id} />
+				</div>
+			</div>
+
+			<aside class="article-sidebar">
+				<div class="sidebar-sticky">
+					<nav class="toc" aria-label="页面目录">
+						<h2 class="toc-title">关于这条记录</h2>
+						<div class="toc-content">
+							<p class="toc-note">
+								生活记录是简短的碎片，不需要目录。
+							</p>
+						</div>
+					</nav>
+				</div>
+			</aside>
+		</div>
+	</article>
+
+	{
+		otherRecordsWithTags.length > 0 && (
+			<section class="more-records">
+				<div class="more-inner">
+					<h2 class="more-title">更多记录</h2>
+					<div class="more-grid">
+						{otherRecordsWithTags.map(({ record: r, tags: recordTags }) => (
+							<PostCard
+								title={r.data.title}
+								featuredImage={r.data.featured_image}
+								href={`/life/${r.id}`}
+								date={toDate(r.data.record_date ?? r.data.publishedAt)}
+								readingTime={getReadingTime(r.data.content)}
+								tags={recordTags}
+								tagBasePath="/life/tag"
+								edit={r.edit}
+							/>
+						))}
+					</div>
+				</div>
+			</section>
+		)
+	}
+</Base>
+
+<style>
+	.life-article {
+		max-width: var(--wide-width);
+		margin: 0 auto;
+	}
+
+	.article-hero {
+		margin: var(--spacing-16) var(--spacing-6);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		background: var(--color-surface);
+	}
+
+	.article-hero img {
+		width: 100%;
+		height: auto;
+		max-height: 500px;
+		object-fit: cover;
+	}
+
+	.article-grid {
+		display: grid;
+		grid-template-columns:
+			var(--meta-col-width) minmax(0, var(--content-width))
+			var(--gutter-width);
+		gap: var(--spacing-10);
+		justify-content: center;
+		padding: 0 var(--spacing-6);
+		margin: var(--spacing-16) 0;
+	}
+
+	.meta-sticky,
+	.sidebar-sticky {
+		position: sticky;
+		top: calc(var(--nav-height) + var(--spacing-8));
+	}
+
+	.meta-block {
+		margin-bottom: var(--spacing-6);
+	}
+
+	.meta-label {
+		display: block;
+		font-size: var(--font-size-xs);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-1);
+	}
+
+	.meta-value {
+		display: block;
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+	}
+
+	.back-link {
+		text-decoration: none;
+	}
+
+	.back-link:hover {
+		color: var(--color-brand);
+	}
+
+	.meta-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--spacing-1);
+	}
+
+	.meta-tag {
+		display: inline-block;
+		padding: var(--tag-padding-y) var(--spacing-2);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+		background: var(--color-surface);
+		border-radius: var(--radius);
+		text-decoration: none;
+		transition:
+			color var(--transition-fast),
+			background var(--transition-fast);
+	}
+
+	.meta-tag:hover {
+		color: var(--color-text);
+		background: var(--color-border);
+	}
+
+	.article-main {
+		min-width: 0;
+	}
+
+	.article-header {
+		margin-bottom: var(--spacing-10);
+	}
+
+	.article-meta {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		column-gap: var(--spacing-3);
+		row-gap: var(--spacing-1);
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-4);
+	}
+
+	.meta-dot {
+		width: 3px;
+		height: 3px;
+		border-radius: 50%;
+		background: var(--color-muted);
+	}
+
+	.article-title {
+		font-size: clamp(2rem, 5vw, var(--font-size-4xl));
+		font-weight: var(--font-weight-display);
+		line-height: var(--leading-tight);
+		margin-bottom: var(--spacing-4);
+	}
+
+	.article-content {
+		font-size: var(--font-size-lg);
+		line-height: var(--leading-relaxed);
+	}
+
+	.article-content :global(p) {
+		margin-bottom: 1.5em;
+	}
+
+	.article-content :global(h2) {
+		font-size: var(--font-size-2xl);
+		margin-top: 2.5em;
+		margin-bottom: 0.75em;
+	}
+
+	.article-content :global(h3) {
+		font-size: var(--font-size-xl);
+		margin-top: 2em;
+		margin-bottom: 0.5em;
+	}
+
+	.article-content :global(blockquote) {
+		margin: 2em 0;
+		padding: var(--spacing-4) var(--spacing-6);
+		border-left: 3px solid var(--color-border);
+		background: var(--color-bg-subtle);
+		border-radius: 0 var(--radius) var(--radius) 0;
+		color: var(--color-text-secondary);
+		font-style: italic;
+	}
+
+	.article-content :global(img) {
+		margin: 2em 0;
+		border-radius: var(--radius-lg);
+	}
+
+	.article-comments {
+		margin-top: var(--spacing-16);
+		padding-top: var(--spacing-10);
+		border-top: 1px solid var(--color-border);
+	}
+
+	.toc {
+		padding-bottom: var(--spacing-6);
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+
+	.toc-title {
+		font-size: var(--font-size-xs);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-3);
+	}
+
+	.toc-note {
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+		line-height: var(--leading-relaxed);
+	}
+
+	.more-records {
+		background: var(--color-bg-subtle);
+		padding: var(--spacing-16) 0;
+		margin-top: var(--spacing-16);
+	}
+
+	.more-inner {
+		max-width: var(--wide-width);
+		margin: 0 auto;
+		padding: 0 var(--spacing-6);
+	}
+
+	.more-title {
+		font-size: var(--font-size-2xl);
+		font-weight: var(--font-weight-heading);
+		margin-bottom: var(--spacing-10);
+	}
+
+	.more-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: var(--spacing-8);
+	}
+
+	@media (max-width: 1100px) {
+		.article-grid {
+			grid-template-columns: minmax(0, var(--content-width));
+			gap: 0;
+		}
+
+		.article-meta-col,
+		.article-sidebar {
+			display: none;
+		}
+	}
+
+	@media (max-width: 900px) {
+		.article-hero {
+			margin: var(--spacing-4) var(--spacing-4) var(--spacing-8);
+			border-radius: var(--radius);
+		}
+
+		.article-grid {
+			padding: 0 var(--spacing-4);
+		}
+
+		.more-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+
+	@media (max-width: 600px) {
+		.more-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>
