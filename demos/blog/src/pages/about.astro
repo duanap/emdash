@@ -1,0 +1,86 @@
+---
+import {
+	getEmDashEntry,
+	getSeoMeta,
+	getSiteSettings,
+} from "emdash";
+import { PortableText } from "emdash/ui";
+import Base from "../layouts/Base.astro";
+import { resolveBlogSiteIdentity } from "../utils/site-identity";
+
+const { entry: page, cacheHint } = await getEmDashEntry("pages", "about");
+
+if (!page) {
+	return Astro.redirect("/404");
+}
+
+if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
+const { siteTitle } = resolveBlogSiteIdentity(await getSiteSettings());
+const seo = getSeoMeta(page, {
+	siteTitle,
+	siteUrl: Astro.url.origin,
+	path: "/about",
+});
+---
+
+<Base
+	title={seo.title}
+	pageTitle={seo.ogTitle}
+	description={seo.description}
+	canonical={seo.canonical}
+	robots={seo.robots}
+	content={{ collection: "pages", id: page.data.id, slug: "about" }}
+>
+	<article class="page-article">
+		<header class="page-header">
+			<h1 class="page-title" {...page.edit.title}>{page.data.title}</h1>
+		</header>
+
+		<div class="page-content" {...page.edit.content}>
+			<PortableText value={page.data.content} />
+		</div>
+	</article>
+</Base>
+
+<style>
+	.page-article {
+		max-width: var(--content-width);
+		margin: 0 auto;
+		padding: var(--spacing-8) var(--spacing-6) var(--spacing-16);
+	}
+
+	.page-title {
+		font-size: var(--font-size-4xl);
+		font-weight: var(--font-weight-display);
+		margin-bottom: var(--spacing-10);
+	}
+
+	.page-content {
+		font-size: var(--font-size-lg);
+		line-height: var(--leading-relaxed);
+	}
+
+	.page-content :global(p) {
+		margin-bottom: 1.5em;
+	}
+
+	.page-content :global(h2) {
+		font-size: var(--font-size-2xl);
+		margin-top: 2.5em;
+		margin-bottom: 0.75em;
+	}
+
+	.page-content :global(blockquote) {
+		margin: 2em 0;
+		padding: var(--spacing-4) var(--spacing-6);
+		border-left: 3px solid var(--color-border);
+		background: var(--color-bg-subtle);
+		border-radius: 0 var(--radius) var(--radius) 0;
+		color: var(--color-text-secondary);
+	}
+
+	.page-content :global(a) {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+</style>
