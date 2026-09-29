@@ -169,6 +169,21 @@
 					"type": "boolean"
 				},
 				{
+					"slug": "stars",
+					"label": "Stars",
+					"type": "integer"
+				},
+				{
+					"slug": "forks",
+					"label": "Forks",
+					"type": "integer"
+				},
+				{
+					"slug": "show_code",
+					"label": "公开仓库地址",
+					"type": "boolean"
+				},
+				{
 					"slug": "sort_order",
 					"label": "排序",
 					"type": "integer"
@@ -734,6 +749,12 @@
 							"style": "h2",
 							"children": [{ "_type": "span", "text": "得与失", "_key": "p4k5" }],
 							"_key": "p4k4"
+						},
+						{
+							"_type": "code",
+							"_key": "p4code1",
+							"language": "ts",
+							"code": "// 旧站：手写 Markdown 渲染\nfunction markdownToHtml(md: string): string {\n  return md.split('\\n').map(renderLine).join('');\n}\n\n// 新站：结构化块，渲染器按 _type 分发\nconst blocks = markdownToPortableText(markdown);"
 						},
 						{
 							"_type": "block",

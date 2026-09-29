@@ -902,11 +902,12 @@ const isLoggedIn = !!Astro.locals.user;
 		</script>
 
 		<script>
-			// 停止性方案：EmDash 核心的公开 UI（评论表单/评论列表）还没有
-			// i18n 支持，字符串硬编码英文。这里在 DOM 层把已知字符串替换为
-			// 中文，仅作用于 .ec-comments / .ec-comment-form 容器内。
+			// 停止性方案：EmDash 核心的公开 UI（评论表单/评论列表/搜索/归档
+			// widget）还没有 i18n 支持，字符串硬编码英文。这里在 DOM 层把
+			// 已知字符串替换为中文，仅作用于相关容器内。
 			// 待上游提供 i18n 后移除（跟踪见 demos/blog/MIGRATION.md）。
 			(function () {
+				const SCOPE = ".ec-comments, .ec-comment-form, .widget-search, .widget-archives";
 				const EXACT: Record<string, string> = {
 					Name: "昵称",
 					Email: "邮箱",
@@ -918,6 +919,34 @@ const isLoggedIn = !!Astro.locals.user;
 					Like: "赞",
 				};
 				const PATTERN = /^(\d+) Comments$/;
+				const MONTHS = [
+					"January",
+					"February",
+					"March",
+					"April",
+					"May",
+					"June",
+					"July",
+					"August",
+					"September",
+					"October",
+					"November",
+					"December",
+				];
+				const MONTH_PATTERN =
+					/^(January|February|March|April|May|June|July|August|September|October|November|December) (\d{4})$/;
+
+				function zhFor(text: string): string | null {
+					const exact = EXACT[text];
+					if (exact) return exact;
+					const comments = PATTERN.exec(text);
+					if (comments) return `${comments[1]} 条评论`;
+					const month = MONTH_PATTERN.exec(text);
+					if (month) {
+						return `${month[2]} 年 ${MONTHS.indexOf(month[1]) + 1} 月`;
+					}
+					return null;
+				}
 
 				function translate(root: ParentNode) {
 					const walker = document.createTreeWalker(
@@ -929,38 +958,40 @@ const isLoggedIn = !!Astro.locals.user;
 						const next = walker.nextNode();
 						const text = current.nodeValue?.trim();
 						if (text) {
-							let zh = EXACT[text];
-							if (!zh) {
-								const m = PATTERN.exec(text);
-								if (m) zh = `${m[1]} 条评论`;
-							}
+							const zh = zhFor(text);
 							if (zh && current.nodeValue !== zh) {
 								current.nodeValue = zh;
 							}
 						}
 						current = next;
 					}
+					root
+						.querySelectorAll("input[placeholder]")
+						.forEach((input) => {
+							const placeholder = input.getAttribute("placeholder");
+							if (!placeholder) return;
+							if (
+								placeholder === "Search..." ||
+								placeholder === "Search posts..."
+							) {
+								input.setAttribute("placeholder", "搜索…");
+							}
+						});
 				}
 
 				function translateAll() {
-					document
-						.querySelectorAll(".ec-comments, .ec-comment-form")
-						.forEach((el) => translate(el));
+					document.querySelectorAll(SCOPE).forEach((el) => translate(el));
 				}
 
 				translateAll();
 				const observer = new MutationObserver((mutations) => {
 					for (const mutation of mutations) {
 						if (mutation.target instanceof Element) {
-							const container = mutation.target.closest(
-								".ec-comments, .ec-comment-form",
-							);
+							const container = mutation.target.closest(SCOPE);
 							if (container) translate(container);
 						} else if (mutation.target instanceof Text) {
 							const parent = mutation.target.parentElement;
-							const container = parent?.closest(
-								".ec-comments, .ec-comment-form",
-							);
+							const container = parent?.closest(SCOPE);
 							if (container) translate(container);
 						}
 					}
