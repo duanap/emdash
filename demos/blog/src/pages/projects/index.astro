@@ -43,9 +43,11 @@ const cards = projects.map((project) => {
 });
 
 const featuredCards = cards.filter(({ project }) => project.data.featured);
-const gridCards = featuredCards.length > 0
-	? cards.filter(({ project }) => !project.data.featured)
-	: cards;
+// 无过滤时精选进顶部区块、网格只放其余；有类型过滤时全部平铺进网格
+const gridCards =
+	!activeTerm && featuredCards.length > 0
+		? cards.filter(({ project }) => !project.data.featured)
+		: cards;
 ---
 
 <Base

@@ -9,6 +9,11 @@ export default defineConfig({
 	adapter: node({
 		mode: "standalone",
 	}),
+	// 专用路由取代 /pages/{slug} 入口；301 旧地址避免重复内容
+	redirects: {
+		"/pages/about": "/about",
+		"/pages/friends": "/friends",
+	},
 	image: {
 		layout: "constrained",
 		responsiveStyles: true,
