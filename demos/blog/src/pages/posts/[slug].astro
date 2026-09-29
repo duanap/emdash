@@ -95,7 +95,7 @@ const otherPostsWithTags = otherPosts.map((p) => ({
 }));
 
 const publishDate =
-	post.data.publishedAt?.toLocaleDateString("en-US", {
+	post.data.publishedAt?.toLocaleDateString("zh-CN", {
 		year: "numeric",
 		month: "long",
 		day: "numeric",
@@ -133,7 +133,7 @@ const publishDate =
 						bylines.length > 0 && (
 							<div class="meta-block byline-block">
 								<span class="meta-label">
-									{bylines.length === 1 ? "Author" : "Authors"}
+									{bylines.length === 1 ? "作者" : "作者"}
 								</span>
 								<div class="bylines">
 									{bylines.map((credit) => (
@@ -160,21 +160,21 @@ const publishDate =
 						)
 					}
 					{
-						publishDate && (
-							<div class="meta-block">
-								<span class="meta-label">Published</span>
-								<time class="meta-value">{publishDate}</time>
-							</div>
-						)
-					}
-					<div class="meta-block">
-						<span class="meta-label">Reading time</span>
-						<span class="meta-value">{readingTime} min</span>
-					</div>
-					{
-						tags.length > 0 && (
-							<div class="meta-block">
-								<span class="meta-label">Tags</span>
+							publishDate && (
+								<div class="meta-block">
+									<span class="meta-label">发布于</span>
+									<time class="meta-value">{publishDate}</time>
+								</div>
+							)
+						}
+						<div class="meta-block">
+							<span class="meta-label">阅读时长</span>
+							<span class="meta-value">{readingTime} 分钟</span>
+						</div>
+						{
+							tags.length > 0 && (
+								<div class="meta-block">
+									<span class="meta-label">标签</span>
 								<div class="meta-tags">
 									{tags.map((t) => (
 										<a href={`/tag/${t.slug}`} class="meta-tag">
@@ -215,7 +215,7 @@ const publishDate =
 								</>
 							)
 						}
-						<span>{readingTime} min read</span>
+						<span>{readingTime} 分钟阅读</span>
 					</div>
 					<h1 class="article-title" {...post.edit.title}>{post.data.title}</h1>
 					{
@@ -240,8 +240,8 @@ const publishDate =
 			{/* Right gutter: TOC + Sidebar widgets */}
 			<aside class="article-sidebar">
 				<div class="sidebar-sticky">
-					<nav class="toc" aria-label="Table of contents">
-						<h2 class="toc-title">On this page</h2>
+					<nav class="toc" aria-label="页面目录">
+						<h2 class="toc-title">页面目录</h2>
 						<div class="toc-content" id="toc-content">
 							<!-- Populated by JS -->
 						</div>
@@ -258,7 +258,7 @@ const publishDate =
 		otherPostsWithTags.length > 0 && (
 			<section class="more-posts">
 				<div class="more-inner">
-					<h2 class="more-title">Continue reading</h2>
+					<h2 class="more-title">继续阅读</h2>
 					<div class="more-grid">
 						{otherPostsWithTags.map(
 							({ post: p, tags: postTags, bylines: postBylines }) => (

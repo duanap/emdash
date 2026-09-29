@@ -1,30 +1,52 @@
 /*
-  theme.css -- your theme overrides. This is the file to edit to
-  retheme the site.
+  theme.css -- duanap的小破站 theme overrides.
 
-  Every design token lives in src/styles/tokens.css (colors, type
-  scale, spacing, layout, shadows) with its default value. Override any
-  of them here: declarations in this file are unlayered, so they always
-  beat the @layer base defaults in tokens.css.
+  Base template tokens live in src/styles/tokens.css. Declarations here
+  are unlayered, so they always win over those @layer base defaults.
 
-  Colors are defined with light-dark(). Overriding with a plain color
-  changes light and dark mode at once; use light-dark(<light>, <dark>)
-  to set different values per mode.
-
-  Webfonts are loaded in astro.config.mjs (--font-body, --font-mono).
-  Swap the loaded font there; use overrides here for system fonts or a
-  separate heading face.
-
-  Example:
-
-  :root {
-    --color-brand: light-dark(#0f766e, #2dd4bf);
-    --font-heading: "Iowan Old Style", Georgia, serif;
-    --radius: 8px;
-  }
+  Brand palette follows the legacy blog-front design system:
+  paper-white background, ink-green primary, ochre accent.
+  Colors use light-dark() so the footer switcher still works.
 */
 
 :root {
+	/* Brand colors (legacy palette: #f6f4ee / #426253 / #a97954) */
+	--color-bg: light-dark(#f6f4ee, #14181a);
+	--color-bg-subtle: light-dark(#efece3, #101416);
+	--color-surface: light-dark(#ebe7dc, #1b201f);
+	--color-text: light-dark(#22312a, #e6eae5);
+	--color-text-secondary: light-dark(#4e5c54, #a6b1a9);
+	--color-muted: light-dark(#7c8a81, #6e7c73);
+	--color-border: light-dark(#dcd7c9, #2b322e);
+	--color-border-subtle: light-dark(#e6e2d6, #202624);
+	--color-brand: light-dark(#426253, #a9c2ad);
+	--color-brand-hover: light-dark(#32503f, #c3d7c7);
+	--color-on-brand: light-dark(#ffffff, #16211b);
+	--color-accent: light-dark(#a97954, #c09a76);
+	--color-accent-hover: light-dark(#8f6444, #d4b191);
+
+	/* System font stack (no webfont fetch: keeps dev/build offline-safe
+	   and fast in CN networks). Headings share the body face. */
+	--font-body:
+		"Inter", "HarmonyOS Sans SC", "MiSans", "PingFang SC",
+		"Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC",
+		"Noto Sans CJK SC", system-ui, -apple-system, "Segoe UI", sans-serif;
+	--font-mono:
+		"JetBrains Mono", "Cascadia Code", "SF Mono", Consolas, Menlo,
+		"Courier New", monospace;
+	--font-heading: var(--font-body);
+
+	/* CJK text breathes better with slightly relaxed leading and no
+	   negative tracking (negative letter-spacing muddies hanzi). */
+	--tracking-tight: 0;
+	--tracking-snug: 0;
+}
+
+/* Accent is available for small highlights (links in footer widgets,
+   archive labels) without displacing the brand color. */
+.archive-label,
+.footer-heading {
+	color: var(--color-accent);
 }
 
 /* Keep the signed-in Admin link separated from the primary navigation. */

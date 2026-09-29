@@ -12,6 +12,8 @@ interface Props {
 	tags?: Array<{ slug: string; label: string }>;
 	bylines?: ContentBylineCredit[];
 	edit?: EditProxy;
+	/** Base path for tag links; life records use /life/tag */
+	tagBasePath?: string;
 }
 
 const {
@@ -24,12 +26,13 @@ const {
 	tags,
 	bylines,
 	edit,
+	tagBasePath = "/tag",
 } = Astro.props;
 
 const formattedDate = date
-	? date.toLocaleDateString("en-US", {
+	? date.toLocaleDateString("zh-CN", {
 			year: "numeric",
-			month: "short",
+			month: "long",
 			day: "numeric",
 		})
 	: null;
@@ -89,7 +92,7 @@ const formattedDate = date
 				}
 				{formattedDate && <time>{formattedDate}</time>}
 				{formattedDate && readingTime && <span class="meta-dot" />}
-				{readingTime && <span>{readingTime} min</span>}
+				{readingTime && <span>{readingTime} 分钟</span>}
 			</div>
 			<h2 class="card-title" {...edit?.title}>{title}</h2>
 			{excerpt && <p class="card-excerpt" {...edit?.excerpt}>{excerpt}</p>}
@@ -99,7 +102,7 @@ const formattedDate = date
 		tags && tags.length > 0 && (
 			<div class="card-tags">
 				{tags.slice(0, 2).map((tag) => (
-					<a href={`/tag/${tag.slug}`} class="card-tag">
+					<a href={`${tagBasePath}/${tag.slug}`} class="card-tag">
 						{tag.label}
 					</a>
 				))}

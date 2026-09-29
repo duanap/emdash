@@ -16,34 +16,32 @@ const { items: results } = query
 ---
 
 <Base
-	title={query ? `Search: ${query}` : "Search"}
-	description="Search blog posts"
+	title={query ? `搜索：${query}` : "搜索"}
+	description="搜索站内文章"
 >
 	<section class="search-page">
-		<h1 class="search-title">Search</h1>
+		<h1 class="search-title">搜索</h1>
 
 		<form method="get" action="/search" class="search-form">
-			<label for="site-search-query" class="visually-hidden"
-				>Search blog posts</label
-			>
+			<label for="site-search-query" class="visually-hidden">搜索文章</label>
 			<input
 				id="site-search-query"
 				type="search"
 				name="q"
 				value={query}
-				placeholder="Search posts..."
+				placeholder="输入关键词…"
 				class="search-input"
 				autofocus
 			/>
-			<button type="submit" class="search-button">Search</button>
+			<button type="submit" class="search-button">搜索</button>
 		</form>
 
 		{
 			query && (
 				<p class="search-summary">
 					{results.length === 0
-						? `No results for "${query}"`
-						: `${results.length} result${results.length === 1 ? "" : "s"} for "${query}"`}
+						? `没有找到与「${query}」相关的内容`
+						: `找到 ${results.length} 条与「${query}」相关的内容`}
 				</p>
 			)
 		}
@@ -68,7 +66,7 @@ const { items: results } = query
 			)
 		}
 
-		{!query && <p class="search-hint">Enter a search term to find posts.</p>}
+		{!query && <p class="search-hint">输入关键词开始搜索。</p>}
 	</section>
 </Base>
 

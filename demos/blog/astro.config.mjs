@@ -1,6 +1,6 @@
 import node from "@astrojs/node";
 import react from "@astrojs/react";
-import { defineConfig, fontProviders } from "astro/config";
+import { defineConfig } from "astro/config";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
 
@@ -23,21 +23,8 @@ export default defineConfig({
 			}),
 		}),
 	],
-	fonts: [
-		{
-			provider: fontProviders.google(),
-			name: "Inter",
-			cssVariable: "--font-body",
-			weights: [400, 500, 600, 700],
-			fallbacks: ["sans-serif"],
-		},
-		{
-			provider: fontProviders.google(),
-			name: "JetBrains Mono",
-			cssVariable: "--font-mono",
-			weights: [400, 500],
-			fallbacks: ["monospace"],
-		},
-	],
+	// Fonts come from the system stack defined in src/styles/theme.css
+	// (--font-body / --font-mono) instead of a webfont provider: no
+	// network fetch at dev/build time, and CJK fallbacks are built in.
 	devToolbar: { enabled: false },
 });
