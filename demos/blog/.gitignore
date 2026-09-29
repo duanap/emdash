@@ -1,0 +1,14 @@
+node_modules
+dist
+.astro
+.emdash/migrations.json
+uploads
+data.db
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Generated types (regenerated on dev server start)
+emdash-env.d.ts
