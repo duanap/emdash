@@ -1,0 +1,63 @@
+---
+import Base from "../../layouts/Base.astro";
+import ArchiveTimeline from "../../components/ArchiveTimeline.astro";
+import { getArchiveItems } from "../../utils/archive-items";
+
+const year = Number.parseInt(Astro.params.year ?? "", 10);
+
+if (!year || year < 2000 || year > 2100) {
+	return Astro.redirect("/404");
+}
+
+const { items } = await getArchiveItems();
+const yearItems = items.filter((item) => item.date.getFullYear() === year);
+
+if (yearItems.length === 0) {
+	return Astro.redirect("/404");
+}
+---
+
+<Base title={`${year} 年归档`} description={`${year} 年的文章与生活记录`}>
+	<div class="archives-page">
+		<header class="page-header">
+			<h1 class="page-title">{year} 年归档</h1>
+			<p class="page-description">
+				共 {yearItems.length} 条内容 · <a href="/archives">查看全部归档</a>
+			</p>
+		</header>
+
+		<ArchiveTimeline items={yearItems} hideYear />
+	</div>
+</Base>
+
+<style>
+	.archives-page {
+		max-width: var(--content-width);
+		margin: 0 auto;
+		padding: var(--spacing-8) var(--spacing-6) var(--spacing-16);
+	}
+
+	.page-header {
+		margin-bottom: var(--spacing-12);
+	}
+
+	.page-title {
+		font-size: var(--font-size-4xl);
+		font-weight: var(--font-weight-display);
+	}
+
+	.page-description {
+		margin-top: var(--spacing-2);
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.page-description a {
+		color: var(--color-brand);
+		text-decoration: none;
+	}
+
+	.page-description a:hover {
+		text-decoration: underline;
+	}
+</style>

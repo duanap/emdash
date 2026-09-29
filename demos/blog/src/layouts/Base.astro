@@ -900,6 +900,78 @@ const isLoggedIn = !!Astro.locals.user;
 				}
 			});
 		</script>
+
+		<script>
+			// 停止性方案：EmDash 核心的公开 UI（评论表单/评论列表）还没有
+			// i18n 支持，字符串硬编码英文。这里在 DOM 层把已知字符串替换为
+			// 中文，仅作用于 .ec-comments / .ec-comment-form 容器内。
+			// 待上游提供 i18n 后移除（跟踪见 demos/blog/MIGRATION.md）。
+			(function () {
+				const EXACT: Record<string, string> = {
+					Name: "昵称",
+					Email: "邮箱",
+					Comment: "评论",
+					"Post Comment": "发表评论",
+					"Comment submitted!": "评论已提交，感谢参与。",
+					"No comments yet": "还没有评论",
+					"1 Comment": "1 条评论",
+					Like: "赞",
+				};
+				const PATTERN = /^(\d+) Comments$/;
+
+				function translate(root: ParentNode) {
+					const walker = document.createTreeWalker(
+						root,
+						NodeFilter.SHOW_TEXT,
+					);
+					let current = walker.nextNode();
+					while (current) {
+						const next = walker.nextNode();
+						const text = current.nodeValue?.trim();
+						if (text) {
+							let zh = EXACT[text];
+							if (!zh) {
+								const m = PATTERN.exec(text);
+								if (m) zh = `${m[1]} 条评论`;
+							}
+							if (zh && current.nodeValue !== zh) {
+								current.nodeValue = zh;
+							}
+						}
+						current = next;
+					}
+				}
+
+				function translateAll() {
+					document
+						.querySelectorAll(".ec-comments, .ec-comment-form")
+						.forEach((el) => translate(el));
+				}
+
+				translateAll();
+				const observer = new MutationObserver((mutations) => {
+					for (const mutation of mutations) {
+						if (mutation.target instanceof Element) {
+							const container = mutation.target.closest(
+								".ec-comments, .ec-comment-form",
+							);
+							if (container) translate(container);
+						} else if (mutation.target instanceof Text) {
+							const parent = mutation.target.parentElement;
+							const container = parent?.closest(
+								".ec-comments, .ec-comment-form",
+							);
+							if (container) translate(container);
+						}
+					}
+				});
+				observer.observe(document.body, {
+					childList: true,
+					subtree: true,
+					characterData: true,
+				});
+			})();
+		</script>
 		<EmDashBodyEnd page={pageCtx} />
 	</body>
 </html>

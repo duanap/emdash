@@ -1,0 +1,135 @@
+---
+import type { ArchiveItem } from "../utils/archive-items";
+import { MONTH_LABELS } from "../utils/archive-items";
+
+interface Props {
+	items: ArchiveItem[];
+	/** Skip the year heading (used on single-year pages) */
+	hideYear?: boolean;
+}
+
+const { items, hideYear = false } = Astro.props;
+
+const byYear = new Map<number, Map<number, ArchiveItem[]>>();
+for (const item of items) {
+	const year = item.date.getFullYear();
+	const month = item.date.getMonth() + 1;
+	if (!byYear.has(year)) byYear.set(year, new Map());
+	const months = byYear.get(year)!;
+	if (!months.has(month)) months.set(month, []);
+	months.get(month)!.push(item);
+}
+const years = [...byYear.keys()].sort((a, b) => b - a);
+---
+
+{
+	years.map((year) => (
+		<section class="year-section">
+			{!hideYear && <h2 class="year-title">{year}</h2>}
+			{[...byYear.get(year)!.keys()]
+				.sort((a, b) => b - a)
+				.map((month) => (
+					<div class="month-group">
+						<h3 class="month-title">
+							{MONTH_LABELS[month - 1]}
+							{hideYear && <span class="month-year"> · {year} 年</span>}
+						</h3>
+						<ul class="item-list">
+							{byYear.get(year)!.get(month)!.map((item) => (
+								<li class="item">
+									<span class:list={["kind", { life: item.kind === "life" }]}>
+										{item.kind === "post" ? "文章" : "生活"}
+									</span>
+									<a href={item.href} class="item-link">
+										{item.title}
+									</a>
+									<time class="item-date">
+										{item.date.getMonth() + 1} 月 {item.date.getDate()} 日
+									</time>
+								</li>
+							))}
+						</ul>
+					</div>
+				))}
+		</section>
+	))
+}
+
+<style>
+	.year-section {
+		margin-bottom: var(--spacing-12);
+	}
+
+	.year-title {
+		font-size: var(--font-size-3xl);
+		font-weight: var(--font-weight-display);
+		color: var(--color-brand);
+		margin-bottom: var(--spacing-6);
+		padding-bottom: var(--spacing-3);
+		border-bottom: 2px solid var(--color-border-subtle);
+	}
+
+	.month-group {
+		margin-bottom: var(--spacing-8);
+	}
+
+	.month-title {
+		font-size: var(--font-size-sm);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-3);
+	}
+
+	.month-year {
+		text-transform: none;
+		letter-spacing: 0;
+	}
+
+	.item-list {
+		list-style: none;
+	}
+
+	.item {
+		display: flex;
+		align-items: baseline;
+		gap: var(--spacing-3);
+		padding: var(--spacing-2) 0;
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+
+	.kind {
+		flex-shrink: 0;
+		font-size: var(--font-size-xs);
+		padding: 2px var(--spacing-2);
+		border-radius: var(--radius);
+		background: var(--color-surface);
+		color: var(--color-text-secondary);
+	}
+
+	.kind.life {
+		color: var(--color-accent);
+	}
+
+	.item-link {
+		flex: 1;
+		min-width: 0;
+		color: var(--color-text);
+		text-decoration: none;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		transition: color var(--transition-fast);
+	}
+
+	.item-link:hover {
+		color: var(--color-brand);
+	}
+
+	.item-date {
+		flex-shrink: 0;
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+	}
+</style>
