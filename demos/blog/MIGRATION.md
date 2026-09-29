@@ -58,11 +58,17 @@
 
 ### Phase 1 — 视觉与基座（✅ 已完成，形式调整见上）
 ### Phase 2 — 内容模型扩展（✅ 已完成，life/projects 已进 seed）
-### Phase 3 — 文章迁移（待做，等真实内容指令）
-- 从旧 SQLite 导出：正文 Markdown→Portable Text、图片入库（REST media API）、slug/发布时间/分类标签保留
-- 导出并归档 `old_id → 新 ULID` 映射表
-- URL 切换：`urlPattern /article/{slug}` + `src/pages/posts/` → `article/` 移动 + seed redirects
-- 迁移脚本走 REST `POST /_emdash/api/content/{collection}`（Bearer token）
+### Phase 3 — 文章迁移（工具已就绪，等真实数据）
+- **迁移脚本已写好并用合成数据全链路验证**：
+  - `scripts/migrate-from-blog-front.mjs`：旧 SQLite → REST 导入（posts/life/projects/comments 四阶段），Markdown 正文用 core 内置 `markdownToPortableText` 转换；分类/标签映射到 seed terms（缺失标签自动 `POST /taxonomies/tag/terms` 补建）；封面图 `--old-uploads` 上传媒体库；`publishedAt/createdAt` 随条目写入；409 slug 冲突幂等跳过；**每次运行导出 `.migration/mapping.json`（旧 id → 新 ULID），会员点赞/收藏将来靠它对账，务必备份**
+  - `scripts/test-fixture-old-blog.mjs`：生成合成旧库做 dry-run
+  - `scripts/e2e-rest-path-test.mjs`：dev-bypass cookie 走通 create→publish→comment→trash→purge 全链路（已验证全绿）
+- 真实导入步骤（下次会话）：
+  1. `scp duanap-server:/srv/apps/duanap/blog-front/*/server/data/blog.sqlite .`（或宝塔路径）+ `server/uploads/` 目录
+  2. `--dry-run` 审阅转换报告与警告
+  3. 后台生成 PAT（需 content:create/publish_any/media 权限）→ 正式运行 → 抽查正文/图片/URL
+- URL 切换：`urlPattern /article/{slug}` + `src/pages/posts/` → `article/` 移动 + seed redirects（导入完成后做）
+- 已验证的 API 事实：create 只收 draft（`data.item.id` 返回形状）；publish 是独立端点；评论字段是 `authorName/authorEmail/body`（email 必填，迁移用 `old-<id>@migrated.duanap.cn` 占位）；byline 引用需运行时解析 ULID（seed id 只是引用键）
 
 ### Phase 4 — 生活/作品/静态页迁移（✅ 页面骨架已完成；真实数据替换占位时复用导入脚本）
 ### Phase 5 — 会员与互动（决策点）

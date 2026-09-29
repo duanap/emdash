@@ -12,3 +12,5 @@ data.db
 
 # Generated types (regenerated on dev server start)
 emdash-env.d.ts
+# 迁移产物（旧id->新id 映射）
+.migration
