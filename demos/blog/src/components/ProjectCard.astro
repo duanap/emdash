@@ -1,0 +1,167 @@
+---
+import type { EditProxy, MediaValue } from "emdash";
+import { Image } from "emdash/ui";
+
+interface Props {
+	title: string;
+	summary?: string;
+	cover?: MediaValue | string;
+	href: string;
+	tech?: string[];
+	typeLabel?: string;
+	featured?: boolean;
+	edit?: EditProxy;
+}
+
+const {
+	title,
+	summary,
+	cover,
+	href,
+	tech,
+	typeLabel,
+	featured,
+	edit,
+} = Astro.props;
+---
+
+<article class="project-card">
+	<a href={href} class="card-link">
+		{
+			cover ? (
+				<div class="card-image" {...edit?.cover_image}>
+					<Image image={cover} />
+				</div>
+			) : (
+				<div class="card-placeholder" />
+			)
+		}
+		<div class="card-body">
+			<div class="card-meta">
+				{typeLabel && <span class="card-type">{typeLabel}</span>}
+				{typeLabel && featured && <span class="meta-dot" />}
+				{featured && <span class="card-featured">精选</span>}
+			</div>
+			<h2 class="card-title" {...edit?.title}>{title}</h2>
+			{summary && <p class="card-summary" {...edit?.summary}>{summary}</p>}
+		</div>
+	</a>
+	{
+		tech && tech.length > 0 && (
+			<div class="card-tech">
+				{tech.slice(0, 4).map((item) => (
+					<span class="tech-chip">{item}</span>
+				))}
+			</div>
+		)
+	}
+</article>
+
+<style>
+	.project-card {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.card-link {
+		display: block;
+		text-decoration: none;
+		color: inherit;
+		flex: 1;
+	}
+
+	.card-image {
+		aspect-ratio: 16 / 10;
+		overflow: hidden;
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		margin-bottom: var(--spacing-4);
+	}
+
+	.card-image img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transition: transform 0.3s ease;
+	}
+
+	.card-link:hover .card-image img {
+		transform: scale(1.03);
+	}
+
+	.card-placeholder {
+		aspect-ratio: 16 / 10;
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		margin-bottom: var(--spacing-4);
+	}
+
+	.card-body {
+		flex: 1;
+	}
+
+	.card-meta {
+		display: flex;
+		align-items: center;
+		column-gap: var(--spacing-3);
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-2);
+	}
+
+	.meta-dot {
+		width: 3px;
+		height: 3px;
+		border-radius: 50%;
+		background: var(--color-muted);
+	}
+
+	.card-type {
+		color: var(--color-accent);
+		font-weight: 500;
+	}
+
+	.card-featured {
+		color: var(--color-brand);
+		font-weight: 500;
+	}
+
+	.card-title {
+		font-size: var(--font-size-xl);
+		font-weight: var(--font-weight-heading);
+		line-height: var(--leading-snug);
+		letter-spacing: var(--tracking-snug);
+		margin-bottom: var(--spacing-2);
+		transition: color var(--transition-fast);
+	}
+
+	.card-link:hover .card-title {
+		color: var(--color-brand);
+	}
+
+	.card-summary {
+		font-size: var(--font-size-base);
+		line-height: var(--leading-relaxed);
+		color: var(--color-text-secondary);
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.card-tech {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--spacing-2);
+		margin-top: var(--spacing-3);
+	}
+
+	.tech-chip {
+		display: inline-block;
+		padding: var(--tag-padding-y) var(--spacing-2);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+		background: var(--color-surface);
+		border-radius: var(--radius);
+	}
+</style>

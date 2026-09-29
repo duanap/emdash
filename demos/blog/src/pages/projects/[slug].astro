@@ -1,0 +1,388 @@
+---
+import {
+	getEmDashEntry,
+	getTermsForEntries,
+	getSeoMeta,
+	decodeSlug,
+	getSiteSettings,
+} from "emdash";
+import { Image, PortableText } from "emdash/ui";
+import Base from "../../layouts/Base.astro";
+import { resolveBlogSiteIdentity } from "../../utils/site-identity";
+
+const slug = decodeSlug(Astro.params.slug);
+
+if (!slug) {
+	return Astro.redirect("/404");
+}
+
+const { entry: project, cacheHint } = await getEmDashEntry("projects", slug);
+
+if (!project) {
+	return Astro.redirect("/404");
+}
+
+if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
+
+const { siteTitle } = resolveBlogSiteIdentity(await getSiteSettings());
+
+function getImageUrl(img: unknown): string | undefined {
+	if (!img || typeof img !== "object") return undefined;
+	const image = img as Record<string, unknown>;
+	if (typeof image.src === "string" && image.src) {
+		return image.src.startsWith("http")
+			? image.src
+			: `${Astro.url.origin}${image.src}`;
+	}
+	return undefined;
+}
+
+const seo = getSeoMeta(project, {
+	siteTitle,
+	siteUrl: Astro.url.origin,
+	path: Astro.url.pathname.replace(/\/$/, ""),
+	defaultOgImage: getImageUrl(project.data.cover_image),
+});
+
+// Type + tech info for the meta column.
+const termsByEntry = await getTermsForEntries(
+	"projects",
+	[project.data.id],
+	"project_type",
+);
+const typeTerms = termsByEntry.get(project.data.id) ?? [];
+const tech: string[] = Array.isArray(project.data.tech)
+	? project.data.tech
+	: [];
+const screenshots = Array.isArray(project.data.screenshots)
+	? project.data.screenshots
+	: [];
+---
+
+<Base
+	title={seo.title}
+	pageTitle={seo.ogTitle}
+	description={seo.description}
+	image={seo.ogImage}
+	canonical={seo.canonical}
+	robots={seo.robots}
+	content={{ collection: "projects", id: project.data.id, slug }}
+>
+	<article class="project-article">
+		{
+			project.data.cover_image && (
+				<div class="article-hero" {...project.edit.cover_image}>
+					<Image image={project.data.cover_image} />
+				</div>
+			)
+		}
+
+		<div class="article-grid">
+			<aside class="article-meta-col">
+				<div class="meta-sticky">
+					{
+						typeTerms.length > 0 && (
+							<div class="meta-block">
+								<span class="meta-label">类型</span>
+								{typeTerms.map((t) => (
+									<a
+										href={`/projects?type=${t.slug}`}
+										class="meta-value meta-link"
+									>
+										{t.label}
+									</a>
+								))}
+							</div>
+						)
+					}
+					{
+						tech.length > 0 && (
+							<div class="meta-block">
+								<span class="meta-label">技术栈</span>
+								<div class="tech-list">
+									{tech.map((item) => (
+										<span class="tech-chip">{item}</span>
+									))}
+								</div>
+							</div>
+						)
+					}
+					{
+						(project.data.preview_url || project.data.repo_url) && (
+							<div class="meta-block">
+								<span class="meta-label">链接</span>
+								<div class="link-list">
+									{project.data.preview_url && (
+										<a
+											href={project.data.preview_url}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="meta-value meta-link"
+										>
+											在线预览 ↗
+										</a>
+									)}
+									{project.data.repo_url && (
+										<a
+											href={project.data.repo_url}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="meta-value meta-link"
+										>
+											源码仓库 ↗
+										</a>
+									)}
+								</div>
+							</div>
+						)
+					}
+					<div class="meta-block">
+						<span class="meta-label">返回</span>
+						<a href="/projects" class="meta-value meta-link">← 全部作品</a>
+					</div>
+				</div>
+			</aside>
+
+			<div class="article-main">
+				<header class="article-header">
+					<h1 class="article-title" {...project.edit.title}>
+						{project.data.title}
+					</h1>
+					{
+						project.data.summary && (
+							<p class="article-summary" {...project.edit.summary}>
+								{project.data.summary}
+							</p>
+						)
+					}
+				</header>
+
+				<div class="article-content">
+					<PortableText value={project.data.content} />
+				</div>
+
+				{
+					screenshots.length > 0 && (
+						<section class="screenshots">
+							<h2 class="section-label">截图</h2>
+							<div class="screenshot-grid">
+								{screenshots.map((shot) => (
+									<figure class="screenshot">
+										<Image image={shot.image} />
+										{shot.caption && <figcaption>{shot.caption}</figcaption>}
+									</figure>
+								))}
+							</div>
+						</section>
+					)
+				}
+			</div>
+
+			<aside class="article-sidebar" />
+		</div>
+	</article>
+</Base>
+
+<style>
+	.project-article {
+		max-width: var(--wide-width);
+		margin: 0 auto;
+	}
+
+	.article-hero {
+		margin: var(--spacing-16) var(--spacing-6);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		background: var(--color-surface);
+	}
+
+	.article-hero img {
+		width: 100%;
+		height: auto;
+		max-height: 500px;
+		object-fit: cover;
+	}
+
+	.article-grid {
+		display: grid;
+		grid-template-columns:
+			var(--meta-col-width) minmax(0, var(--content-width))
+			var(--gutter-width);
+		gap: var(--spacing-10);
+		justify-content: center;
+		padding: 0 var(--spacing-6);
+		margin: var(--spacing-16) 0;
+	}
+
+	.meta-sticky {
+		position: sticky;
+		top: calc(var(--nav-height) + var(--spacing-8));
+	}
+
+	.meta-block {
+		margin-bottom: var(--spacing-6);
+	}
+
+	.meta-label {
+		display: block;
+		font-size: var(--font-size-xs);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-2);
+	}
+
+	.meta-value {
+		display: block;
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+	}
+
+	.meta-link {
+		text-decoration: none;
+		margin-bottom: var(--spacing-1);
+	}
+
+	.meta-link:hover {
+		color: var(--color-brand);
+	}
+
+	.tech-list,
+	.link-list {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--spacing-1);
+	}
+
+	.tech-list {
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap: var(--spacing-1);
+	}
+
+	.tech-chip {
+		display: inline-block;
+		padding: var(--tag-padding-y) var(--spacing-2);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+		background: var(--color-surface);
+		border-radius: var(--radius);
+	}
+
+	.article-main {
+		min-width: 0;
+	}
+
+	.article-header {
+		margin-bottom: var(--spacing-10);
+	}
+
+	.article-title {
+		font-size: clamp(2rem, 5vw, var(--font-size-4xl));
+		font-weight: var(--font-weight-display);
+		line-height: var(--leading-tight);
+		margin-bottom: var(--spacing-4);
+	}
+
+	.article-summary {
+		font-size: var(--font-size-lg);
+		line-height: var(--leading-relaxed);
+		color: var(--color-text-secondary);
+	}
+
+	.article-content {
+		font-size: var(--font-size-lg);
+		line-height: var(--leading-relaxed);
+	}
+
+	.article-content :global(p) {
+		margin-bottom: 1.5em;
+	}
+
+	.article-content :global(h2) {
+		font-size: var(--font-size-2xl);
+		margin-top: 2.5em;
+		margin-bottom: 0.75em;
+	}
+
+	.article-content :global(blockquote) {
+		margin: 2em 0;
+		padding: var(--spacing-4) var(--spacing-6);
+		border-left: 3px solid var(--color-border);
+		background: var(--color-bg-subtle);
+		border-radius: 0 var(--radius) var(--radius) 0;
+		color: var(--color-text-secondary);
+		font-style: italic;
+	}
+
+	.article-content :global(a) {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.screenshots {
+		margin-top: var(--spacing-16);
+		padding-top: var(--spacing-10);
+		border-top: 1px solid var(--color-border);
+	}
+
+	.section-label {
+		font-size: var(--font-size-xs);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-6);
+	}
+
+	.screenshot-grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: var(--spacing-6);
+	}
+
+	.screenshot img {
+		border-radius: var(--radius-lg);
+		border: 1px solid var(--color-border-subtle);
+	}
+
+	.screenshot figcaption {
+		margin-top: var(--spacing-2);
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+	}
+
+	@media (max-width: 1100px) {
+		.article-grid {
+			grid-template-columns: minmax(0, var(--content-width));
+			gap: 0;
+		}
+
+		.article-meta-col,
+		.article-sidebar {
+			display: none;
+		}
+
+		/* Meta info matters on projects; inline a compact version. */
+		.article-meta-col {
+			display: none;
+		}
+	}
+
+	@media (max-width: 900px) {
+		.article-hero {
+			margin: var(--spacing-4) var(--spacing-4) var(--spacing-8);
+			border-radius: var(--radius);
+		}
+
+		.article-grid {
+			padding: 0 var(--spacing-4);
+		}
+
+		.screenshot-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>
