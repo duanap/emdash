@@ -1,0 +1,227 @@
+---
+import { getEmDashCollection } from "emdash";
+import Base from "../layouts/Base.astro";
+
+const [postsResult, lifeResult] = await Promise.all([
+	getEmDashCollection("posts", {
+		orderBy: { published_at: "desc" },
+		limit: 500,
+	}),
+	getEmDashCollection("life", {
+		orderBy: { record_date: "desc" },
+		limit: 500,
+	}),
+]);
+
+if (Astro.cache?.enabled) {
+	Astro.cache.set(postsResult.cacheHint);
+	Astro.cache.set(lifeResult.cacheHint);
+}
+
+type Item = {
+	title: string;
+	href: string;
+	date: Date;
+	kind: "post" | "life";
+};
+
+const items: Item[] = [
+	...postsResult.entries.map((p) => ({
+		title: p.data.title ?? "未命名",
+		href: `/posts/${p.id}`,
+		date: p.data.publishedAt ?? p.data.updatedAt,
+		kind: "post" as const,
+	})),
+	...lifeResult.entries.map((r) => ({
+		title: r.data.title ?? "未命名",
+		href: `/life/${r.id}`,
+		date: new Date(
+			(r.data.record_date ?? r.data.publishedAt ?? r.data.updatedAt) as
+				| string
+				| Date,
+		),
+		kind: "life" as const,
+	})),
+]
+	.filter((item) => item.date && !Number.isNaN(item.date.getTime()))
+	.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+// Group by year → month (keys sorted desc).
+const byYear = new Map<number, Map<number, Item[]>>();
+for (const item of items) {
+	const year = item.date.getFullYear();
+	const month = item.date.getMonth() + 1;
+	if (!byYear.has(year)) byYear.set(year, new Map());
+	const months = byYear.get(year)!;
+	if (!months.has(month)) months.set(month, []);
+	months.get(month)!.push(item);
+}
+const years = [...byYear.keys()].sort((a, b) => b - a);
+
+const MONTH_LABELS = [
+	"一月",
+	"二月",
+	"三月",
+	"四月",
+	"五月",
+	"六月",
+	"七月",
+	"八月",
+	"九月",
+	"十月",
+	"十一月",
+	"十二月",
+];
+---
+
+<Base title="归档" description="全部文章与生活记录的时间线">
+	<div class="archives-page">
+		<header class="page-header">
+			<h1 class="page-title">归档</h1>
+			<p class="page-description">
+				共 {postsResult.entries.length} 篇文章 · {lifeResult.entries.length}
+				条生活记录
+			</p>
+		</header>
+
+		{
+			years.length === 0 ? (
+				<p class="empty">还没有任何内容。</p>
+			) : (
+				years.map((year) => (
+					<section class="year-section">
+						<h2 class="year-title">{year}</h2>
+						{
+							[...byYear.get(year)!.keys()]
+								.sort((a, b) => b - a)
+								.map((month) => (
+									<div class="month-group">
+										<h3 class="month-title">{MONTH_LABELS[month - 1]}</h3>
+										<ul class="item-list">
+											{byYear.get(year)!.get(month)!.map((item) => (
+												<li class="item">
+													<span
+														class:list={["kind", { life: item.kind === "life" }]}
+													>
+														{item.kind === "post" ? "文章" : "生活"}
+													</span>
+													<a href={item.href} class="item-link">
+														{item.title}
+													</a>
+													<time class="item-date">
+														{item.date.getMonth() + 1} 月{" "}
+														{item.date.getDate()} 日
+													</time>
+												</li>
+											))}
+										</ul>
+									</div>
+								))
+						}
+					</section>
+				))
+			)
+		}
+	</div>
+</Base>
+
+<style>
+	.archives-page {
+		max-width: var(--content-width);
+		margin: 0 auto;
+		padding: var(--spacing-8) var(--spacing-6) var(--spacing-16);
+	}
+
+	.page-header {
+		margin-bottom: var(--spacing-12);
+	}
+
+	.page-title {
+		font-size: var(--font-size-4xl);
+		font-weight: var(--font-weight-display);
+	}
+
+	.page-description {
+		margin-top: var(--spacing-2);
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.year-section {
+		margin-bottom: var(--spacing-12);
+	}
+
+	.year-title {
+		font-size: var(--font-size-3xl);
+		font-weight: var(--font-weight-display);
+		color: var(--color-brand);
+		margin-bottom: var(--spacing-6);
+		padding-bottom: var(--spacing-3);
+		border-bottom: 2px solid var(--color-border-subtle);
+	}
+
+	.month-group {
+		margin-bottom: var(--spacing-8);
+	}
+
+	.month-title {
+		font-size: var(--font-size-sm);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-3);
+	}
+
+	.item-list {
+		list-style: none;
+	}
+
+	.item {
+		display: flex;
+		align-items: baseline;
+		gap: var(--spacing-3);
+		padding: var(--spacing-2) 0;
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+
+	.kind {
+		flex-shrink: 0;
+		font-size: var(--font-size-xs);
+		padding: 2px var(--spacing-2);
+		border-radius: var(--radius);
+		background: var(--color-surface);
+		color: var(--color-text-secondary);
+	}
+
+	.kind.life {
+		color: var(--color-accent);
+	}
+
+	.item-link {
+		flex: 1;
+		min-width: 0;
+		color: var(--color-text);
+		text-decoration: none;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		transition: color var(--transition-fast);
+	}
+
+	.item-link:hover {
+		color: var(--color-brand);
+	}
+
+	.item-date {
+		flex-shrink: 0;
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+	}
+
+	.empty {
+		color: var(--color-muted);
+		text-align: center;
+		padding: var(--spacing-16) 0;
+	}
+</style>
