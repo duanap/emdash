@@ -73,7 +73,7 @@
 ### Phase 4 — 生活/作品/静态页迁移（✅ 页面骨架已完成；真实数据替换占位时复用导入脚本）
 ### Phase 5 — 会员与互动（**决策已定：方案 B，EmDash Native 插件**，2026-10-01 用户拍板）
 - **可行性 spike 已完成，三个关键能力全部实测通过**（POC：`member-plugin/index.ts` + `/poc` 验证页）：
-  1. ✅ **公开带 Cookie 路由**：Native 插件（descriptor `format:"native"` + `definePlugin`）路由挂 `/_emdash/api/plugins/{id}/*`，`public:true` + `response:"raw"` + `pluginResponse({body:{kind:"text",value}})` 可读写 Cookie/重定向。**沙箱插件永远拿不到 Cookie/Set-Cookie，必须 Native**
+  1. ❌ **公开带 Cookie 路由（2026-09-30 复核：原结论不成立）**：Native 插件（descriptor `format:"native"` + `definePlugin`）路由挂 `/_emdash/api/plugins/{id}/*`，`public:true` + `response:"raw"` 确实能**读**请求 Cookie，但**响应侧 `Set-Cookie` 会被宿主丢弃**——`packages/core/src/plugins/route-wire.ts` 的 `ALLOWED_RESPONSE_HEADERS` 白名单只放行内容类头与 `Location`。同时 raw 路由**不能返回 HTML**（`text/html` 属活跃同源类型，实测 `auth/qq/start` 返回 500 `INVALID_PLUGIN_RESPONSE`），公开 raw 路由的 `Location` 也**不能跨域**。→ **Cookie 会话 + 跳 `graph.qq.com` 的 OAuth 在插件路由里无法实现**。沙箱插件连请求侧 Cookie 都拿不到，必须 Native（这一点仍成立）。上游 `main`（18d6aa3f0）同样如此；方向待决策，见 `night-work/PROGRESS.md`
   2. ✅ **页面注入**：`page:fragments` hook（capability `hooks.page-fragments:register`）向所有公开页面注入 inline/external script 和 HTML（Base.astro 的 EmDashHead/BodyStart/End 已渲染）
   3. ✅ **SSR 会员上下文**：同进程直接 import 插件模块导出的辅助函数；ctx 在 hook/route 捕获到模块级变量复用（Node 部署安全）。**页面导入说明符必须与虚拟模块一致**（Vite 根相对 `/member-plugin/index.ts`），否则双实例状态不共享
 - 实测坑：raw 响应 body 是 `{kind:"text"|"bytes", value}` tagged 形式；存储 `orderBy:{field:"dir"}` 对象形式且字段必须已声明索引；**Native 插件改动不热更，需重启 dev**；`plugin:activate` dev 下不保证触发（用 page:fragments/路由兜底捕获 ctx）；raw 公开路由 `location` 头默认限制同源（跨域回调桥需查 `allowExternalLocation`）

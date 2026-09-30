@@ -1,0 +1,207 @@
+---
+/**
+ * 会员登录页（Phase 5.1）。QQ 授权流：
+ *   登录按钮 → GET /_emdash/api/plugins/duanap-members/auth/qq/start?returnTo=…
+ *   → HTML 跳转页到 graph.qq.com → 授权后回 callback → 种会话 → 302 回 returnTo
+ * 登录态检测在客户端完成（fetch auth/status），错误码从 query 读取。
+ */
+import Base from "../layouts/Base.astro";
+
+const errorCode = Astro.url.searchParams.get("error");
+
+const ERROR_MESSAGES: Record<string, string> = {
+	not_configured: "QQ 登录尚未配置，请联系站长。",
+	denied: "你取消了 QQ 授权。",
+	state_mismatch: "登录状态校验失败（state 不匹配），请重试。",
+	state_expired: "登录状态已过期，请重新发起登录。",
+	state_corrupt: "登录状态异常，请重试。",
+	invalid_response: "QQ 返回了无效的响应，请重试。",
+	provider_failed: "暂时无法连接 QQ 服务，请稍后重试。",
+	member_disabled: "该账号已被停用。",
+};
+---
+
+<Base title="登录" description="使用 QQ 账号登录">
+	<section class="login-page">
+		<h1 class="page-title">登录</h1>
+		<p class="page-desc">使用 QQ 账号登录后可以评论、点赞和收藏。</p>
+
+		{
+			errorCode && (
+				<p class="error-banner" role="alert">
+					{ERROR_MESSAGES[errorCode] ?? "登录失败，请重试。"}
+				</p>
+			)
+		}
+
+		<div class="login-card" id="login-card" data-plugin-base="/_emdash/api/plugins/duanap-members">
+			<div class="loading">正在检查登录状态…</div>
+		</div>
+	</section>
+</Base>
+
+<script>
+	interface StatusData {
+		loggedIn: boolean;
+		member: { displayName: string; avatarUrl: string } | null;
+		qqConfigured: boolean;
+	}
+	const card = document.getElementById("login-card");
+	const pluginBase = card?.dataset.pluginBase;
+
+	async function render() {
+		if (!card || !pluginBase) return;
+		try {
+			const res = await fetch(`${pluginBase}/auth/status`);
+			// 宿主信封 { success, data } 会再包一层 handler 返回值
+			const json = (await res.json()) as any;
+			const data = json?.data?.data ?? json?.data as StatusData | undefined;
+			if (!data) throw new Error("bad status payload");
+
+			if (data.loggedIn && data.member) {
+				const returnTo = new URLSearchParams(location.search).get("returnTo") || "/";
+				card.innerHTML = `
+					<div class="logged-in">
+						${data.member.avatarUrl ? `<img class="avatar" src="${data.member.avatarUrl}" alt="" />` : ""}
+						<div class="who">
+							<p class="name">${data.member.displayName}</p>
+							<p class="hint">已登录</p>
+						</div>
+					</div>
+					<div class="actions">
+						<a class="btn ghost" href="${returnTo}">继续浏览</a>
+						<button type="button" class="btn" id="logout-btn">退出登录</button>
+					</div>`;
+				const logoutBtn = document.getElementById("logout-btn");
+				logoutBtn?.addEventListener("click", async () => {
+					await fetch(`${pluginBase}/auth/logout`, { method: "POST" });
+					location.reload();
+				});
+				return;
+			}
+
+			if (!data.qqConfigured) {
+				card.innerHTML = `<p class="hint">QQ 登录尚未配置（管理后台 → 插件 → duanap-members）。</p>`;
+				return;
+			}
+
+			const returnTo = encodeURIComponent(
+				new URLSearchParams(location.search).get("returnTo") || "/",
+			);
+			card.innerHTML = `
+				<p class="hint">将跳转到 QQ 完成授权。</p>
+				<a class="btn qq" href="${pluginBase}/auth/qq/start?returnTo=${returnTo}">
+					使用 QQ 账号登录
+				</a>`;
+		} catch {
+			card.innerHTML = `<p class="hint">登录服务暂时不可用，请稍后刷新重试。</p>`;
+		}
+	}
+
+	render();
+</script>
+
+<style>
+	.login-page {
+		max-width: 420px;
+		margin: 0 auto;
+		padding: var(--spacing-16) var(--spacing-6);
+	}
+
+	.page-title {
+		font-size: var(--font-size-3xl);
+		font-weight: var(--font-weight-display);
+	}
+
+	.page-desc {
+		margin: var(--spacing-2) 0 var(--spacing-10);
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.error-banner {
+		padding: var(--spacing-3) var(--spacing-4);
+		margin-bottom: var(--spacing-6);
+		border-left: 3px solid var(--color-accent);
+		background: var(--color-bg-subtle);
+		border-radius: 0 var(--radius) var(--radius) 0;
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-sm);
+	}
+
+	.login-card {
+		padding: var(--spacing-8);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-lg);
+		background: var(--color-bg);
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-4);
+	}
+
+	.loading {
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.hint {
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.logged-in {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-4);
+	}
+
+	.avatar {
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+
+	.who .name {
+		font-weight: 500;
+	}
+
+	.who .hint {
+		margin-top: 2px;
+	}
+
+	.actions {
+		display: flex;
+		gap: var(--spacing-3);
+	}
+
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--spacing-3) var(--spacing-6);
+		border-radius: var(--radius);
+		background: var(--color-brand);
+		color: var(--color-on-brand);
+		text-decoration: none;
+		font-size: var(--font-size-sm);
+		font-weight: 500;
+		border: none;
+		cursor: pointer;
+		transition: background var(--transition-fast);
+	}
+
+	.btn:hover {
+		background: var(--color-brand-hover);
+	}
+
+	.btn.ghost {
+		background: transparent;
+		color: var(--color-text);
+		border: 1px solid var(--color-border);
+	}
+
+	.btn.qq {
+		width: 100%;
+	}
+</style>

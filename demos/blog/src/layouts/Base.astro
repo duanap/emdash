@@ -143,6 +143,14 @@ const isLoggedIn = !!Astro.locals.user;
 							))
 						}
 					</div>
+					<div
+						class="nav-member"
+						id="nav-member"
+						data-plugin-base="/_emdash/api/plugins/duanap-members"
+						aria-label="会员状态"
+					>
+						<a href="/login" class="nav-member-login">登录</a>
+					</div>
 				</div>
 					{
 						isLoggedIn && (
@@ -522,16 +530,101 @@ const isLoggedIn = !!Astro.locals.user;
 				color: var(--color-brand);
 			}
 
-			.nav-admin {
-				font-size: var(--font-size-sm);
-				color: var(--color-text-secondary);
-				text-decoration: none;
-				transition: color var(--transition-fast);
-			}
+	.nav-admin {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		transition: color var(--transition-fast);
+	}
 
-			.nav-admin:hover {
-				color: var(--color-text);
-			}
+	.nav-admin:hover {
+		color: var(--color-text);
+	}
+
+	/* 会员岛（页头） */
+	.nav-member {
+		position: relative;
+		font-size: var(--font-size-sm);
+	}
+
+	.nav-member-login {
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		white-space: nowrap;
+	}
+
+	.nav-member-login:hover {
+		color: var(--color-text);
+	}
+
+	.nav-member-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		background: transparent;
+		border: none;
+		padding: var(--spacing-1) 0;
+		cursor: pointer;
+		color: var(--color-text);
+	}
+
+	.nav-member-avatar {
+		width: 22px;
+		height: 22px;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+
+	.nav-member-name {
+		max-width: 8em;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.nav-member-menu {
+		position: absolute;
+		top: calc(100% + var(--spacing-2));
+		end: 0;
+		min-width: 140px;
+		background: var(--color-bg);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-lg);
+		padding: var(--spacing-2);
+		z-index: 200;
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-1);
+	}
+
+	.nav-member-menu a {
+		padding: var(--spacing-2) var(--spacing-3);
+		color: var(--color-text);
+		text-decoration: none;
+		border-radius: var(--radius);
+		font-weight: 500;
+	}
+
+	.nav-member-menu a:hover {
+		background: var(--color-surface);
+	}
+
+	.nav-member-logout {
+		text-align: start;
+		padding: var(--spacing-2) var(--spacing-3);
+		background: transparent;
+		border: none;
+		color: var(--color-text-secondary);
+		border-radius: var(--radius);
+		cursor: pointer;
+		font-size: var(--font-size-sm);
+	}
+
+	.nav-member-logout:hover {
+		background: var(--color-surface);
+		color: var(--color-text);
+	}
 
 			/* Search styling */
 			.site-search {
@@ -1003,6 +1096,56 @@ const isLoggedIn = !!Astro.locals.user;
 					subtree: true,
 					characterData: true,
 				});
+			})();
+		</script>
+		<script>
+			// 页头会员岛：客户端拉取登录态（保持页面可缓存）。
+			// 已登录显示昵称下拉（查看/退出），未登录显示登录链接。
+			(function () {
+				const el = document.getElementById("nav-member");
+				const base = el?.dataset.pluginBase;
+				if (!el || !base) return;
+				const host: HTMLElement = el;
+
+				async function render() {
+					try {
+						const res = await fetch(`${base}/auth/status`);
+						const json = await res.json();
+						// 宿主信封 { success, data } 包裹 handler 返回值，取内层
+						const data = json?.data?.data ?? json?.data;
+						if (!data || !data.loggedIn || !data.member) return; // 保持默认登录链接
+						const m = data.member;
+						host.innerHTML = `
+							<button type="button" class="nav-member-btn" aria-haspopup="true" aria-expanded="false">
+								${m.avatarUrl ? `<img src="${m.avatarUrl}" alt="" class="nav-member-avatar" />` : ""}
+								<span class="nav-member-name">${m.displayName}</span>
+							</button>
+							<div class="nav-member-menu" hidden>
+								<a href="/login">${m.displayName}</a>
+								<button type="button" class="nav-member-logout">退出登录</button>
+							</div>`;
+						const btn = host.querySelector<HTMLButtonElement>(".nav-member-btn");
+						const menu = host.querySelector<HTMLElement>(".nav-member-menu");
+						btn?.addEventListener("click", () => {
+							if (!menu) return;
+							const open = !menu.hidden;
+							menu.hidden = open;
+							btn.setAttribute("aria-expanded", String(!open));
+						});
+						document.addEventListener("click", (e) => {
+							if (host.contains(e.target as Node) || !menu) return;
+							menu.hidden = true;
+							btn?.setAttribute("aria-expanded", "false");
+						});
+						host.querySelector(".nav-member-logout")?.addEventListener("click", async () => {
+							await fetch(`${base}/auth/logout`, { method: "POST" });
+							location.reload();
+						});
+					} catch {
+						// 状态获取失败保持登录链接
+					}
+				}
+				render();
 			})();
 		</script>
 		<EmDashBodyEnd page={pageCtx} />
