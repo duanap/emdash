@@ -27,6 +27,8 @@ export const SESSION_COOKIE = "dm_session";
 export const STATE_COOKIE = "dm_state";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const STATE_TTL_MS = 10 * 60 * 1000;
+/** QQ /oauth2.0/me 可能仍返回 JSONP 包装 */
+const QQ_JSONP_PATTERN = /^[^(]*\(\s*(\{[\s\S]*\})\s*\)\s*;?$/;
 
 // ─── 类型 ───────────────────────────────────────────────────────────
 
@@ -176,14 +178,11 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 					authorizeUrl.searchParams.set("scope", "get_user_info");
 					authorizeUrl.searchParams.set("state", state);
 
-					// 公开 raw 路由的 location 头被宿主限制为同源（防开放
-					// 重定向），跳 graph.qq.com 用 HTML 跳转页承载；跳转页
-					// 自身经 raw 响应的沙箱 CSP 渲染，meta refresh 不受
-					// default-src 约束。
-					return htmlResponse(
-						authorizePageHtml(authorizeUrl.toString()),
-						[stateCookieHeader(ctx.request, state)],
-					);
+					// trusted 插件的 raw 路由允许跨域 Location（见 changeset
+					// trusted-plugin-route-cookies），直接 302 到 QQ 授权页。
+					return redirectResponse(authorizeUrl.toString(), [
+						stateCookieHeader(ctx.request, state),
+					]);
 				},
 			},
 
@@ -345,7 +344,7 @@ async function fetchQqProfile(
 	meUrl.searchParams.set("fmt", "json");
 	const meText = (await (await qqFetch(ctx, meUrl)).text()).trim();
 	// QQ 可能仍回 JSONP 包装；两种都兼容
-	const jsonp = meText.match(/^[^(]*\(\s*(\{[\s\S]*\})\s*\)\s*;?$/);
+	const jsonp = meText.match(QQ_JSONP_PATTERN);
 	const meJson = JSON.parse(jsonp?.[1] ?? meText) as { openid?: unknown };
 	const subject = typeof meJson.openid === "string" ? meJson.openid.trim() : "";
 	if (!subject) throw new Error("no openid");
@@ -516,14 +515,6 @@ function redirectResponse(location: string, cookies: string[]) {
 	return pluginResponse({ status: 302, headers });
 }
 
-function htmlResponse(html: string, cookies: string[]) {
-	const headers: Array<[string, string]> = [
-		["content-type", "text/html; charset=utf-8"],
-	];
-	for (const cookie of cookies) headers.push(["set-cookie", cookie]);
-	return pluginResponse({ status: 200, headers, body: { kind: "text", value: html } });
-}
-
 function rawJson(status: number, payload: unknown, cookies: string[]) {
 	const headers: Array<[string, string]> = [
 		["content-type", "application/json; charset=utf-8"],
@@ -534,16 +525,6 @@ function rawJson(status: number, payload: unknown, cookies: string[]) {
 		headers,
 		body: { kind: "text", value: JSON.stringify(payload) },
 	});
-}
-
-function authorizePageHtml(target: string): string {
-	const safe = target.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-	return `<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="0;url=${safe}">
-<title>正在跳转到 QQ 登录…</title></head>
-<body><p>正在跳转到 QQ 登录…</p>
-<p><a href="${safe}">如果没有自动跳转，请点这里</a></p></body></html>`;
 }
 
 // ─── SSR 辅助（站点页面/布局直接导入） ──────────────────────────────

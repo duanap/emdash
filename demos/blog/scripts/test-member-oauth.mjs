@@ -81,7 +81,7 @@ function createHarness(options = {}) {
 				return store.delete(id);
 			},
 			async query(queryOptions = {}) {
-				let items = [...store.entries()].map(([id, data]) => ({
+				let items = Array.from(store.entries(), ([id, data]) => ({
 					id,
 					data: structuredClone(data),
 				}));
@@ -173,10 +173,9 @@ async function startFlow(harness, returnTo = "/posts") {
 	const response = await invoke("auth/qq/start", harness, new Request(startUrl));
 	const state = cookieValue(response, STATE_COOKIE);
 	assert.ok(state, "expected a state cookie from auth/qq/start");
-	const authorizeUrl = bodyText(response).match(/url=([^"]+)"/)?.[1];
-	assert.ok(authorizeUrl, "expected a meta refresh target");
-	const authorize = new URL(authorizeUrl.replace(/&amp;/g, "&"));
-	return { response, state, authorize };
+	const location = headerValue(response, "location");
+	assert.ok(location, "expected auth/qq/start to redirect to the QQ authorize page");
+	return { response, state, authorize: new URL(location) };
 }
 
 function callbackRequest({ state, cookie = state, code = "TEST-CODE", error = null }) {
@@ -244,19 +243,19 @@ await test("callbackUrl 不是本站回调路由时视为未配置", async () =>
 
 // ─── 已配置：start 生成 state 并跳转 QQ ─────────────────────────────
 
-await test("auth/qq/start 返回跳转页 + 一次性 state（cookie 与 KV 双写）", async () => {
+await test("auth/qq/start 302 到 QQ 授权页 + 一次性 state（cookie 与 KV 双写）", async () => {
 	const harness = createHarness({ settings: CONFIGURED_SETTINGS });
 	const { response, state, authorize } = await startFlow(harness);
-	assert.equal(response.status, 200);
-	assert.match(headerValue(response, "content-type"), /text\/html/);
+	assert.equal(response.status, 302);
+	assert.equal(response.body, null);
 	assert.equal(authorize.origin, "https://graph.qq.com");
 	assert.equal(authorize.searchParams.get("client_id"), "TEST-CLIENT-ID");
 	assert.equal(authorize.searchParams.get("redirect_uri"), CALLBACK_URL);
 	assert.equal(authorize.searchParams.get("scope"), "get_user_info");
 	assert.equal(authorize.searchParams.get("state"), state);
 	const cookie = setCookies(response).find((value) => value.startsWith(`${STATE_COOKIE}=`));
-	assert.match(cookie, /HttpOnly/);
-	assert.match(cookie, /SameSite=Lax/);
+	assert.ok(cookie.includes("HttpOnly"), "state cookie must be HttpOnly");
+	assert.ok(cookie.includes("SameSite=Lax"), "state cookie must be SameSite=Lax");
 	assert.ok(harness.kv.has(`oauth:state:${state}`), "expected the state to be stored in KV");
 });
 
