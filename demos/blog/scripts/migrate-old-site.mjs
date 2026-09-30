@@ -52,6 +52,20 @@ if (!dryRun && !cookie && !token) {
 const report = { entries: [], media: [], comments: [], members: [], activity: [], warnings: [], failures: [] };
 const idMap = { articles: {}, life: {}, projects: {}, comments: {} };
 
+// 续跑支持：上一次的映射表里已经有结果时直接复用，避免重复插入（评论尤其如此）
+const idMapFile = resolve(arg("--out", "./.migration"), "id-map.json");
+if (existsSync(idMapFile)) {
+	try {
+		const previous = JSON.parse(readFileSync(idMapFile, "utf8"));
+		for (const key of ["articles", "life", "projects", "comments"]) {
+			Object.assign(idMap[key], previous?.idMap?.[key] ?? {});
+		}
+		report.warnings.push(`复用上一次的映射表：${Object.values(idMap).reduce((sum, group) => sum + Object.keys(group).length, 0)} 条`);
+	} catch {
+		report.warnings.push(`上一次的映射表无法解析，按首次迁移处理：${idMapFile}`);
+	}
+}
+
 // ─── 站内 REST 客户端 ─────────────────────────────────────────────
 
 const headers = () => ({
@@ -104,6 +118,17 @@ const settings = readAll("select * from settings");
 const identityByMember = new Map(identities.map((row) => [row.member_id, row]));
 
 // ─── 媒体 ─────────────────────────────────────────────────────────
+
+/** 媒体接口按 Blob 的 type 校验，必须显式给对 */
+const MIME_BY_EXT = {
+	png: "image/png",
+	jpg: "image/jpeg",
+	jpeg: "image/jpeg",
+	gif: "image/gif",
+	webp: "image/webp",
+	avif: "image/avif",
+	svg: "image/svg+xml",
+};
 
 const mediaByOldPath = new Map();
 const PROJECT_TECH_OPTIONS = new Set([
@@ -160,7 +185,12 @@ async function uploadMedia() {
 			continue;
 		}
 		const form = new FormData();
-		form.append("file", new Blob([readFileSync(file)]), basename(oldPath));
+		const extension = basename(oldPath).split(".").pop()?.toLowerCase() ?? "";
+		form.append(
+			"file",
+			new Blob([readFileSync(file)], { type: MIME_BY_EXT[extension] ?? "application/octet-stream" }),
+			basename(oldPath),
+		);
 		const result = await api("/_emdash/api/media", { method: "POST", body: form });
 		if (!result.ok) {
 			report.failures.push(`媒体上传失败 ${oldPath}：${result.status} ${result.text.slice(0, 160)}`);
@@ -207,7 +237,9 @@ async function ensureTerm(taxonomy, label) {
 	}
 	// 已存在（或 slug 冲突）时按 label 回查
 	const list = await api(`/_emdash/api/taxonomies/${taxonomy}/terms?limit=100`);
-	const items = unwrap(list.json)?.items ?? [];
+	// 这个接口返回 { data: { terms: [...] } }，不是 items
+	const payload = unwrap(list.json);
+	const items = payload?.terms ?? payload?.items ?? [];
 	const found = items.find((term) => term.label === label || term.slug === slug);
 	if (found) {
 		termCache.set(key, found.slug ?? slug);
@@ -229,6 +261,20 @@ async function taxonomyAssignment(taxonomy, labels) {
 
 // ─── 条目 ─────────────────────────────────────────────────────────
 
+/** 按 slug 回查已存在的条目（409 之后复用，保证迁移可重跑） */
+async function findEntry(collection, slug) {
+	const direct = await api(`/_emdash/api/content/${collection}/${encodeURIComponent(slug)}`);
+	if (direct.ok) {
+		const item = unwrap(direct.json)?.item ?? unwrap(direct.json);
+		if (item?.id) return item;
+	}
+	const list = await api(`/_emdash/api/content/${collection}?slug=${encodeURIComponent(slug)}&limit=5`);
+	if (!list.ok) return null;
+	const payload = unwrap(list.json);
+	const items = payload?.items ?? [];
+	return items.find((item) => item.slug === slug) ?? null;
+}
+
 async function createEntry(collection, { slug, data, status, publishedAt, createdAt, taxonomies }) {
 	if (dryRun) {
 		report.entries.push(`[dry-run] ${collection}/${slug} status=${status} taxonomies=${JSON.stringify(taxonomies ?? {})}`);
@@ -249,8 +295,10 @@ async function createEntry(collection, { slug, data, status, publishedAt, create
 	if (!created.ok) {
 		const message = `${collection}/${slug} 创建失败：${created.status} ${created.text.slice(0, 200)}`;
 		if (created.status === 409) {
-			report.warnings.push(`${message}（已存在，跳过）`);
-			return null;
+			// 已存在：回查它的 id 写进映射，否则失败的批次重跑会丢映射（评论就挂不上目标）
+			const existing = await findEntry(collection, slug);
+			report.warnings.push(`${collection}/${slug} 已存在，复用 ${existing?.id ?? "?"}`);
+			return existing ? { id: existing.id, slug } : null;
 		}
 		report.failures.push(message);
 		return null;
@@ -389,6 +437,33 @@ const commentTarget = (row) => {
 	return { collection: null, entry: null };
 };
 
+/**
+ * 旧文章往往早就超过集合的「发布 N 天后自动关闭评论」窗口，公开提交接口会直接 403。
+ * 迁移历史评论时临时把窗口设为 0，结束（含异常）后恢复原值。
+ */
+function openCommentWindows() {
+	if (!newDbPath) {
+		report.warnings.push("未提供 --new-db：若集合设置了自动关闭评论，历史评论会导入失败");
+		return () => {};
+	}
+	const db = new DatabaseSync(newDbPath);
+	const rows = db.prepare("select slug, comments_closed_after_days from _emdash_collections").all().filter((row) => Number(row.comments_closed_after_days) > 0);
+	if (rows.length === 0) {
+		db.close();
+		return () => {};
+	}
+	const update = db.prepare("update _emdash_collections set comments_closed_after_days = ? where slug = ?");
+	for (const row of rows) update.run(0, row.slug);
+	db.close();
+	report.warnings.push(`迁移期间临时打开评论窗口：${rows.map((row) => row.slug).join(", ")}`);
+	return () => {
+		const restore = new DatabaseSync(newDbPath);
+		const updateBack = restore.prepare("update _emdash_collections set comments_closed_after_days = ? where slug = ?");
+		for (const row of rows) updateBack.run(Number(row.comments_closed_after_days), row.slug);
+		restore.close();
+	};
+}
+
 const memberEmail = (identity) => {
 	if (!identity) return null;
 	const subject = String(identity.provider_subject ?? "");
@@ -397,7 +472,14 @@ const memberEmail = (identity) => {
 
 // 先父后子：旧站 parent_id 指向旧评论
 const commentIdMap = new Map();
-for (const row of comments) {
+const closeCommentWindows = dryRun ? () => {} : openCommentWindows();
+try {
+	for (const row of comments) {
+	if (idMap.comments[row.id]) {
+		report.comments.push(`跳过（已迁移）：评论 ${row.id} → ${idMap.comments[row.id]}`);
+		commentIdMap.set(row.id, idMap.comments[row.id]);
+		continue;
+	}
 	const target = commentTarget(row);
 	if (!target.collection || !target.entry?.id) {
 		report.warnings.push(`评论 ${row.id} 找不到目标（${row.target_type}#${row.target_id}），跳过`);
@@ -411,7 +493,8 @@ for (const row of comments) {
 		commentIdMap.set(row.id, `dry-c-${row.id}`);
 		continue;
 	}
-	const created = await api(`/_emdash/api/comments/${target.collection}/${target.entry.id}`, {
+	// 匿名提交：带上管理员会话的话，宿主会把评论归给该 CMS 用户，作者名就变成了管理员
+	const created = await fetch(`${site}/_emdash/api/comments/${target.collection}/${target.entry.id}`, {
 		method: "POST",
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({
@@ -421,23 +504,33 @@ for (const row of comments) {
 			...(parentNewId ? { parentId: parentNewId } : {}),
 		}),
 	});
+	const createdText = await created.text();
 	if (!created.ok) {
-		report.failures.push(`评论 ${row.id} 创建失败：${created.status} ${created.text.slice(0, 160)}`);
+		report.failures.push(`评论 ${row.id} 创建失败：${created.status} ${createdText.slice(0, 160)}`);
 		continue;
 	}
-	const newId = unwrap(created.json)?.id;
+	const createdJson = (() => {
+		try {
+			return JSON.parse(createdText);
+		} catch {
+			return null;
+		}
+	})();
+	const newId = unwrap(createdJson)?.id;
 	commentIdMap.set(row.id, newId);
 	idMap.comments[row.id] = newId;
 	const status = row.status === "published" ? "approved" : row.status === "hidden" ? "spam" : "pending";
-	if (status !== "pending") {
-		const updated = await api(`/_emdash/api/admin/comments/${newId}/status`, {
-			method: "PUT",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ status }),
-		});
-		if (!updated.ok) report.failures.push(`评论 ${row.id} 状态设置失败：${updated.status}`);
+	// 一律显式设置：公开接口有自己的审核策略（例如老访客自动通过），不能假设它给出 pending
+	const updated = await api(`/_emdash/api/admin/comments/${newId}/status`, {
+		method: "PUT",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ status }),
+	});
+	if (!updated.ok) report.failures.push(`评论 ${row.id} 状态设置失败：${updated.status}`);
+		report.comments.push(`${row.target_type}#${row.target_id} 「${row.author}」→ ${status}`);
 	}
-	report.comments.push(`${row.target_type}#${row.target_id} 「${row.author}」→ ${status}`);
+} finally {
+	closeCommentWindows();
 }
 
 // ─── 会员、点赞、收藏（直接写插件存储） ───────────────────────────
