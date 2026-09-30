@@ -406,6 +406,15 @@ insertComment.run(6, "life", 1, null, null, "路人", "路", "2026-03-08", "照�
 
 db.prepare("insert into settings (key, value, updated_at) values (?, ?, ?)").run("site.title", "duanap的小破站", at("2026-01-01T00:00:00Z"));
 db.prepare("insert into settings (key, value, updated_at) values (?, ?, ?)").run("comment.enabled", "true", at("2026-01-01T00:00:00Z"));
+db.prepare("insert into settings (key, value, updated_at) values (?, ?, ?)").run(
+	"friends.items",
+	JSON.stringify([
+		{ name: "示例小站", url: "https://example.com", desc: "一个示例友链", avatar: "" },
+		{ name: "另一个小站", url: "https://example.org", desc: "", avatar: "" },
+		{ name: "坏数据", url: "not-a-url", desc: "应被过滤", avatar: "" },
+	]),
+	at("2026-01-01T00:00:00Z"),
+);
 db.prepare("insert into content_id_tombstones (target_type, target_id) values (?, ?)").run("article", 99);
 db.prepare("insert into admin_users (id, username, password_hash, created_at, updated_at) values (?, ?, ?, ?, ?)").run(1, "duanap", "scrypt$placeholder", at("2025-01-01T00:00:00Z"), at("2025-01-01T00:00:00Z"));
 

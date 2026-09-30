@@ -121,6 +121,9 @@ const identityByMember = new Map(identities.map((row) => [row.member_id, row]));
 // ─── 媒体 ─────────────────────────────────────────────────────────
 
 /** 媒体接口按 Blob 的 type 校验，必须显式给对 */
+/** 友链地址必须是 http(s) */
+const FRIEND_URL_PATTERN = /^https?:\/\//i;
+
 const MIME_BY_EXT = {
 	png: "image/png",
 	jpg: "image/jpeg",
@@ -534,6 +537,79 @@ try {
 	closeCommentWindows();
 }
 
+
+// ─── 友链（旧站是 settings 里的 friends.items） ────────────────────
+
+/** 把旧站的友链数组转成 Portable Text：每行「名称 — 描述」，名称为链接 */
+function friendsToPortableText(items) {
+	const blocks = [];
+	items.forEach((item, index) => {
+		const name = String(item.name ?? "").trim();
+		const url = String(item.url ?? "").trim();
+		const desc = String(item.desc ?? "").trim();
+		if (!name || !FRIEND_URL_PATTERN.test(url)) return;
+		const markKey = `friends${index}`;
+		const children = [
+			{ _type: "span", _key: `f${index}s0`, text: name, marks: [markKey] },
+		];
+		if (desc) children.push({ _type: "span", _key: `f${index}s1`, text: ` — ${desc}`, marks: [] });
+		blocks.push({
+			_type: "block",
+			_key: `fb${index}`,
+			style: "normal",
+			markDefs: [{ _key: markKey, _type: "link", href: url }],
+			children,
+		});
+	});
+	return blocks;
+}
+
+async function migrateFriendLinks() {
+	const raw = settings.find((row) => row.key === "friends.items")?.value;
+	if (!raw) return;
+	let items = [];
+	try {
+		const parsed = JSON.parse(raw);
+		items = Array.isArray(parsed) ? parsed : [];
+	} catch {
+		report.warnings.push("friends.items 不是合法 JSON，友链未迁移");
+		return;
+	}
+	const blocks = friendsToPortableText(items);
+	if (blocks.length === 0) {
+		report.warnings.push("旧站没有有效友链，跳过");
+		return;
+	}
+	if (dryRun) {
+		report.entries.push(`[dry-run] pages/friends 友链 ${blocks.length} 条`);
+		return;
+	}
+	const found = await api("/_emdash/api/content/pages?limit=50");
+	const page = (unwrap(found.json)?.items ?? []).find((item) => item.slug === "friends");
+	if (!page?.id) {
+		report.warnings.push("新站找不到 friends 页面，友链未写入");
+		return;
+	}
+	const updated = await api(`/_emdash/api/content/pages/${page.id}`, {
+		// 内容更新只有 PUT（路由里没有 PATCH）
+		method: "PUT",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ data: { content: blocks } }),
+	});
+	if (!updated.ok) {
+		report.failures.push(`友链写入失败：${updated.status} ${updated.text.slice(0, 160)}`);
+		return;
+	}
+	// PUT 写的是草稿修订，公开页面渲染已发布修订 —— 必须再发布一次才可见
+	const published = await api(`/_emdash/api/content/pages/${page.id}/publish`, { method: "POST" });
+	if (!published.ok) {
+		report.failures.push(`友链发布失败：${published.status} ${published.text.slice(0, 160)}`);
+		return;
+	}
+	report.entries.push(`pages/friends 友链 ${blocks.length} 条（已发布）`);
+}
+
+await migrateFriendLinks();
 // ─── 会员、点赞、收藏（直接写插件存储） ───────────────────────────
 
 const ACTIVITY_TYPE = { article: "posts", life: "life", project: "projects", comment: "comment" };
