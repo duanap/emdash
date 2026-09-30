@@ -18,6 +18,9 @@
 - ✅ **留言墙视觉**：双轨无缝滚动卡片（奇偶分轨，轨道前一半可读可点赞，补位与副本 `aria-hidden`），悬停/聚焦暂停，`prefers-reduced-motion` 退化为静态网格；点赞走会员 activity 路由（`targetType=comment`）。
 - 🔁 **停止性方案**：core 公开 UI（评论表单/列表、搜索与归档 widget）的英文文案由 `src/scripts/zh-copy.ts` 在 DOM 层转中文（core 尚无前台 i18n，字符串硬编码、无 locale 入口）——上游支持后应整体移除；也适合给上游提 i18n PR。站点自有标记里的英文（主题按钮 aria-label、footer 署名）直接改源码，不走兜底。回归见 `scripts/test-zh-copy.mjs`（含「不该翻译的内容一个字都不许动」的负例）
 
+**站长决定（2026-10-01）**：**旧站数据不迁移**——上线时直接用 `seed/seed.json` 的演示内容，真实内容在管理后台重新写。因此 Phase 3 的迁移工具链（`scripts/migrate-old-site.mjs`、夹具、映射表 `night-work/PHASE3-MAPPING.md`）保留备用，但不再是上线前置；旧数字 URL 的 301 路由也一并保留（映射表为空时这些旧地址返回 404，不会误跳）。
+同一时间还确认：**雷池 WAF 已关闭**（部署文档不再要求）；**QQ 互联等正式上线后再配**（未配置时登录页会明确提示，会员中心与点赞引导到登录页，留言墙匿名可评）。
+
 **尚未做（后续会话）**：真实内容迁移（旧 SQLite → 新站，含 Markdown→Portable Text 转换与 ID 映射表）、部署切换（Phase 6 的最后一步：切流量，等用户指令 + 雷池 WAF 放行）。Phase 5（会员/QQ 登录/点赞/收藏/留言墙）与 Phase 6 的**准备工作**已完成：部署 runbook 见 `night-work/DEPLOY.md`，本机已用数据库副本跑通生产模式冒烟（13/13，含 dev 端点在生产返回 403）。
 
 ## Phase 3 迁移映射（进行中）
