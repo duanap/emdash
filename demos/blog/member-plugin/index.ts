@@ -15,6 +15,7 @@
  *   GET  activity/state     点赞/收藏计数 + 当前会员的开关状态
  *   POST activity/toggle    点赞/收藏开关（幂等，需会员会话）
  *   GET  member/overview    会员中心数据（资料 + 计数 + 收藏列表）
+ *   POST member/profile     修改展示资料（昵称/头像/简介，需会员会话）
  *
  * 配置（管理后台 → 插件设置）：qqClientId / qqClientSecret(secret) /
  * qqCallbackUrl / siteOrigin（returnTo 白名单基址，生产 https://blog.duanap.cn）
@@ -35,6 +36,8 @@ const QQ_JSONP_PATTERN = /^[^(]*\(\s*(\{[\s\S]*\})\s*\)\s*;?$/;
 
 // ─── 类型 ───────────────────────────────────────────────────────────
 
+export type MemberProfileField = "displayName" | "avatarUrl" | "bio";
+
 export interface Member {
 	displayName: string;
 	avatarUrl: string;
@@ -42,6 +45,10 @@ export interface Member {
 	qqOpenid: string;
 	createdAt: string;
 	updatedAt: string;
+	/** 个人简介（会员中心可编辑） */
+	bio?: string;
+	/** 用户手动改过的字段；QQ 登录不再覆盖这些字段 */
+	customizedFields?: MemberProfileField[];
 }
 
 interface Session {
@@ -319,6 +326,43 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 				},
 			},
 
+			"member/profile": {
+				public: true,
+				methods: ["POST"],
+				request: { body: "json" },
+				handler: async (ctx) => {
+					const entry = await resolveMemberEntry(ctx.storage, ctx.request);
+					if (!entry) return { ok: false, reason: "unauthorized" };
+
+					const input = (ctx.input ?? {}) as Record<string, unknown>;
+					const validated = validateProfileUpdate(input);
+					if (!validated.ok) {
+						return { ok: false, reason: "invalid_profile", errors: validated.errors };
+					}
+
+					const customized = new Set(entry.member.customizedFields ?? []);
+					for (const field of validated.changed) customized.add(field);
+
+					const member: Member = {
+						...entry.member,
+						...validated.values,
+						customizedFields: [...customized],
+						updatedAt: new Date().toISOString(),
+					};
+					await ctx.storage.members.put(entry.id, member);
+
+					return {
+						ok: true,
+						member: {
+							displayName: member.displayName,
+							avatarUrl: member.avatarUrl,
+							bio: member.bio ?? "",
+						},
+						customizedFields: member.customizedFields,
+					};
+				},
+			},
+
 			"member/overview": {
 				public: true,
 				methods: ["GET"],
@@ -453,11 +497,14 @@ async function upsertMember(
 		const record = existing.items[0]!;
 		const member = record.data as Member;
 		if (member.status === "disabled") return null;
-		// 昵称/头像跟随 QQ 资料
+		// 昵称/头像默认跟随 QQ 资料，但用户手动改过的字段不再被覆盖
+		const customized = new Set(member.customizedFields ?? []);
 		const updated: Member = {
 			...member,
-			displayName: profile.nickname || member.displayName,
-			avatarUrl: profile.avatarUrl || member.avatarUrl,
+			displayName: customized.has("displayName")
+				? member.displayName
+				: profile.nickname || member.displayName,
+			avatarUrl: customized.has("avatarUrl") ? member.avatarUrl : profile.avatarUrl || member.avatarUrl,
 			updatedAt: now,
 		};
 		await ctx.storage.members.put(record.id, updated);
@@ -498,11 +545,11 @@ async function resolveMemberFromRequest(ctx: RouteContext): Promise<PublicMember
 	return resolveMemberFromCookie(ctx.storage, ctx.request);
 }
 
-/** Cookie 会话 → 会员记录（含 openid；点赞/收藏按 openid 归属） */
-async function resolveMemberRecord(
+/** Cookie 会话 → 会员记录（含存储 id 与 openid；点赞/收藏按 openid 归属） */
+async function resolveMemberEntry(
 	storage: PluginContext["storage"],
 	request: Request,
-): Promise<Member | null> {
+): Promise<{ id: string; member: Member } | null> {
 	const sessionId = readCookie(request.headers.get("cookie"), SESSION_COOKIE);
 	if (!sessionId) return null;
 	const session = (await storage.sessions.get(sessionId)) as Session | null;
@@ -516,9 +563,17 @@ async function resolveMemberRecord(
 		limit: 1,
 	});
 	if (found.items.length === 0) return null;
-	const member = found.items[0]!.data as Member;
+	const record = found.items[0]!;
+	const member = record.data as Member;
 	if (member.status !== "active") return null;
-	return member;
+	return { id: record.id, member };
+}
+
+async function resolveMemberRecord(
+	storage: PluginContext["storage"],
+	request: Request,
+): Promise<Member | null> {
+	return (await resolveMemberEntry(storage, request))?.member ?? null;
 }
 
 async function resolveMemberFromCookie(
@@ -722,7 +777,13 @@ export interface MemberFavoriteItem {
 }
 
 export interface MemberOverview {
-	member: { displayName: string; avatarUrl: string; createdAt: string };
+	member: {
+		displayName: string;
+		avatarUrl: string;
+		bio: string;
+		createdAt: string;
+		customizedFields: MemberProfileField[];
+	};
 	counts: { likes: number; favorites: number };
 	favorites: MemberFavoriteItem[];
 	/** 收藏过但内容已下线/删除的条数（列表里不会出现） */
@@ -735,6 +796,69 @@ const ACTIVITY_PATHS: Record<string, string> = {
 	life: "/life/",
 	projects: "/projects/",
 };
+
+const DISPLAY_NAME_MAX = 40;
+const AVATAR_URL_MAX = 2048;
+const BIO_MAX = 200;
+
+/** 与旧站一致：只接受 https 头像；空串表示清空 */
+function safeAvatar(value: string): string {
+	if (!value) return "";
+	try {
+		const url = new URL(value);
+		return url.protocol === "https:" ? url.toString() : "";
+	} catch {
+		return "";
+	}
+}
+
+/**
+ * 校验资料更新。字段缺省表示不改（与旧站 PATCH 语义一致）；
+ * 返回稳定错误码，中文文案由页面映射。
+ */
+function validateProfileUpdate(
+	input: Record<string, unknown>,
+):
+	| { ok: true; values: Partial<Member>; changed: MemberProfileField[] }
+	| { ok: false; errors: string[] } {
+	const errors: string[] = [];
+	const values: Partial<Member> = {};
+	const changed: MemberProfileField[] = [];
+
+	if (input.displayName !== undefined) {
+		const displayName = typeof input.displayName === "string" ? input.displayName.trim() : "";
+		if (!displayName || displayName.length > DISPLAY_NAME_MAX) {
+			errors.push("display_name_invalid");
+		} else {
+			values.displayName = displayName;
+			changed.push("displayName");
+		}
+	}
+
+	if (input.avatarUrl !== undefined) {
+		const raw = typeof input.avatarUrl === "string" ? input.avatarUrl.trim() : "";
+		const avatarUrl = safeAvatar(raw);
+		if (raw && (!avatarUrl || avatarUrl.length > AVATAR_URL_MAX)) {
+			errors.push("avatar_url_invalid");
+		} else {
+			values.avatarUrl = avatarUrl;
+			changed.push("avatarUrl");
+		}
+	}
+
+	if (input.bio !== undefined) {
+		const bio = typeof input.bio === "string" ? input.bio.trim() : "";
+		if (bio.length > BIO_MAX) {
+			errors.push("bio_too_long");
+		} else {
+			values.bio = bio;
+			changed.push("bio");
+		}
+	}
+
+	if (errors.length > 0) return { ok: false, errors };
+	return { ok: true, values, changed };
+}
 
 async function readMemberOverview(ctx: PluginContext, member: Member): Promise<MemberOverview> {
 	// 单次查询取回该会员的全部互动行（按 kind 在内存里分流，避免多轮查询）
@@ -766,7 +890,9 @@ async function readMemberOverview(ctx: PluginContext, member: Member): Promise<M
 		member: {
 			displayName: member.displayName,
 			avatarUrl: member.avatarUrl,
+			bio: member.bio ?? "",
 			createdAt: member.createdAt,
+			customizedFields: member.customizedFields ?? [],
 		},
 		counts: { likes: likes.length, favorites: favorites.length },
 		favorites: items,

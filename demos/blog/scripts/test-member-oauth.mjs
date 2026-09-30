@@ -455,6 +455,48 @@ await test("被停用的会员不能登录 → member_disabled", async () => {
 	assert.equal(harness.rows("sessions").size, 0, "disabled member must not get a session");
 });
 
+await test("QQ 再登录不会覆盖用户自定义过的资料", async () => {
+	const harness = createHarness({ settings: CONFIGURED_SETTINGS });
+	const { sessionId } = await loginOnce(harness);
+
+	// 只自定义昵称，头像留给 QQ
+	harness.ctx.request = new Request(`${PLUGIN_BASE}/member/profile`, {
+		method: "POST",
+		headers: { cookie: `${SESSION_COOKIE}=${sessionId}` },
+	});
+	harness.ctx.input = { displayName: "我改过的昵称" };
+	const updated = await plugin.routes["member/profile"].handler(harness.ctx);
+	assert.equal(updated.ok, true);
+	assert.deepEqual(updated.customizedFields, ["displayName"]);
+
+	// 再次登录，QQ 返回了新的昵称与头像
+	harness.ctx.http = {
+		fetch: async (target) => {
+			const url = String(target);
+			if (url.includes("/oauth2.0/token")) {
+				return new Response("access_token=ACCESS-TOKEN-2", { status: 200 });
+			}
+			if (url.includes("/oauth2.0/me")) {
+				return new Response('callback( {"openid":"OPENID-1"} );', { status: 200 });
+			}
+			return new Response(
+				JSON.stringify({
+					ret: 0,
+					nickname: "QQ 上的新昵称",
+					figureurl_qq_2: "https://thirdqq.qlogo.cn/new.png",
+				}),
+				{ status: 200 },
+			);
+		},
+	};
+	await loginOnce(harness);
+
+	const member = [...harness.rows("members").values()][0];
+	assert.equal(member.displayName, "我改过的昵称", "自定义过的昵称不应被 QQ 覆盖");
+	assert.equal(member.avatarUrl, "https://thirdqq.qlogo.cn/new.png", "未自定义的字段应跟随 QQ");
+	assert.deepEqual(member.customizedFields, ["displayName"]);
+});
+
 // ─── 会话解析与登出 ────────────────────────────────────────────────
 
 await test("无 Cookie / 未知会话的 auth/status 都是未登录", async () => {

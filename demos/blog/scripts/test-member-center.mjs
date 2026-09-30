@@ -193,7 +193,9 @@ await test("无互动的会员：计数为 0、收藏为空、资料正确", asy
 	assert.deepEqual(result.member, {
 		displayName: "会员甲",
 		avatarUrl: "https://thirdqq.qlogo.cn/a.png",
+		bio: "",
 		createdAt: "2026-09-01T00:00:00.000Z",
+		customizedFields: [],
 	});
 	assert.deepEqual(result.counts, { likes: 0, favorites: 0 });
 	assert.deepEqual(result.favorites, []);
@@ -252,6 +254,121 @@ await test("只返回当前会员的数据（别的 openid 不计入）", async 
 	const result = await overview(harness, `${SESSION_COOKIE}=sess_a`);
 	assert.equal(result.counts.favorites, 0);
 	assert.deepEqual(result.favorites, []);
+});
+
+// ─── 资料编辑（Phase 5.4b） ───────────────────────────────────────
+
+async function profile(harness, cookie, body) {
+	harness.ctx.request = new Request(`${PLUGIN_BASE}/member/profile`, {
+		method: "POST",
+		headers: cookie ? { cookie } : {},
+	});
+	harness.ctx.input = body;
+	return plugin.routes["member/profile"].handler(harness.ctx);
+}
+
+async function currentMember(harness) {
+	const result = await overview(harness, `${SESSION_COOKIE}=sess_a`);
+	return result.member;
+}
+
+await test("匿名修改资料 → unauthorized", async () => {
+	const harness = createHarness();
+	assert.deepEqual(await profile(harness, null, { displayName: "谁" }), {
+		ok: false,
+		reason: "unauthorized",
+	});
+});
+
+await test("昵称校验：空、纯空格、超 40 字都拒绝，且不落库", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+	const cookie = `${SESSION_COOKIE}=sess_a`;
+
+	for (const displayName of ["", "   ", "x".repeat(41)]) {
+		const result = await profile(harness, cookie, { displayName });
+		assert.deepEqual(result, { ok: false, reason: "invalid_profile", errors: ["display_name_invalid"] });
+	}
+	assert.equal((await currentMember(harness)).displayName, "会员甲", "校验失败不应改到资料");
+});
+
+await test("头像必须是 https，且长度受限", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+	const cookie = `${SESSION_COOKIE}=sess_a`;
+
+	for (const avatarUrl of ["http://example.com/a.png", "not-a-url", `https://example.com/${"a".repeat(2100)}`]) {
+		const result = await profile(harness, cookie, { avatarUrl });
+		assert.deepEqual(result, { ok: false, reason: "invalid_profile", errors: ["avatar_url_invalid"] });
+	}
+	assert.equal((await currentMember(harness)).avatarUrl, MEMBER.avatarUrl, "校验失败不应改到头像");
+});
+
+await test("简介超 200 字拒绝", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+	const result = await profile(harness, `${SESSION_COOKIE}=sess_a`, { bio: "字".repeat(201) });
+	assert.deepEqual(result, { ok: false, reason: "invalid_profile", errors: ["bio_too_long"] });
+});
+
+await test("成功更新：持久化、记入 customisedFields、overview 可见", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+	const cookie = `${SESSION_COOKIE}=sess_a`;
+
+	const result = await profile(harness, cookie, {
+		displayName: "  自定义昵称  ",
+		avatarUrl: "https://example.com/me.png",
+		bio: "  写点什么  ",
+	});
+	assert.equal(result.ok, true);
+	assert.deepEqual(result.member, {
+		displayName: "自定义昵称",
+		avatarUrl: "https://example.com/me.png",
+		bio: "写点什么",
+	});
+	assert.deepEqual(result.customizedFields, ["displayName", "avatarUrl", "bio"]);
+
+	const member = await currentMember(harness);
+	assert.equal(member.displayName, "自定义昵称");
+	assert.equal(member.avatarUrl, "https://example.com/me.png");
+	assert.equal(member.bio, "写点什么");
+	assert.deepEqual(member.customizedFields, ["displayName", "avatarUrl", "bio"]);
+});
+
+await test("缺省字段保持不变（只改简介）", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+	const cookie = `${SESSION_COOKIE}=sess_a`;
+
+	await profile(harness, cookie, { displayName: "新昵称" });
+	await profile(harness, cookie, { bio: "只改简介" });
+
+	const member = await currentMember(harness);
+	assert.equal(member.displayName, "新昵称", "省略的字段不应被清空");
+	assert.equal(member.avatarUrl, MEMBER.avatarUrl);
+	assert.equal(member.bio, "只改简介");
+	assert.deepEqual(member.customizedFields, ["displayName", "bio"]);
+});
+
+await test("头像可以清空（空串）", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+	const cookie = `${SESSION_COOKIE}=sess_a`;
+
+	const result = await profile(harness, cookie, { avatarUrl: "" });
+	assert.equal(result.ok, true);
+	assert.equal(result.member.avatarUrl, "");
+	assert.equal((await currentMember(harness)).avatarUrl, "");
+});
+
+await test("停用会员不能改资料", async () => {
+	const harness = createHarness();
+	await harness.seedMember({ ...MEMBER, status: "disabled" });
+	assert.deepEqual(await profile(harness, `${SESSION_COOKIE}=sess_a`, { displayName: "想改" }), {
+		ok: false,
+		reason: "unauthorized",
+	});
 });
 
 // ─── 报告 ─────────────────────────────────────────────────────────

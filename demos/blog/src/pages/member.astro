@@ -1,6 +1,6 @@
 ---
 /**
- * 会员中心（Phase 5.4）。
+ * 会员中心（Phase 5.4 / 5.4b）。
  *
  * 数据走公开路由 `member/overview`，**在客户端取**：页面 frontmatter 早于布局渲染，
  * 拿不到 `page:fragments` 捕获的插件上下文（实测：即使同进程预热过其它页面也拿不到），
@@ -31,6 +31,11 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		life: "生活记录",
 		projects: "作品",
 	};
+	const PROFILE_ERROR_MESSAGES: Record<string, string> = {
+		display_name_invalid: "昵称不能为空，且不能超过 40 个字符。",
+		avatar_url_invalid: "头像地址必须是有效的 HTTPS 链接。",
+		bio_too_long: "个人简介不能超过 200 个字符。",
+	};
 
 	function payloadOf(json: unknown): Record<string, unknown> | null {
 		const outer = json as { data?: { data?: unknown } | unknown } | null;
@@ -56,9 +61,199 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		return node;
 	}
 
+	function loginRedirect() {
+		location.replace(`/login?returnTo=${encodeURIComponent("/member")}`);
+	}
+
 	async function logout() {
 		await fetch(`${endpointBase}/auth/logout`, { method: "POST" }).catch(() => {});
 		location.href = "/";
+	}
+
+	// ─── 资料卡 ──────────────────────────────────────────────────────
+
+	const profileNodes: {
+		avatar?: HTMLImageElement;
+		fallback?: HTMLElement;
+		name?: HTMLElement;
+		bio?: HTMLElement;
+	} = {};
+
+	function applyAvatar(container: HTMLElement, avatarUrl: string, displayName: string) {
+		profileNodes.avatar?.remove();
+		profileNodes.fallback?.remove();
+		if (avatarUrl) {
+			const avatar = element("img", "profile-avatar");
+			avatar.src = avatarUrl;
+			avatar.alt = "";
+			avatar.width = 64;
+			avatar.height = 64;
+			profileNodes.avatar = avatar;
+			profileNodes.fallback = undefined;
+			container.prepend(avatar);
+		} else {
+			const fallback = element("div", "profile-avatar profile-avatar-fallback", displayName.slice(0, 1));
+			profileNodes.fallback = fallback;
+			profileNodes.avatar = undefined;
+			container.prepend(fallback);
+		}
+	}
+
+	function buildProfileCard(member: Record<string, unknown>): HTMLElement {
+		const displayName = String(member.displayName ?? "会员");
+		const avatarUrl = String(member.avatarUrl ?? "");
+		const bio = String(member.bio ?? "");
+
+		const card = element("header", "profile-card");
+		applyAvatar(card, avatarUrl, displayName);
+
+		const copy = element("div", "profile-copy");
+		const name = element("h1", "profile-name", displayName);
+		profileNodes.name = name;
+		copy.append(name);
+		copy.append(element("p", "profile-meta", `加入于 ${formatDate(member.createdAt)}`));
+		const bioNode = element("p", "profile-bio", bio);
+		bioNode.hidden = bio.length === 0;
+		profileNodes.bio = bioNode;
+		copy.append(bioNode);
+		card.append(copy);
+
+		const logoutButton = element("button", "logout-button", "退出登录");
+		logoutButton.type = "button";
+		logoutButton.addEventListener("click", logout);
+		card.append(logoutButton);
+		card.dataset.avatarUrl = avatarUrl;
+		return card;
+	}
+
+	// ─── 资料编辑 ────────────────────────────────────────────────────
+
+	function buildProfileForm(member: Record<string, unknown>): HTMLElement {
+		const form = element("form", "profile-form");
+		const heading = element("div", "form-heading");
+		heading.append(element("h2", "section-title", "个人资料"));
+		heading.append(element("p", "form-hint", "这里只改展示资料；改过的字段之后不会再被 QQ 登录覆盖。"));
+		form.append(heading);
+
+		const nameField = element("label", "form-field");
+		nameField.append(element("span", "form-label", "展示昵称"));
+		const nameInput = element("input");
+		nameInput.type = "text";
+		nameInput.name = "displayName";
+		nameInput.maxLength = 40;
+		nameInput.required = true;
+		nameInput.setAttribute("autocomplete", "nickname");
+		nameInput.value = String(member.displayName ?? "");
+		nameField.append(nameInput);
+		form.append(nameField);
+
+		const avatarField = element("label", "form-field");
+		avatarField.append(element("span", "form-label", "头像地址（HTTPS）"));
+		const avatarInput = element("input");
+		avatarInput.type = "url";
+		avatarInput.name = "avatarUrl";
+		avatarInput.maxLength = 2048;
+		avatarInput.placeholder = "留空使用默认头像";
+		avatarInput.value = String(member.avatarUrl ?? "");
+		avatarField.append(avatarInput);
+		form.append(avatarField);
+
+		const bioField = element("label", "form-field");
+		bioField.append(element("span", "form-label", "个人简介"));
+		const bioInput = element("textarea");
+		bioInput.name = "bio";
+		bioInput.maxLength = 200;
+		bioInput.rows = 4;
+		bioInput.placeholder = "简单介绍一下自己";
+		bioInput.value = String(member.bio ?? "");
+		bioField.append(bioInput);
+		const counter = element("small", "form-counter", `${bioInput.value.length}/200`);
+		bioInput.addEventListener("input", () => {
+			counter.textContent = `${bioInput.value.length}/200`;
+		});
+		bioField.append(counter);
+		form.append(bioField);
+
+		const status = element("p", "form-status");
+		status.hidden = true;
+		status.setAttribute("role", "status");
+		status.setAttribute("aria-live", "polite");
+
+		const saveButton = element("button", "save-button", "保存资料");
+		saveButton.type = "submit";
+		form.append(saveButton, status);
+
+		form.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			status.hidden = true;
+			status.classList.remove("is-success", "is-error");
+			saveButton.disabled = true;
+			saveButton.textContent = "保存中…";
+
+			const values = {
+				displayName: nameInput.value.trim(),
+				avatarUrl: avatarInput.value.trim(),
+				bio: bioInput.value.trim(),
+			};
+
+			try {
+				const res = await fetch(`${endpointBase}/member/profile`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json", "X-EmDash-Request": "1" },
+					body: JSON.stringify(values),
+				});
+				const payload = payloadOf(await res.json());
+				if (payload?.ok) {
+					const saved = payload.member as { displayName?: string; avatarUrl?: string; bio?: string };
+					if (profileNodes.name) profileNodes.name.textContent = String(saved?.displayName ?? "");
+					if (profileNodes.bio) {
+						profileNodes.bio.textContent = String(saved?.bio ?? "");
+						profileNodes.bio.hidden = !saved?.bio;
+					}
+					const card = root?.querySelector<HTMLElement>(".profile-card");
+					if (card) applyAvatar(card, String(saved?.avatarUrl ?? ""), String(saved?.displayName ?? ""));
+					status.textContent = "资料已保存。";
+					status.classList.add("is-success");
+					status.hidden = false;
+					return;
+				}
+				if (payload?.reason === "unauthorized") {
+					loginRedirect();
+					return;
+				}
+				const errors = Array.isArray(payload?.errors) ? payload.errors : [];
+				const messages = errors
+					.map((code) => PROFILE_ERROR_MESSAGES[String(code)])
+					.filter((message): message is string => Boolean(message));
+				status.textContent = messages.length > 0 ? messages.join(" ") : "保存失败，请稍后重试。";
+				status.classList.add("is-error");
+				status.hidden = false;
+			} catch {
+				status.textContent = "网络异常，请稍后重试。";
+				status.classList.add("is-error");
+				status.hidden = false;
+			} finally {
+				saveButton.disabled = false;
+				saveButton.textContent = "保存资料";
+			}
+		});
+
+		return form;
+	}
+
+	// ─── 互动与收藏 ──────────────────────────────────────────────────
+
+	function buildCounts(counts: Record<string, unknown>): { row: HTMLElement; favoriteStrong: HTMLElement } {
+		const row = element("section", "counts");
+		row.setAttribute("aria-label", "互动统计");
+		const likeCount = element("p", "count");
+		likeCount.append(element("strong", undefined, String(counts?.likes ?? 0)), " 次点赞");
+		const favoriteCount = element("p", "count");
+		const favoriteStrong = element("strong", undefined, String(counts?.favorites ?? 0));
+		favoriteStrong.dataset.count = String(counts?.favorites ?? 0);
+		favoriteCount.append(favoriteStrong, " 个收藏");
+		row.append(likeCount, favoriteCount);
+		return { row, favoriteStrong };
 	}
 
 	async function removeFavorite(button: HTMLButtonElement, row: HTMLElement, counter: HTMLElement) {
@@ -87,7 +282,11 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 				}
 				return;
 			}
-			alert(payload?.reason === "unauthorized" ? "登录状态已失效，请重新登录。" : "操作失败，请稍后重试。");
+			if (payload?.reason === "unauthorized") {
+				loginRedirect();
+				return;
+			}
+			alert("操作失败，请稍后重试。");
 		} catch {
 			alert("网络异常，请稍后重试。");
 		} finally {
@@ -95,53 +294,11 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		}
 	}
 
-	function render(overview: Record<string, unknown>) {
-		if (!root) return;
-		const member = overview.member as { displayName?: string; avatarUrl?: string; createdAt?: string };
-		const counts = overview.counts as { likes?: number; favorites?: number };
-		const favorites = (overview.favorites ?? []) as Array<{
-			targetType: string;
-			targetId: string;
-			title: string;
-			path: string;
-			createdAt: string;
-		}>;
-		const displayName = String(member?.displayName ?? "会员");
-
-		root.textContent = "";
-
-		const profile = element("header", "profile-card");
-		if (member?.avatarUrl) {
-			const avatar = element("img", "profile-avatar");
-			avatar.src = String(member.avatarUrl);
-			avatar.alt = "";
-			avatar.width = 64;
-			avatar.height = 64;
-			profile.append(avatar);
-		} else {
-			profile.append(element("div", "profile-avatar profile-avatar-fallback", displayName.slice(0, 1)));
-		}
-		const copy = element("div", "profile-copy");
-		copy.append(element("h1", "profile-name", displayName));
-		copy.append(element("p", "profile-meta", `加入于 ${formatDate(member?.createdAt)}`));
-		profile.append(copy);
-		const logoutButton = element("button", "logout-button", "退出登录");
-		logoutButton.type = "button";
-		logoutButton.addEventListener("click", logout);
-		profile.append(logoutButton);
-		root.append(profile);
-
-		const countRow = element("section", "counts");
-		countRow.setAttribute("aria-label", "互动统计");
-		const likeCount = element("p", "count");
-		likeCount.append(element("strong", undefined, String(counts?.likes ?? 0)), " 次点赞");
-		const favoriteCount = element("p", "count");
-		const favoriteStrong = element("strong", undefined, String(counts?.favorites ?? 0));
-		favoriteStrong.dataset.count = String(counts?.favorites ?? 0);
-		favoriteCount.append(favoriteStrong, " 个收藏");
-		countRow.append(likeCount, favoriteCount);
-		root.append(countRow);
-
+	function buildFavorites(
+		favorites: Array<Record<string, unknown>>,
+		unavailable: number,
+		counter: HTMLElement,
+	): HTMLElement {
 		const section = element("section", "favorites");
 		section.append(element("h2", "section-title", "我的收藏"));
 		if (favorites.length === 0) {
@@ -150,33 +307,46 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 			const list = element("ul", "favorite-list");
 			for (const item of favorites) {
 				const row = element("li", "favorite-row");
-				row.dataset.targetType = item.targetType;
-				row.dataset.targetId = item.targetId;
-				const copyCell = element("div", "favorite-copy");
-				const link = element("a", "favorite-title", item.title);
-				link.href = item.path;
-				copyCell.append(link);
-				copyCell.append(
+				row.dataset.targetType = String(item.targetType);
+				row.dataset.targetId = String(item.targetId);
+				const copy = element("div", "favorite-copy");
+				const link = element("a", "favorite-title", String(item.title));
+				link.href = String(item.path);
+				copy.append(link);
+				copy.append(
 					element(
 						"p",
 						"favorite-meta",
-						`${TYPE_LABELS[item.targetType] ?? item.targetType} · ${formatDate(item.createdAt)}`,
+						`${TYPE_LABELS[String(item.targetType)] ?? String(item.targetType)} · ${formatDate(item.createdAt)}`,
 					),
 				);
 				const remove = element("button", "remove-button", "取消收藏");
 				remove.type = "button";
 				remove.dataset.removeFavorite = "true";
-				remove.addEventListener("click", () => removeFavorite(remove, row, favoriteStrong));
-				row.append(copyCell, remove);
+				remove.addEventListener("click", () => removeFavorite(remove, row, counter));
+				row.append(copy, remove);
 				list.append(row);
 			}
 			section.append(list);
 		}
-		const unavailable = Number(overview.unavailableFavorites ?? 0);
 		if (unavailable > 0) {
 			section.append(element("p", "note", `另有 ${unavailable} 个收藏的内容已下线或删除，暂不显示。`));
 		}
-		root.append(section);
+		return section;
+	}
+
+	function render(overview: Record<string, unknown>) {
+		if (!root) return;
+		const member = (overview.member ?? {}) as Record<string, unknown>;
+		const counts = (overview.counts ?? {}) as Record<string, unknown>;
+		const favorites = (overview.favorites ?? []) as Array<Record<string, unknown>>;
+
+		root.textContent = "";
+		root.append(buildProfileCard(member));
+		root.append(buildProfileForm(member));
+		const { row, favoriteStrong } = buildCounts(counts);
+		root.append(row);
+		root.append(buildFavorites(favorites, Number(overview.unavailableFavorites ?? 0), favoriteStrong));
 	}
 
 	void (async () => {
@@ -186,7 +356,7 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 			const payload = payloadOf(await res.json());
 			if (!payload?.ok) {
 				if (payload?.reason === "unauthorized") {
-					location.replace(`/login?returnTo=${encodeURIComponent("/member")}`);
+					loginRedirect();
 					return;
 				}
 				root.textContent = "会员信息加载失败，请稍后重试。";
@@ -253,8 +423,14 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		font-size: var(--font-size-sm);
 	}
 
+	.member-center :global(.profile-bio) {
+		margin-top: var(--spacing-2);
+		color: var(--color-text-secondary);
+	}
+
 	.member-center :global(.logout-button),
-	.member-center :global(.remove-button) {
+	.member-center :global(.remove-button),
+	.member-center :global(.save-button) {
 		padding: var(--spacing-2) var(--spacing-4);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius);
@@ -265,7 +441,19 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		cursor: pointer;
 		transition:
 			color var(--transition-fast),
-			border-color var(--transition-fast);
+			border-color var(--transition-fast),
+			background var(--transition-fast);
+	}
+
+	.member-center :global(.save-button) {
+		margin-top: var(--spacing-4);
+		background: var(--color-brand);
+		border-color: var(--color-brand);
+		color: var(--color-on-brand);
+	}
+
+	.member-center :global(.save-button:hover:not(:disabled)) {
+		background: var(--color-brand-hover);
 	}
 
 	.member-center :global(.logout-button:hover:not(:disabled)),
@@ -275,9 +463,65 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 	}
 
 	.member-center :global(.logout-button:focus-visible),
-	.member-center :global(.remove-button:focus-visible) {
+	.member-center :global(.remove-button:focus-visible),
+	.member-center :global(.save-button:focus-visible),
+	.member-center :global(.form-field input:focus-visible),
+	.member-center :global(.form-field textarea:focus-visible) {
 		outline: 2px solid var(--color-brand-ring);
 		outline-offset: 2px;
+	}
+
+	.member-center :global(.profile-form) {
+		margin-top: var(--spacing-8);
+		padding: var(--spacing-6);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-lg);
+	}
+
+	.member-center :global(.form-heading) {
+		margin-bottom: var(--spacing-4);
+	}
+
+	.member-center :global(.form-hint),
+	.member-center :global(.form-counter) {
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.member-center :global(.form-field) {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-1);
+		margin-top: var(--spacing-4);
+	}
+
+	.member-center :global(.form-label) {
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-sm);
+	}
+
+	.member-center :global(.form-field input),
+	.member-center :global(.form-field textarea) {
+		padding: var(--spacing-2) var(--spacing-3);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		background: var(--color-bg);
+		color: var(--color-text);
+		font: inherit;
+	}
+
+	.member-center :global(.form-status) {
+		margin-top: var(--spacing-3);
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+	}
+
+	.member-center :global(.form-status.is-success) {
+		color: var(--color-brand);
+	}
+
+	.member-center :global(.form-status.is-error) {
+		color: var(--color-accent);
 	}
 
 	.member-center :global(.counts) {
@@ -301,7 +545,7 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 	.member-center :global(.section-title) {
 		font-size: var(--font-size-xl);
 		font-weight: var(--font-weight-heading);
-		margin-bottom: var(--spacing-4);
+		margin-bottom: var(--spacing-1);
 	}
 
 	.member-center :global(.favorite-list) {
