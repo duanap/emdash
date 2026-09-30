@@ -77,6 +77,13 @@ export interface RouteMeta {
 	methods?: PluginRouteMethod[];
 	request?: PluginRouteRequest;
 	response?: PluginRouteResponseMode;
+	/**
+	 * True for routes declared by a trusted (in-process) plugin. Sandboxed
+	 * routes never set it, so hosts can grant raw responses privileges that
+	 * untrusted plugin code must not have (currently `Set-Cookie` and
+	 * off-origin `Location`).
+	 */
+	trusted?: boolean;
 }
 
 export const pluginPublicRouteAcknowledgementSchema = z.array(routeNameSchema);

@@ -5399,7 +5399,7 @@ export class EmDashRuntime {
 		if (trustedPlugin) {
 			const route = trustedPlugin.routes[routeKey];
 			if (!route) return null;
-			return buildRouteMeta(route);
+			return { ...buildRouteMeta(route), trusted: true };
 		}
 
 		// Check sandboxed plugin route metadata cache
