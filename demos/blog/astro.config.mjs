@@ -3,6 +3,7 @@ import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
+import { duanapMembersPlugin } from "./member-plugin/index.js";
 
 export default defineConfig({
 	output: "server",
@@ -26,6 +27,8 @@ export default defineConfig({
 				directory: "./uploads",
 				baseUrl: "/_emdash/api/media/file",
 			}),
+			// Phase 5 会员体系 POC：Native 插件（同进程，Cookie/页面注入/SSR 直连）
+			plugins: [duanapMembersPlugin()],
 		}),
 	],
 	// Fonts come from the system stack defined in src/styles/theme.css

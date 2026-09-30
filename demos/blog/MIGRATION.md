@@ -71,9 +71,19 @@
 - 已验证的 API 事实：create 只收 draft（`data.item.id` 返回形状）；publish 是独立端点；评论字段是 `authorName/authorEmail/body`（email 必填，迁移用 `old-<id>@migrated.duanap.cn` 占位）；byline 引用需运行时解析 ULID（seed id 只是引用键）
 
 ### Phase 4 — 生活/作品/静态页迁移（✅ 页面骨架已完成；真实数据替换占位时复用导入脚本）
-### Phase 5 — 会员与互动（决策点）
-- 评论已原生；旧评论数据导入 `POST /_emdash/api/comments`
-- QQ 登录/点赞/收藏/留言墙：评估 EmDash 插件化（参考 `packages/plugins/plugin-forms`）或继续 Fastify 并行
+### Phase 5 — 会员与互动（**决策已定：方案 B，EmDash Native 插件**，2026-10-01 用户拍板）
+- **可行性 spike 已完成，三个关键能力全部实测通过**（POC：`member-plugin/index.ts` + `/poc` 验证页）：
+  1. ✅ **公开带 Cookie 路由**：Native 插件（descriptor `format:"native"` + `definePlugin`）路由挂 `/_emdash/api/plugins/{id}/*`，`public:true` + `response:"raw"` + `pluginResponse({body:{kind:"text",value}})` 可读写 Cookie/重定向。**沙箱插件永远拿不到 Cookie/Set-Cookie，必须 Native**
+  2. ✅ **页面注入**：`page:fragments` hook（capability `hooks.page-fragments:register`）向所有公开页面注入 inline/external script 和 HTML（Base.astro 的 EmDashHead/BodyStart/End 已渲染）
+  3. ✅ **SSR 会员上下文**：同进程直接 import 插件模块导出的辅助函数；ctx 在 hook/route 捕获到模块级变量复用（Node 部署安全）。**页面导入说明符必须与虚拟模块一致**（Vite 根相对 `/member-plugin/index.ts`），否则双实例状态不共享
+- 实测坑：raw 响应 body 是 `{kind:"text"|"bytes", value}` tagged 形式；存储 `orderBy:{field:"dir"}` 对象形式且字段必须已声明索引；**Native 插件改动不热更，需重启 dev**；`plugin:activate` dev 下不保证触发（用 page:fragments/路由兜底捕获 ctx）；raw 公开路由 `location` 头默认限制同源（跨域回调桥需查 `allowExternalLocation`）
+- 实施子阶段（每步落地后下线对应旧 Fastify 能力）：
+  - **5.1** QQ OAuth 插件：state 存 ctx.kv + `auth/qq/start|callback` 公开路由 + members/identities/sessions 存储集合 + 登录岛（复用旧站 callback-bridge 双域机制；QQ secret 用 emdash secrets 管理）
+  - **5.2** 留言墙：`messages` 集合 + 公开提交路由 + 弹幕墙页面（审核用 EmDash 后台）
+  - **5.3** 点赞/收藏：插件存储 + 卡片岛（SSR 初始态 + 客户端切换）
+  - **5.4** 会员中心页 + 旧 Fastify 退役
+- 会员数据迁移：members/identities/likes/favorites 按映射表导入插件存储（content 目标 id 用 `.migration/mapping.json` 换算）
+- 评论已原生；旧评论数据导入 `POST /_emdash/api/comments`（占位 email `old-<id>@migrated.duanap.cn`）
 ### Phase 6 — 部署切换（等用户明确指令）
 - 前置：**雷池 WAF 放行本机出口 IP**（上次部署失败原因，需人工在控制台操作）
 - 服务器 `/srv/apps/duanap/blog-emdash` 发布目录 + systemd `blog-emdash.service`（端口 4322）+ 独立 `data/`、`uploads/` + `EMDASH_ENCRYPTION_KEY`（备份！）

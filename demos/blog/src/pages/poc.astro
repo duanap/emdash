@@ -1,0 +1,83 @@
+---
+/**
+ * Phase 5 POC 验证页：临时页面，验证完毕后删除。
+ * ① SSR 直连插件模块（导入其导出函数）
+ * ② page:fragments 注入（本页 body 应带 data-poc-plugin 属性，由脚本写入）
+ * ③ 插件存储读数（经捕获的 ctx）
+ */
+import Base from "../layouts/Base.astro";
+// 与 astro.config 虚拟模块相同的导入说明符（Vite 根相对），
+// 确保和插件实例共享同一个模块状态（capturedCtx）
+import { getPocMemberCount, isPocActive } from "/member-plugin/index.ts";
+
+const active = isPocActive();
+const memberCount = active ? await getPocMemberCount() : -1;
+---
+
+<Base title="会员插件 POC">
+	<section class="poc">
+		<h1>会员插件 POC</h1>
+		<dl>
+			<dt>插件 ctx 捕获</dt>
+			<dd id="poc-active">{active ? "✅ 已激活" : "❌ 未激活"}</dd>
+			<dt>存储会员数（SSR 直读）</dt>
+			<dd id="poc-count">{memberCount >= 0 ? memberCount : "未激活"}</dd>
+			<dt>page:fragments 注入</dt>
+			<dd id="poc-fragment">见下方脚本检测结果</dd>
+		</dl>
+		<p class="hint">
+			路由测试：
+			<code>GET /_emdash/api/plugins/duanap-members/ping</code>
+			（Cookie 读写）、
+			<code>POST /_emdash/api/plugins/duanap-members/members/add</code>
+			（存储写入）
+		</p>
+	</section>
+</Base>
+
+<script>
+	// page:fragments 注入的脚本会把 <html data-poc-plugin> 置位；
+	// 这里读取并显示，验证注入链路。
+	const root = document.documentElement;
+	const el = document.getElementById("poc-fragment");
+	if (el) {
+		el.textContent =
+			root.dataset.pocPlugin === "duanap-members" ? "✅ 已注入" : "❌ 未注入";
+	}
+</script>
+
+<style>
+	.poc {
+		max-width: var(--content-width);
+		margin: 0 auto;
+		padding: var(--spacing-8) var(--spacing-6) var(--spacing-16);
+	}
+
+	h1 {
+		font-size: var(--font-size-3xl);
+		margin-bottom: var(--spacing-8);
+	}
+
+	dl {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: var(--spacing-3) var(--spacing-6);
+		margin-bottom: var(--spacing-8);
+	}
+
+	dt {
+		font-weight: 500;
+		color: var(--color-text-secondary);
+	}
+
+	.hint {
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+	}
+
+	.hint code {
+		background: var(--color-surface);
+		padding: 2px 6px;
+		border-radius: var(--radius);
+	}
+</style>
