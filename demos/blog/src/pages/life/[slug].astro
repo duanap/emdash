@@ -16,8 +16,15 @@ import PostCard from "../../components/PostCard.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
 import { formatDateZh, toDate } from "../../utils/date";
+import { lookupLegacyRedirect } from "../../utils/legacy-redirects";
 
 const slug = decodeSlug(Astro.params.slug);
+
+// 旧站用数字 ID（/life/12），新站用 slug；命中映射就 301，省掉一次无用的内容查询
+const legacyTarget = slug ? lookupLegacyRedirect(`/life/${slug}`) : null;
+if (legacyTarget) {
+	return Astro.redirect(legacyTarget, 301);
+}
 
 if (!slug) {
 	return Astro.rewrite("/404");

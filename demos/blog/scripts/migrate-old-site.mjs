@@ -39,6 +39,7 @@ const token = arg("--token");
 const newDbPath = arg("--new-db") ? resolve(arg("--new-db")) : null;
 const dryRun = flag("--dry-run");
 const outDir = resolve(arg("--out", "./.migration"));
+const redirectsOut = resolve(arg("--redirects-out", "./src/data/legacy-redirects.json"));
 
 if (!existsSync(oldDbPath)) {
 	console.error(`找不到旧库：${oldDbPath}\n（真实数据到位前可先用 scripts/make-old-site-fixture.mjs 造夹具）`);
@@ -624,6 +625,10 @@ for (const [oldId, entry] of Object.entries(idMap.life)) {
 	}
 }
 
+// 站点静态读取这份映射（src/utils/legacy-redirects.ts），缺失时为空对象即可
+writeFileSync(redirectsOut, `${JSON.stringify(redirects, null, "\t")}\n`, "utf8");
+report.warnings.push(`旧地址映射已写入 ${redirectsOut}（${Object.keys(redirects).length} 条）`);
+
 writeFileSync(
 	resolve(outDir, "id-map.json"),
 	`${JSON.stringify({ generatedAt: new Date().toISOString(), site, idMap, redirects }, null, "\t")}\n`,
@@ -677,4 +682,5 @@ old.close();
 console.log(`\n${summary.join(" | ")}`);
 console.log(`映射表：${resolve(outDir, "id-map.json")}`);
 console.log(`报告：${resolve(outDir, "report.txt")}`);
+console.log(`旧地址映射：${redirectsOut}`);
 if (report.failures.length > 0) process.exit(1);

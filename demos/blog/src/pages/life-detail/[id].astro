@@ -1,0 +1,17 @@
+---
+/**
+ * 旧站生活记录地址 `/life-detail/:id` 的 301。
+ *
+ * 旧站同时有 `/life/:id` 与 `/life-detail/:id` 两个入口指向同一篇，
+ * 后者在这里处理；前者与新站的 `/life/[slug]` 同层，因此在那个路由里查映射表。
+ */
+import { lookupLegacyRedirect } from "../../utils/legacy-redirects";
+
+const target = lookupLegacyRedirect(`/life-detail/${Astro.params.id}`);
+
+if (target) {
+	return Astro.redirect(target, 301);
+}
+
+return Astro.rewrite("/404");
+---

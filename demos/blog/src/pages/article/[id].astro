@@ -1,0 +1,17 @@
+---
+/**
+ * 旧站文章地址 `/article/:id` 的 301。
+ *
+ * 旧站文章详情是数字 ID（`/article/12`），新站是 slug（`/posts/hello`）。
+ * 映射由迁移脚本产出；没有映射就 404，不做"猜目标"的跳转。
+ */
+import { lookupLegacyRedirect } from "../../utils/legacy-redirects";
+
+const target = lookupLegacyRedirect(`/article/${Astro.params.id}`);
+
+if (target) {
+	return Astro.redirect(target, 301);
+}
+
+return Astro.rewrite("/404");
+---

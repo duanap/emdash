@@ -19,6 +19,9 @@ export default defineConfig({
 	redirects: {
 		"/pages/about": "/about",
 		"/pages/friends": "/friends",
+		// 旧站的列表入口与会员中心（详情页的数字 ID 由 /article/[id] 等路由处理）
+		"/articles": "/posts",
+		"/user": "/member",
 	},
 	image: {
 		layout: "constrained",
