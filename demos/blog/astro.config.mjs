@@ -5,6 +5,11 @@ import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
 import { duanapMembersPlugin } from "./member-plugin/index.js";
 
+// 数据库与上传目录都可以用环境变量覆盖：生产上把数据放在仓库之外的固定路径，
+// 升级只替换 dist，数据不受影响。默认值保持本地开发的样子。
+const databaseUrl = process.env.EMDASH_DATABASE_URL ?? "file:./data.db";
+const uploadsDirectory = process.env.EMDASH_UPLOADS_DIR ?? "./uploads";
+
 export default defineConfig({
 	output: "server",
 	adapter: node({
@@ -22,9 +27,9 @@ export default defineConfig({
 	integrations: [
 		react(),
 		emdash({
-			database: sqlite({ url: "file:./data.db" }),
+			database: sqlite({ url: databaseUrl }),
 			storage: local({
-				directory: "./uploads",
+				directory: uploadsDirectory,
 				baseUrl: "/_emdash/api/media/file",
 			}),
 			// Phase 5 会员体系：Native 插件（同进程，Cookie/页面注入/SSR 直连）
