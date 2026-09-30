@@ -150,6 +150,48 @@ describe("raw plugin route responses", () => {
 		expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([0, 255, 10]));
 	});
 
+	it("forwards Set-Cookie for trusted plugins, one header per cookie", async () => {
+		const cookies = [
+			"dm_session=abc123; Path=/; Max-Age=604800; SameSite=Lax; HttpOnly",
+			"dm_state=; Path=/; Max-Age=0; SameSite=Lax",
+		];
+		const wire = await pluginRouteResponseToWire(
+			pluginResponse({
+				status: 302,
+				headers: [
+					["location", "https://graph.qq.com/oauth2.0/authorize"],
+					["set-cookie", cookies[0]!],
+					["set-cookie", cookies[1]!],
+					["x-plugin", "report"],
+				],
+				body: null,
+			}),
+			{ allowExternalLocation: true, allowSetCookie: true },
+		);
+
+		expect(wire.status).toBe(302);
+		expect(wire.headers.filter(([name]) => name === "set-cookie").map(([, value]) => value)).toEqual(
+			cookies,
+		);
+		expect(wire.headers).toContainEqual(["location", "https://graph.qq.com/oauth2.0/authorize"]);
+		expect(wire.headers.some(([name]) => name === "x-plugin")).toBe(false);
+	});
+
+	it("keeps public raw redirects on-origin unless the route is trusted", async () => {
+		const redirect = pluginResponse({
+			status: 302,
+			headers: { location: "https://graph.qq.com/oauth2.0/authorize" },
+			body: null,
+		});
+
+		await expect(
+			pluginRouteResponseToWire(redirect, { publicRequestUrl: "https://blog.example/login" }),
+		).rejects.toThrow("site origin");
+		await expect(
+			pluginRouteResponseToWire(redirect, { allowExternalLocation: true }),
+		).resolves.toMatchObject({ status: 302 });
+	});
+
 	it.each([
 		"text/html",
 		"application/javascript",

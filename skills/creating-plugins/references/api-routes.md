@@ -135,6 +135,11 @@ The response header allowlist is `Accept-Ranges`, `Content-Disposition`, `Conten
 `Retry-After`. The host removes other plugin-supplied headers, adds security headers, and applies the
 route-owned cache policy.
 
+Trusted (in-process) plugins get two extra allowances on raw routes: every `Set-Cookie` header is
+forwarded as its own header, and `Location` may point off-origin. That is what a cookie session or an
+OAuth redirect needs. Sandboxed plugins get neither — their code is untrusted, and a plugin-supplied
+cookie could shadow host session cookies.
+
 Raw routes cannot return active same-origin types, including HTML, JavaScript or ECMAScript, XHTML,
 SVG, XML, CSS, WebAssembly, `multipart/related`, and `multipart/x-mixed-replace`. A raw route also
 cannot back an MCP tool. Do not return or throw a WHATWG `Response`; it is not the portable response
