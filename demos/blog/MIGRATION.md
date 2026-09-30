@@ -20,6 +20,17 @@
 
 **尚未做（后续会话）**：真实内容迁移（旧 SQLite → 新站，含 Markdown→Portable Text 转换与 ID 映射表）、部署切换（Phase 6 的最后一步：切流量，等用户指令 + 雷池 WAF 放行）。Phase 5（会员/QQ 登录/点赞/收藏/留言墙）与 Phase 6 的**准备工作**已完成：部署 runbook 见 `night-work/DEPLOY.md`，本机已用数据库副本跑通生产模式冒烟（13/13，含 dev 端点在生产返回 403）。
 
+## Phase 3 迁移映射（进行中）
+
+字段与分类法的完整映射表见 `night-work/PHASE3-MAPPING.md`（依据旧站 Drizzle schema 与新站 seed 逐列核对）。要点：
+
+- **URL 保持**：新站 `/posts/{slug}`、`/life/{slug}` 与旧站一致；旧站只有 `/article/:id`、`/life/:id`、`/life-detail/:id` 三个数字入口需要 301 到新 slug（旧站**没有**作品详情路由）。
+- **正文**：旧站 Markdown → Portable Text（`scripts/lib/markdown-to-portable-text.ts`，18 项回归）。
+- **图片**：旧站 `/uploads/*` 经媒体 API 入库，正文与封面里的旧路径统一改写。
+- **会员与互动**：`members`/`member_identities` 进插件存储（`qqOpenid` 取旧站 provider_subject），`member_likes`/`member_favorites` 进 `activity`（`article→posts` 等目标类型映射 + 数字 ID → 新 ULID 映射）。
+- **评论**：`published→approved`、`pending→pending`、`hidden→spam`；有会员的评论用会员派生身份邮箱（与 Phase 5.4c 一致），自动归到会员名下。
+- **不迁移**：管理员密码与会话（新站用 passkey 重建）、旧站浏览量、旧站作品详情（不存在）。
+
 ## 总体策略
 
 **在 fork 内开发（官方支持的工作流）**：站点位于 `demos/blog`，通过 `workspace:*` 链接 `emdash` 核心包——core 有问题可以直接改源码，且 `demos/` 目录上游几乎不动，以后同步上游不会冲突。目前 fork 的 main 除 demos/ 外与上游无分叉，同步上游仍可 ff-only。
