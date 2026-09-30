@@ -1,5 +1,5 @@
 /**
- * duanap-members — 会员体系 Native 插件（Phase 5.1：QQ 登录）
+ * duanap-members — 会员体系 Native 插件（Phase 5.1：QQ 登录；Phase 5.3：点赞/收藏）
  *
  * 在宿主进程内实现旧站 blog-front 的会员域：
  *   - QQ OAuth 登录（state 双校验：Cookie + KV，10 分钟一次性）
@@ -12,6 +12,8 @@
  *   GET  auth/qq/start      生成 state，HTML 跳转页到 graph.qq.com
  *   GET  auth/qq/callback   code 换 openid/资料，建会员+会话，302 回 returnTo
  *   POST auth/logout        登出
+ *   GET  activity/state     点赞/收藏计数 + 当前会员的开关状态
+ *   POST activity/toggle    点赞/收藏开关（幂等，需会员会话）
  *
  * 配置（管理后台 → 插件设置）：qqClientId / qqClientSecret(secret) /
  * qqCallbackUrl / siteOrigin（returnTo 白名单基址，生产 https://blog.duanap.cn）
@@ -21,7 +23,7 @@ import { definePlugin, pluginResponse } from "emdash";
 import type { PluginDescriptor, PluginContext, ResolvedPlugin, RouteContext } from "emdash";
 
 const PLUGIN_ID = "duanap-members";
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 export const SESSION_COOKIE = "dm_session";
 export const STATE_COOKIE = "dm_state";
@@ -65,11 +67,14 @@ export function duanapMembersPlugin(): PluginDescriptor {
 		version: VERSION,
 		entrypoint: "/member-plugin/index.ts",
 		format: "native",
-		capabilities: ["network:request", "hooks.page-fragments:register"],
+		capabilities: ["network:request", "content:read", "hooks.page-fragments:register"],
 		allowedHosts: ["graph.qq.com"],
 		storage: {
 			members: { indexes: ["status"], uniqueIndexes: ["qqOpenid"] },
 			sessions: { indexes: ["memberId"] },
+			// 点赞与收藏共用一张表：kind 区分，记录 id 为 kind:openid:type:id，
+			// 主键即唯一约束，重复点赞天然幂等（无需复合唯一索引）
+			activity: { indexes: ["targetId", "targetType", "kind", "memberOpenid"] },
 		},
 	};
 }
@@ -80,12 +85,15 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 	return definePlugin({
 		id: PLUGIN_ID,
 		version: VERSION,
-		capabilities: ["network:request", "hooks.page-fragments:register"],
+		capabilities: ["network:request", "content:read", "hooks.page-fragments:register"],
 		allowedHosts: ["graph.qq.com"],
 
 		storage: {
 			members: { indexes: ["status"] as const, uniqueIndexes: ["qqOpenid"] as const },
 			sessions: { indexes: ["memberId"] as const },
+			activity: {
+				indexes: ["targetId", "targetType", "kind", "memberOpenid"] as const,
+			},
 		},
 
 		admin: {
@@ -259,6 +267,56 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 					]);
 				},
 			},
+
+			"activity/state": {
+				public: true,
+				methods: ["GET"],
+				request: { body: "none" },
+				handler: async (ctx) => {
+					const url = new URL(ctx.request.url);
+					const targetType = url.searchParams.get("targetType") ?? "";
+					const targetId = url.searchParams.get("targetId") ?? "";
+					if (!isActivityTarget(targetType, targetId)) {
+						return { ok: false, reason: "invalid_target" };
+					}
+					const member = await resolveMemberRecord(ctx.storage, ctx.request);
+					return {
+						ok: true,
+						...decorateActivityState(
+							await readActivityState(ctx, targetType, targetId, member),
+							member,
+						),
+					};
+				},
+			},
+
+			"activity/toggle": {
+				public: true,
+				methods: ["POST"],
+				request: { body: "json" },
+				handler: async (ctx) => {
+					const input = (ctx.input ?? {}) as Record<string, unknown>;
+					const kind: ActivityKind | null =
+						input.kind === "favorite" ? "favorite" : input.kind === "like" ? "like" : null;
+					const targetType = typeof input.targetType === "string" ? input.targetType : "";
+					const targetId = typeof input.targetId === "string" ? input.targetId : "";
+					const action = input.action === "remove" ? "remove" : "add";
+
+					if (!kind || !isActivityTarget(targetType, targetId)) {
+						return { ok: false, reason: "invalid_target" };
+					}
+
+					const member = await resolveMemberRecord(ctx.storage, ctx.request);
+					if (!member) return { ok: false, reason: "unauthorized" };
+
+					if (!(await isPublishedTarget(ctx, targetType, targetId))) {
+						return { ok: false, reason: "not_found" };
+					}
+
+					const result = await toggleActivity(ctx, kind, targetType, targetId, member, action);
+					return { ok: true, kind, active: result.active, count: result.count };
+				},
+			},
 		},
 	});
 }
@@ -428,10 +486,11 @@ async function resolveMemberFromRequest(ctx: RouteContext): Promise<PublicMember
 	return resolveMemberFromCookie(ctx.storage, ctx.request);
 }
 
-async function resolveMemberFromCookie(
+/** Cookie 会话 → 会员记录（含 openid；点赞/收藏按 openid 归属） */
+async function resolveMemberRecord(
 	storage: PluginContext["storage"],
 	request: Request,
-): Promise<PublicMember | null> {
+): Promise<Member | null> {
 	const sessionId = readCookie(request.headers.get("cookie"), SESSION_COOKIE);
 	if (!sessionId) return null;
 	const session = (await storage.sessions.get(sessionId)) as Session | null;
@@ -447,6 +506,15 @@ async function resolveMemberFromCookie(
 	if (found.items.length === 0) return null;
 	const member = found.items[0]!.data as Member;
 	if (member.status !== "active") return null;
+	return member;
+}
+
+async function resolveMemberFromCookie(
+	storage: PluginContext["storage"],
+	request: Request,
+): Promise<PublicMember | null> {
+	const member = await resolveMemberRecord(storage, request);
+	if (!member) return null;
 	return { displayName: member.displayName, avatarUrl: member.avatarUrl };
 }
 
@@ -527,6 +595,102 @@ function rawJson(status: number, payload: unknown, cookies: string[]) {
 	});
 }
 
+// ─── 点赞/收藏（Phase 5.3，语义对齐旧站 member_likes/member_favorites） ──
+
+export type ActivityKind = "like" | "favorite";
+
+export interface ActivityState {
+	likeCount: number;
+	favoriteCount: number;
+	liked: boolean;
+	favorited: boolean;
+}
+
+/** 可点赞/收藏的目标集合（旧站 article/life/project 对应 EmDash 的这三个集合） */
+const ACTIVITY_TARGET_TYPES = new Set(["posts", "life", "projects"]);
+
+function isActivityTarget(targetType: string, targetId: string): boolean {
+	return ACTIVITY_TARGET_TYPES.has(targetType) && targetId.length > 0 && targetId.length <= 64;
+}
+
+/** 记录 id 做成确定性主键：重复点赞是 upsert，取消是 delete，无需复合唯一索引 */
+function activityRecordId(
+	kind: ActivityKind,
+	openid: string,
+	targetType: string,
+	targetId: string,
+): string {
+	return `${kind}:${openid}:${targetType}:${targetId}`;
+}
+
+async function isPublishedTarget(
+	ctx: PluginContext,
+	targetType: string,
+	targetId: string,
+): Promise<boolean> {
+	if (!ctx.content) return true;
+	const item = await ctx.content.get(targetType, targetId);
+	return item?.status === "published";
+}
+
+async function readActivityState(
+	ctx: PluginContext,
+	targetType: string,
+	targetId: string,
+	member: Member | null,
+): Promise<ActivityState> {
+	const [likeCount, favoriteCount] = await Promise.all([
+		ctx.storage.activity.count({ targetType, targetId, kind: "like" }),
+		ctx.storage.activity.count({ targetType, targetId, kind: "favorite" }),
+	]);
+
+	let liked = false;
+	let favorited = false;
+	if (member) {
+		const [like, favorite] = await Promise.all([
+			ctx.storage.activity.get(activityRecordId("like", member.qqOpenid, targetType, targetId)),
+			ctx.storage.activity.get(
+				activityRecordId("favorite", member.qqOpenid, targetType, targetId),
+			),
+		]);
+		liked = like !== null;
+		favorited = favorite !== null;
+	}
+
+	return { likeCount, favoriteCount, liked, favorited };
+}
+
+function decorateActivityState(state: ActivityState, member: Member | null) {
+	return {
+		...state,
+		viewer: member ? { displayName: member.displayName, avatarUrl: member.avatarUrl } : null,
+	};
+}
+
+async function toggleActivity(
+	ctx: PluginContext,
+	kind: ActivityKind,
+	targetType: string,
+	targetId: string,
+	member: Member,
+	action: "add" | "remove",
+): Promise<{ active: boolean; count: number }> {
+	const id = activityRecordId(kind, member.qqOpenid, targetType, targetId);
+	if (action === "add") {
+		await ctx.storage.activity.put(id, {
+			kind,
+			memberOpenid: member.qqOpenid,
+			targetType,
+			targetId,
+			createdAt: new Date().toISOString(),
+		});
+	} else {
+		await ctx.storage.activity.delete(id);
+	}
+	const count = await ctx.storage.activity.count({ targetType, targetId, kind });
+	return { active: action === "add", count };
+}
+
 // ─── SSR 辅助（站点页面/布局直接导入） ──────────────────────────────
 
 export interface PublicMember {
@@ -541,6 +705,24 @@ export interface PublicMember {
 export async function getMemberFromRequest(request: Request): Promise<PublicMember | null> {
 	if (!capturedCtx) return null;
 	return resolveMemberFromCookie(capturedCtx.storage, request);
+}
+
+/**
+ * 站点页面 SSR：当前访客的点赞/收藏开关状态。
+ *
+ * **匿名访客返回 null 且不产生任何查询**（页面热点路径不为未登录用户付费）；
+ * 计数由客户端调 `activity/state` 拉取。插件未激活同样返回 null。
+ */
+export async function getViewerActivity(
+	request: Request,
+	targetType: string,
+	targetId: string,
+): Promise<{ liked: boolean; favorited: boolean } | null> {
+	if (!capturedCtx || !isActivityTarget(targetType, targetId)) return null;
+	const member = await resolveMemberRecord(capturedCtx.storage, request);
+	if (!member) return null;
+	const state = await readActivityState(capturedCtx, targetType, targetId, member);
+	return { liked: state.liked, favorited: state.favorited };
 }
 
 /** 会员插件是否已激活（ctx 已捕获） */

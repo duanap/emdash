@@ -1,0 +1,213 @@
+---
+/**
+ * 会员点赞/收藏岛（Phase 5.3）。
+ *
+ * SSR 只注入**当前会员**的开关状态（匿名访客不产生任何插件查询，页面热点路径
+ * 不为未登录访客付费）；计数由客户端调用 `activity/state` 拉取一次，切换时用
+ * 服务端返回的计数校正。
+ */
+import { getViewerActivity } from "../../member-plugin/index.js";
+
+interface Props {
+	targetType: "posts" | "life" | "projects";
+	targetId: string;
+	class?: string;
+}
+
+const { targetType, targetId, class: className } = Astro.props;
+const viewer = await getViewerActivity(Astro.request, targetType, targetId);
+const endpointBase = "/_emdash/api/plugins/duanap-members";
+---
+
+<div
+	class:list={["member-activity", className]}
+	data-member-activity
+	data-endpoint-base={endpointBase}
+	data-target-type={targetType}
+	data-target-id={targetId}
+>
+	<button
+		type="button"
+		class="activity-btn"
+		data-kind="like"
+		aria-pressed={viewer?.liked ? "true" : "false"}
+	>
+		<span class="activity-icon" aria-hidden="true">♥</span>
+		<span class="activity-label">点赞</span>
+		<span class="activity-count" data-count="like" aria-live="polite">·</span>
+	</button>
+	<button
+		type="button"
+		class="activity-btn"
+		data-kind="favorite"
+		aria-pressed={viewer?.favorited ? "true" : "false"}
+	>
+		<span class="activity-icon" aria-hidden="true">★</span>
+		<span class="activity-label">收藏</span>
+		<span class="activity-count" data-count="favorite" aria-live="polite">·</span>
+	</button>
+	<p class="activity-status" role="status" aria-live="polite" hidden></p>
+</div>
+
+<script>
+	type Kind = "like" | "favorite";
+
+	/** 宿主信封 { success, data } 会再包一层 handler 返回值 */
+	function payloadOf(json: unknown): Record<string, unknown> | null {
+		const outer = json as { data?: { data?: unknown } | unknown } | null;
+		const data = (outer?.data as { data?: unknown } | undefined)?.data ?? outer?.data;
+		return typeof data === "object" && data !== null ? (data as Record<string, unknown>) : null;
+	}
+
+	const roots = document.querySelectorAll<HTMLElement>("[data-member-activity]");
+
+	for (const root of roots) {
+		const base = root.dataset.endpointBase;
+		const targetType = root.dataset.targetType;
+		const targetId = root.dataset.targetId;
+		if (!base || !targetType || !targetId) continue;
+
+		const status = root.querySelector<HTMLElement>(".activity-status");
+		const buttons = new Map<Kind, HTMLButtonElement>();
+		for (const button of root.querySelectorAll<HTMLButtonElement>("[data-kind]")) {
+			buttons.set(button.dataset.kind as Kind, button);
+		}
+
+		const countEl = (kind: Kind) => root.querySelector<HTMLElement>(`[data-count="${kind}"]`);
+
+		function setCount(kind: Kind, count: number) {
+			const el = countEl(kind);
+			if (el) el.textContent = String(count);
+		}
+
+		function setPressed(kind: Kind, active: boolean) {
+			buttons.get(kind)?.setAttribute("aria-pressed", active ? "true" : "false");
+		}
+
+		function showStatus(message: string) {
+			if (!status) return;
+			status.textContent = message;
+			status.hidden = message.length === 0;
+		}
+
+		void (async () => {
+			try {
+				const res = await fetch(
+					`${base}/activity/state?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`,
+				);
+				const payload = payloadOf(await res.json());
+				if (!payload?.ok) return;
+				setCount("like", Number(payload.likeCount ?? 0));
+				setCount("favorite", Number(payload.favoriteCount ?? 0));
+				setPressed("like", payload.liked === true);
+				setPressed("favorite", payload.favorited === true);
+			} catch {
+				// 计数失败保持占位，不影响阅读
+			}
+		})();
+
+		for (const [kind, button] of buttons) {
+			button.addEventListener("click", async () => {
+				const active = button.getAttribute("aria-pressed") === "true";
+				showStatus("");
+				button.disabled = true;
+				try {
+					const res = await fetch(`${base}/activity/toggle`, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							"X-EmDash-Request": "1",
+						},
+						body: JSON.stringify({
+							kind,
+							targetType,
+							targetId,
+							action: active ? "remove" : "add",
+						}),
+					});
+					const payload = payloadOf(await res.json());
+					if (payload?.ok) {
+						setPressed(kind, payload.active === true);
+						setCount(kind, Number(payload.count ?? 0));
+						return;
+					}
+					if (payload?.reason === "unauthorized") {
+						const returnTo = location.pathname + location.search;
+						location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+						return;
+					}
+					showStatus(payload?.reason === "not_found" ? "内容不存在或未发布。" : "操作失败，请稍后重试。");
+				} catch {
+					showStatus("网络异常，请稍后重试。");
+				} finally {
+					button.disabled = false;
+				}
+			});
+		}
+	}
+</script>
+
+<style>
+	.member-activity {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--spacing-3);
+		margin: var(--spacing-6) 0;
+	}
+
+	.activity-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		padding: var(--spacing-2) var(--spacing-4);
+		border: 1px solid var(--color-border);
+		border-radius: 999px;
+		background: var(--color-surface);
+		color: var(--color-text-secondary);
+		font: inherit;
+		font-size: var(--font-size-sm);
+		cursor: pointer;
+		transition:
+			color var(--transition-fast),
+			border-color var(--transition-fast),
+			background var(--transition-fast);
+	}
+
+	.activity-btn:hover:not(:disabled) {
+		color: var(--color-text);
+		border-color: var(--color-brand);
+	}
+
+	.activity-btn:disabled {
+		opacity: 0.6;
+		cursor: progress;
+	}
+
+	.activity-btn:focus-visible {
+		outline: 2px solid var(--color-brand-ring);
+		outline-offset: 2px;
+	}
+
+	.activity-btn[aria-pressed="true"] {
+		color: var(--color-accent);
+		border-color: var(--color-accent);
+		background: var(--color-bg-subtle);
+	}
+
+	.activity-icon {
+		font-size: 1em;
+		line-height: 1;
+	}
+
+	.activity-count {
+		color: var(--color-muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.activity-status {
+		flex-basis: 100%;
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+</style>

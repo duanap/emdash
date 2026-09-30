@@ -8,6 +8,7 @@ import {
 } from "emdash";
 import { Image, PortableText } from "emdash/ui";
 import Base from "../../layouts/Base.astro";
+import MemberActivity from "../../components/MemberActivity.astro";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
 
 const slug = decodeSlug(Astro.params.slug);
@@ -177,6 +178,8 @@ const screenshots = Array.isArray(project.data.screenshots)
 					)
 				}
 			</div>
+
+			<MemberActivity targetType="projects" targetId={project.data.id} />
 
 			<aside class="article-sidebar" />
 		</div>
