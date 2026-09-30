@@ -53,3 +53,31 @@
 .nav-admin {
 	margin-inline-start: var(--spacing-5);
 }
+
+/* EmDash's comment form ships `.dark`-class dark styles and Astro-scoped
+   selectors (`.ec-comment-form-field[cid] input[cid]`), which outrank anything
+   declared here. This theme switches with light-dark() tokens, so the fields
+   follow the tokens instead — hence the important flags on the declarations
+   that override the component's hardcoded light palette. */
+.ec-comment-form-field input,
+.ec-comment-form-field textarea {
+	background: var(--color-bg) !important;
+	color: var(--color-text) !important;
+	border-color: var(--color-border) !important;
+}
+
+.ec-comment-form-field input:focus-visible,
+.ec-comment-form-field textarea:focus-visible {
+	outline: 2px solid var(--color-brand-ring);
+	outline-offset: 2px;
+}
+
+.ec-comment-form-submit {
+	background: var(--color-brand) !important;
+	color: var(--color-on-brand) !important;
+	border-radius: var(--radius);
+}
+
+.ec-comment-form-submit:hover:not(:disabled) {
+	background: var(--color-brand-hover);
+}

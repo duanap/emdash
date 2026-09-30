@@ -59,6 +59,7 @@ const formatDate = (value: string) =>
 		<section class="wall-form" aria-labelledby="wall-form-title">
 			<h2 class="section-title" id="wall-form-title">写留言</h2>
 			<CommentForm collection="wall" contentId={entry.data.id} />
+			<p class="form-hint">邮箱只用于核对留言，不会公开展示。</p>
 		</section>
 
 		<section class="wall-list" aria-labelledby="wall-list-title">
@@ -123,6 +124,12 @@ const formatDate = (value: string) =>
 		font-size: var(--font-size-xl);
 		font-weight: var(--font-weight-heading);
 		margin-bottom: var(--spacing-4);
+	}
+
+	.form-hint {
+		margin-top: var(--spacing-3);
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
 	}
 
 	.wall-cards {
