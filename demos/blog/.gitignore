@@ -14,3 +14,4 @@ data.db
 emdash-env.d.ts
 # 迁移产物（旧id->新id 映射）
 .migration
+.migration-fixture
