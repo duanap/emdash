@@ -999,6 +999,9 @@ const isLoggedIn = !!Astro.locals.user;
 			// widget）还没有 i18n 支持，字符串硬编码英文。这里在 DOM 层把
 			// 已知字符串替换为中文，仅作用于相关容器内。
 			// 待上游提供 i18n 后移除（跟踪见 demos/blog/MIGRATION.md）。
+			const COMMENT_COUNT_PATTERN = /^(\d+) Comments$/;
+			const ARCHIVE_MONTH_PATTERN =
+				/^(January|February|March|April|May|June|July|August|September|October|November|December) (\d{4})$/;
 			(function () {
 				const SCOPE = ".ec-comments, .ec-comment-form, .widget-search, .widget-archives";
 				const EXACT: Record<string, string> = {
@@ -1013,7 +1016,6 @@ const isLoggedIn = !!Astro.locals.user;
 					"1 Comment": "1 条评论",
 					Like: "赞",
 				};
-				const PATTERN = /^(\d+) Comments$/;
 				const MONTHS = [
 					"January",
 					"February",
@@ -1028,15 +1030,13 @@ const isLoggedIn = !!Astro.locals.user;
 					"November",
 					"December",
 				];
-				const MONTH_PATTERN =
-					/^(January|February|March|April|May|June|July|August|September|October|November|December) (\d{4})$/;
 
 				function zhFor(text: string): string | null {
 					const exact = EXACT[text];
 					if (exact) return exact;
-					const comments = PATTERN.exec(text);
+					const comments = COMMENT_COUNT_PATTERN.exec(text);
 					if (comments) return `${comments[1]} 条评论`;
-					const month = MONTH_PATTERN.exec(text);
+					const month = ARCHIVE_MONTH_PATTERN.exec(text);
 					if (month) {
 						return `${month[2]} 年 ${MONTHS.indexOf(month[1]) + 1} 月`;
 					}

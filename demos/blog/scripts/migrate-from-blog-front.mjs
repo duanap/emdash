@@ -39,6 +39,9 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { markdownToPortableText } from "emdash/client";
 
+const FILENAME_SEPARATOR_PATTERN = /[\\/]/;
+const OLD_UPLOADS_PREFIX_PATTERN = /^\/uploads\//;
+
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const MIGRATION_DIR = join(scriptDir, "..", ".migration");
 
@@ -134,11 +137,11 @@ async function api(method, path, body, isForm = false) {
 	const headers = { "X-EmDash-Request": "1" };
 	if (token) headers.Authorization = `Bearer ${token}`;
 	if (body && !isForm) headers["Content-Type"] = "application/json";
-	const res = await fetch(`${apiBase}${path}`, {
-		method,
-		headers,
-		body: isForm ? body : body ? JSON.stringify(body) : undefined,
-	});
+	const init = { method, headers };
+	if (body !== undefined && method !== "GET" && method !== "HEAD") {
+		init.body = isForm ? body : JSON.stringify(body);
+	}
+	const res = await fetch(`${apiBase}${path}`, init);
 	const json = await res.json().catch(() => ({}));
 	return { status: res.status, ok: res.ok, json };
 }
@@ -209,7 +212,7 @@ async function uploadMedia(filePath, alt) {
 	const form = new FormData();
 	const bytes = readFileSync(filePath);
 	const ext = filePath.split(".").pop()?.toLowerCase() ?? "webp";
-	form.append("file", new Blob([bytes], { type: `image/${ext === "jpg" ? "jpeg" : ext}` }), filePath.split(/[\\/]/).pop());
+	form.append("file", new Blob([bytes], { type: `image/${ext === "jpg" ? "jpeg" : ext}` }), filePath.split(FILENAME_SEPARATOR_PATTERN).pop());
 	if (alt) form.append("alt", alt);
 	const res = await api("POST", "/_emdash/api/media", form, true);
 	if (!res.ok) {
@@ -295,9 +298,9 @@ async function lifeToEntry(row) {
 }
 
 async function projectToEntry(row) {
-	let screenshots = [];
+	let _screenshots = [];
 	try {
-		screenshots = JSON.parse(row.screenshots ?? "[]");
+		_screenshots = JSON.parse(row.screenshots ?? "[]");
 	} catch {
 		/* ignore */
 	}
@@ -405,7 +408,7 @@ const STAGES = {
 			}
 			// 封面图
 			if (row.cover_image && oldUploads) {
-				const local = join(oldUploads, row.cover_image.replace(/^\/uploads\//, ""));
+				const local = join(oldUploads, row.cover_image.replace(OLD_UPLOADS_PREFIX_PATTERN, ""));
 				if (existsSync(local)) {
 					try {
 						payload.data.featured_image = await uploadMedia(local, row.title);

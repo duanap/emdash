@@ -19,7 +19,7 @@ for (const item of items) {
 	if (!months.has(month)) months.set(month, []);
 	months.get(month)!.push(item);
 }
-const years = [...byYear.keys()].sort((a, b) => b - a);
+const years = [...byYear.keys()].toSorted((a, b) => b - a);
 ---
 
 {

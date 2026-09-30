@@ -43,7 +43,7 @@ export async function getArchiveItems() {
 		})),
 	]
 		.filter((item) => item.date && !Number.isNaN(item.date.getTime()))
-		.sort((a, b) => b.date.getTime() - a.date.getTime());
+		.toSorted((a, b) => b.date.getTime() - a.date.getTime());
 
 	return {
 		items,
