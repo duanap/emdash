@@ -219,14 +219,14 @@ const isLoggedIn = !!Astro.locals.user;
 				</div>
 				<div class="footer-bottom">
 					<p class="footer-copyright">
-						Powered by <a href="https://emdashcms.com">EmDash</a>
+						由 <a href="https://emdashcms.com">EmDash</a> 驱动
 					</p>
 					<div class="theme-switcher">
 						<button
 							type="button"
 							class="theme-btn"
 							data-theme="light"
-							aria-label="Light mode"
+							aria-label="浅色模式"
 						>
 							<svg
 								width="16"
@@ -257,7 +257,7 @@ const isLoggedIn = !!Astro.locals.user;
 							type="button"
 							class="theme-btn"
 							data-theme="dark"
-							aria-label="Dark mode"
+							aria-label="深色模式"
 						>
 							<svg
 								width="16"
@@ -276,7 +276,7 @@ const isLoggedIn = !!Astro.locals.user;
 							type="button"
 							class="theme-btn"
 							data-theme="system"
-							aria-label="System theme"
+							aria-label="跟随系统主题"
 						>
 							<svg
 								width="16"
@@ -995,108 +995,9 @@ const isLoggedIn = !!Astro.locals.user;
 		</script>
 
 		<script>
-			// 停止性方案：EmDash 核心的公开 UI（评论表单/评论列表/搜索/归档
-			// widget）还没有 i18n 支持，字符串硬编码英文。这里在 DOM 层把
-			// 已知字符串替换为中文，仅作用于相关容器内。
-			// 待上游提供 i18n 后移除（跟踪见 demos/blog/MIGRATION.md）。
-			const COMMENT_COUNT_PATTERN = /^(\d+) Comments$/;
-			const ARCHIVE_MONTH_PATTERN =
-				/^(January|February|March|April|May|June|July|August|September|October|November|December) (\d{4})$/;
-			(function () {
-				const SCOPE = ".ec-comments, .ec-comment-form, .widget-search, .widget-archives";
-				const EXACT: Record<string, string> = {
-					Name: "昵称",
-					Email: "邮箱",
-					Comment: "评论",
-					"Post Comment": "发表评论",
-					"Comment submitted!": "评论已提交，感谢参与。",
-					"Comment submitted for review": "评论已提交，等待审核。",
-					"Comment published": "评论已发布。",
-					"No comments yet": "还没有评论",
-					"1 Comment": "1 条评论",
-					Like: "赞",
-				};
-				const MONTHS = [
-					"January",
-					"February",
-					"March",
-					"April",
-					"May",
-					"June",
-					"July",
-					"August",
-					"September",
-					"October",
-					"November",
-					"December",
-				];
-
-				function zhFor(text: string): string | null {
-					const exact = EXACT[text];
-					if (exact) return exact;
-					const comments = COMMENT_COUNT_PATTERN.exec(text);
-					if (comments) return `${comments[1]} 条评论`;
-					const month = ARCHIVE_MONTH_PATTERN.exec(text);
-					if (month) {
-						return `${month[2]} 年 ${MONTHS.indexOf(month[1]) + 1} 月`;
-					}
-					return null;
-				}
-
-				function translate(root: ParentNode) {
-					const walker = document.createTreeWalker(
-						root,
-						NodeFilter.SHOW_TEXT,
-					);
-					let current = walker.nextNode();
-					while (current) {
-						const next = walker.nextNode();
-						const text = current.nodeValue?.trim();
-						if (text) {
-							const zh = zhFor(text);
-							if (zh && current.nodeValue !== zh) {
-								current.nodeValue = zh;
-							}
-						}
-						current = next;
-					}
-					root
-						.querySelectorAll("input[placeholder]")
-						.forEach((input) => {
-							const placeholder = input.getAttribute("placeholder");
-							if (!placeholder) return;
-							if (
-								placeholder === "Search..." ||
-								placeholder === "Search posts..."
-							) {
-								input.setAttribute("placeholder", "搜索…");
-							}
-						});
-				}
-
-				function translateAll() {
-					document.querySelectorAll(SCOPE).forEach((el) => translate(el));
-				}
-
-				translateAll();
-				const observer = new MutationObserver((mutations) => {
-					for (const mutation of mutations) {
-						if (mutation.target instanceof Element) {
-							const container = mutation.target.closest(SCOPE);
-							if (container) translate(container);
-						} else if (mutation.target instanceof Text) {
-							const parent = mutation.target.parentElement;
-							const container = parent?.closest(SCOPE);
-							if (container) translate(container);
-						}
-					}
-				});
-				observer.observe(document.body, {
-					childList: true,
-					subtree: true,
-					characterData: true,
-				});
-			})();
+			// 核心公开 UI 的中文兜底（评论/搜索/归档 widget），实现见 src/scripts/zh-copy.ts
+			import { installZhCopy } from "../scripts/zh-copy";
+			installZhCopy(document);
 		</script>
 		<script>
 			// 页头会员岛：客户端拉取登录态（保持页面可缓存）。
