@@ -216,6 +216,27 @@
 					}
 				}
 			]
+		},
+		{
+			"slug": "wall",
+			"label": "留言墙",
+			"labelSingular": "留言",
+			"urlPattern": "/wall/{slug}",
+			"supports": ["drafts", "revisions", "preview", "seo"],
+			"commentsEnabled": true,
+			"fields": [
+				{
+					"slug": "title",
+					"label": "标题",
+					"type": "string",
+					"required": true
+				},
+				{
+					"slug": "intro",
+					"label": "简介",
+					"type": "text"
+				}
+			]
 		}
 	],
 	"taxonomies": [
@@ -295,7 +316,8 @@
 				{ "type": "custom", "label": "作品", "url": "/projects" },
 				{ "type": "custom", "label": "归档", "url": "/archives" },
 				{ "type": "custom", "label": "关于", "url": "/about" },
-				{ "type": "custom", "label": "友链", "url": "/friends" }
+				{ "type": "custom", "label": "友链", "url": "/friends" },
+				{ "type": "custom", "label": "留言墙", "url": "/messages" }
 			]
 		}
 	],
@@ -1220,6 +1242,17 @@
 					]
 				},
 				"taxonomies": { "project_type": ["tools"] }
+			}
+		],
+		"wall": [
+			{
+				"id": "wall-main",
+				"slug": "wall",
+				"status": "published",
+				"data": {
+					"title": "留言墙",
+					"intro": "随便写点什么吧。留言审核通过后会出现在这里。"
+				}
 			}
 		]
 	}

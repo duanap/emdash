@@ -27,7 +27,7 @@ export default defineConfig({
 				directory: "./uploads",
 				baseUrl: "/_emdash/api/media/file",
 			}),
-			// Phase 5 会员体系 POC：Native 插件（同进程，Cookie/页面注入/SSR 直连）
+			// Phase 5 会员体系：Native 插件（同进程，Cookie/页面注入/SSR 直连）
 			plugins: [duanapMembersPlugin()],
 		}),
 	],
