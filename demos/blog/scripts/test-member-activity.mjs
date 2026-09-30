@@ -102,8 +102,17 @@ function createHarness(options = {}) {
 		},
 		content: {
 			get: async (collectionName, id) => {
-				const status = contentById.get(`${collectionName}:${id}`);
-				return status ? { id, type: collectionName, status } : null;
+				const entry = contentById.get(`${collectionName}:${id}`);
+				if (!entry) return null;
+				// 值可以是状态字符串，也可以是 { status, slug, title }
+				const { status, slug, title } = typeof entry === "string" ? { status: entry } : entry;
+				return {
+					id,
+					type: collectionName,
+					status,
+					slug: slug ?? id,
+					data: { title: title ?? id },
+				};
 			},
 		},
 		storage: new Proxy({}, { get: (_target, name) => collection(String(name)) }),
@@ -371,6 +380,111 @@ await test("page:fragments 捕获 ctx 后，SSR 辅助给会员返回开关状�
 	});
 	assert.equal(await getViewerActivity(stateRequest(), "posts", "p1"), null, "匿名应为 null");
 	assert.equal(await getViewerActivity(stateRequest(cookieFor(sessionId)), "pages", "p1"), null);
+});
+
+// ─── 会员中心（Phase 5.4） ────────────────────────────────────────
+
+function overviewRequest(cookie) {
+	return new Request(`${PLUGIN_BASE}/member/overview`, { headers: cookie ? { cookie } : {} });
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+await test("匿名 member/overview → unauthorized", async () => {
+	const harness = createHarness();
+	const result = await invoke("member/overview", harness, overviewRequest());
+	assert.deepEqual(result, { ok: false, reason: "unauthorized" });
+});
+
+await test("无互动的会员：计数为 0、收藏为空", async () => {
+	const harness = createHarness();
+	const sessionId = await seedLoggedIn(harness);
+	const result = await invoke("member/overview", harness, overviewRequest(cookieFor(sessionId)));
+	assert.equal(result.ok, true);
+	assert.deepEqual(result.counts, { likes: 0, favorites: 0 });
+	assert.deepEqual(result.favorites, []);
+	assert.equal(result.unavailableFavorites, 0);
+	assert.equal(result.member.displayName, "测试会员");
+});
+
+await test("收藏列表：解析标题与链接、按收藏时间倒序、点赞单独计数", async () => {
+	const harness = createHarness({
+		content: {
+			"posts:p1": { status: "published", slug: "hello", title: "第一篇文章" },
+			"projects:pr1": { status: "published", slug: "tool", title: "小工具" },
+		},
+	});
+	const sessionId = await seedLoggedIn(harness);
+	const cookie = cookieFor(sessionId);
+
+	await toggle(harness, cookie, {
+		kind: "favorite",
+		targetType: "posts",
+		targetId: "p1",
+		action: "add",
+	});
+	await sleep(5);
+	await toggle(harness, cookie, {
+		kind: "favorite",
+		targetType: "projects",
+		targetId: "pr1",
+		action: "add",
+	});
+	await toggle(harness, cookie, likeBody("posts", "p1"));
+
+	const result = await invoke("member/overview", harness, overviewRequest(cookie));
+	assert.equal(result.ok, true);
+	assert.deepEqual(result.counts, { likes: 1, favorites: 2 });
+	assert.deepEqual(
+		result.favorites.map((item) => [item.targetType, item.title, item.path]),
+		[
+			["projects", "小工具", "/projects/tool"],
+			["posts", "第一篇文章", "/posts/hello"],
+		],
+	);
+	assert.equal(result.unavailableFavorites, 0);
+});
+
+await test("内容下线/未发布的收藏：列表隐藏但计入 unavailableFavorites", async () => {
+	const harness = createHarness({
+		content: {
+			"posts:p1": { status: "published", slug: "hello", title: "第一篇" },
+			"posts:draft": { status: "draft", slug: "draft", title: "草稿" },
+		},
+	});
+	const sessionId = await seedLoggedIn(harness);
+	const cookie = cookieFor(sessionId);
+
+	await toggle(harness, cookie, {
+		kind: "favorite",
+		targetType: "posts",
+		targetId: "p1",
+		action: "add",
+	});
+	// 直接写存储：模拟"收藏之后内容被下线/删除"
+	const put = harness.ctx.storage.activity.put;
+	await put("favorite:OPENID-1:posts:draft", {
+		kind: "favorite",
+		memberOpenid: "OPENID-1",
+		targetType: "posts",
+		targetId: "draft",
+		createdAt: new Date().toISOString(),
+	});
+	await put("favorite:OPENID-1:life:gone", {
+		kind: "favorite",
+		memberOpenid: "OPENID-1",
+		targetType: "life",
+		targetId: "gone",
+		createdAt: new Date().toISOString(),
+	});
+
+	const result = await invoke("member/overview", harness, overviewRequest(cookie));
+	assert.equal(result.counts.favorites, 3);
+	assert.deepEqual(
+		result.favorites.map((item) => item.title),
+		["第一篇"],
+	);
+	assert.equal(result.unavailableFavorites, 2);
 });
 
 // ─── 报告 ─────────────────────────────────────────────────────────

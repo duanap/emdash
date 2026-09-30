@@ -1121,7 +1121,7 @@ const isLoggedIn = !!Astro.locals.user;
 								<span class="nav-member-name">${m.displayName}</span>
 							</button>
 							<div class="nav-member-menu" hidden>
-								<a href="/login">${m.displayName}</a>
+								<a href="/member">${m.displayName}</a>
 								<button type="button" class="nav-member-logout">退出登录</button>
 							</div>`;
 						const btn = host.querySelector<HTMLButtonElement>(".nav-member-btn");

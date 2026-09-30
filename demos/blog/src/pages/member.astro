@@ -1,0 +1,352 @@
+---
+/**
+ * 会员中心（Phase 5.4）。
+ *
+ * 数据走公开路由 `member/overview`，**在客户端取**：页面 frontmatter 早于布局渲染，
+ * 拿不到 `page:fragments` 捕获的插件上下文（实测：即使同进程预热过其它页面也拿不到），
+ * 而路由自带 ctx、始终可靠。会员中心是私有页面且不参与索引，客户端渲染的取舍是明确的。
+ *
+ * 未登录 → 客户端跳 `/login?returnTo=/member`；渲染全部用 DOM API + textContent，
+ * 避免把 QQ 昵称/标题当作 HTML 注入。
+ */
+import Base from "../layouts/Base.astro";
+
+const endpointBase = "/_emdash/api/plugins/duanap-members";
+---
+
+<Base title="会员中心" description="查看我的资料与互动记录" robots="noindex,nofollow">
+	<div class="member-center" id="member-center" data-endpoint-base={endpointBase}>
+		<p class="loading" role="status">正在加载会员信息…</p>
+	</div>
+	<noscript>
+		<p class="loading">会员中心需要启用 JavaScript。</p>
+	</noscript>
+</Base>
+
+<script>
+	const root = document.getElementById("member-center");
+	const endpointBase = root?.dataset.endpointBase;
+	const TYPE_LABELS: Record<string, string> = {
+		posts: "文章",
+		life: "生活记录",
+		projects: "作品",
+	};
+
+	function payloadOf(json: unknown): Record<string, unknown> | null {
+		const outer = json as { data?: { data?: unknown } | unknown } | null;
+		const data = (outer?.data as { data?: unknown } | undefined)?.data ?? outer?.data;
+		return typeof data === "object" && data !== null ? (data as Record<string, unknown>) : null;
+	}
+
+	function formatDate(value: unknown): string {
+		const parsed = new Date(String(value));
+		return Number.isNaN(parsed.getTime())
+			? ""
+			: parsed.toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
+	}
+
+	function element<K extends keyof HTMLElementTagNameMap>(
+		tag: K,
+		className?: string,
+		text?: string,
+	): HTMLElementTagNameMap[K] {
+		const node = document.createElement(tag);
+		if (className) node.className = className;
+		if (text !== undefined) node.textContent = text;
+		return node;
+	}
+
+	async function logout() {
+		await fetch(`${endpointBase}/auth/logout`, { method: "POST" }).catch(() => {});
+		location.href = "/";
+	}
+
+	async function removeFavorite(button: HTMLButtonElement, row: HTMLElement, counter: HTMLElement) {
+		const targetType = row.dataset.targetType;
+		const targetId = row.dataset.targetId;
+		if (!targetType || !targetId) return;
+		button.disabled = true;
+		try {
+			const res = await fetch(`${endpointBase}/activity/toggle`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json", "X-EmDash-Request": "1" },
+				body: JSON.stringify({ kind: "favorite", targetType, targetId, action: "remove" }),
+			});
+			const payload = payloadOf(await res.json());
+			if (payload?.ok) {
+				row.remove();
+				const current = Number(counter.dataset.count ?? "0");
+				counter.dataset.count = String(Math.max(0, current - 1));
+				counter.textContent = counter.dataset.count;
+				if (root && root.querySelectorAll("[data-remove-favorite]").length === 0) {
+					root
+						.querySelector(".favorite-list")
+						?.replaceWith(
+							element("p", "empty", "还没有收藏内容。在文章、生活记录或作品页点「收藏」即可。"),
+						);
+				}
+				return;
+			}
+			alert(payload?.reason === "unauthorized" ? "登录状态已失效，请重新登录。" : "操作失败，请稍后重试。");
+		} catch {
+			alert("网络异常，请稍后重试。");
+		} finally {
+			button.disabled = false;
+		}
+	}
+
+	function render(overview: Record<string, unknown>) {
+		if (!root) return;
+		const member = overview.member as { displayName?: string; avatarUrl?: string; createdAt?: string };
+		const counts = overview.counts as { likes?: number; favorites?: number };
+		const favorites = (overview.favorites ?? []) as Array<{
+			targetType: string;
+			targetId: string;
+			title: string;
+			path: string;
+			createdAt: string;
+		}>;
+		const displayName = String(member?.displayName ?? "会员");
+
+		root.textContent = "";
+
+		const profile = element("header", "profile-card");
+		if (member?.avatarUrl) {
+			const avatar = element("img", "profile-avatar");
+			avatar.src = String(member.avatarUrl);
+			avatar.alt = "";
+			avatar.width = 64;
+			avatar.height = 64;
+			profile.append(avatar);
+		} else {
+			profile.append(element("div", "profile-avatar profile-avatar-fallback", displayName.slice(0, 1)));
+		}
+		const copy = element("div", "profile-copy");
+		copy.append(element("h1", "profile-name", displayName));
+		copy.append(element("p", "profile-meta", `加入于 ${formatDate(member?.createdAt)}`));
+		profile.append(copy);
+		const logoutButton = element("button", "logout-button", "退出登录");
+		logoutButton.type = "button";
+		logoutButton.addEventListener("click", logout);
+		profile.append(logoutButton);
+		root.append(profile);
+
+		const countRow = element("section", "counts");
+		countRow.setAttribute("aria-label", "互动统计");
+		const likeCount = element("p", "count");
+		likeCount.append(element("strong", undefined, String(counts?.likes ?? 0)), " 次点赞");
+		const favoriteCount = element("p", "count");
+		const favoriteStrong = element("strong", undefined, String(counts?.favorites ?? 0));
+		favoriteStrong.dataset.count = String(counts?.favorites ?? 0);
+		favoriteCount.append(favoriteStrong, " 个收藏");
+		countRow.append(likeCount, favoriteCount);
+		root.append(countRow);
+
+		const section = element("section", "favorites");
+		section.append(element("h2", "section-title", "我的收藏"));
+		if (favorites.length === 0) {
+			section.append(element("p", "empty", "还没有收藏内容。在文章、生活记录或作品页点「收藏」即可。"));
+		} else {
+			const list = element("ul", "favorite-list");
+			for (const item of favorites) {
+				const row = element("li", "favorite-row");
+				row.dataset.targetType = item.targetType;
+				row.dataset.targetId = item.targetId;
+				const copyCell = element("div", "favorite-copy");
+				const link = element("a", "favorite-title", item.title);
+				link.href = item.path;
+				copyCell.append(link);
+				copyCell.append(
+					element(
+						"p",
+						"favorite-meta",
+						`${TYPE_LABELS[item.targetType] ?? item.targetType} · ${formatDate(item.createdAt)}`,
+					),
+				);
+				const remove = element("button", "remove-button", "取消收藏");
+				remove.type = "button";
+				remove.dataset.removeFavorite = "true";
+				remove.addEventListener("click", () => removeFavorite(remove, row, favoriteStrong));
+				row.append(copyCell, remove);
+				list.append(row);
+			}
+			section.append(list);
+		}
+		const unavailable = Number(overview.unavailableFavorites ?? 0);
+		if (unavailable > 0) {
+			section.append(element("p", "note", `另有 ${unavailable} 个收藏的内容已下线或删除，暂不显示。`));
+		}
+		root.append(section);
+	}
+
+	void (async () => {
+		if (!root || !endpointBase) return;
+		try {
+			const res = await fetch(`${endpointBase}/member/overview`);
+			const payload = payloadOf(await res.json());
+			if (!payload?.ok) {
+				if (payload?.reason === "unauthorized") {
+					location.replace(`/login?returnTo=${encodeURIComponent("/member")}`);
+					return;
+				}
+				root.textContent = "会员信息加载失败，请稍后重试。";
+				return;
+			}
+			render(payload);
+		} catch {
+			root.textContent = "会员信息加载失败，请稍后重试。";
+		}
+	})();
+</script>
+
+<style>
+	.member-center {
+		max-width: var(--content-width);
+		margin: 0 auto;
+		padding: var(--spacing-8) var(--spacing-6) var(--spacing-16);
+	}
+
+	.loading {
+		color: var(--color-muted);
+	}
+
+	.member-center :global(.profile-card) {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-5);
+		padding: var(--spacing-6);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-lg);
+	}
+
+	.member-center :global(.profile-avatar) {
+		width: 64px;
+		height: 64px;
+		border-radius: 50%;
+		object-fit: cover;
+		flex-shrink: 0;
+	}
+
+	.member-center :global(.profile-avatar-fallback) {
+		display: grid;
+		place-items: center;
+		background: var(--color-bg-subtle);
+		color: var(--color-brand);
+		font-size: var(--font-size-2xl);
+		font-weight: var(--font-weight-heading);
+	}
+
+	.member-center :global(.profile-copy) {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.member-center :global(.profile-name) {
+		font-size: var(--font-size-2xl);
+		font-weight: var(--font-weight-heading);
+	}
+
+	.member-center :global(.profile-meta) {
+		margin-top: var(--spacing-1);
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.member-center :global(.logout-button),
+	.member-center :global(.remove-button) {
+		padding: var(--spacing-2) var(--spacing-4);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		background: transparent;
+		color: var(--color-text-secondary);
+		font: inherit;
+		font-size: var(--font-size-sm);
+		cursor: pointer;
+		transition:
+			color var(--transition-fast),
+			border-color var(--transition-fast);
+	}
+
+	.member-center :global(.logout-button:hover:not(:disabled)),
+	.member-center :global(.remove-button:hover:not(:disabled)) {
+		color: var(--color-accent);
+		border-color: var(--color-accent);
+	}
+
+	.member-center :global(.logout-button:focus-visible),
+	.member-center :global(.remove-button:focus-visible) {
+		outline: 2px solid var(--color-brand-ring);
+		outline-offset: 2px;
+	}
+
+	.member-center :global(.counts) {
+		display: flex;
+		gap: var(--spacing-8);
+		margin: var(--spacing-8) 0;
+	}
+
+	.member-center :global(.count) {
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-sm);
+	}
+
+	.member-center :global(.count strong) {
+		color: var(--color-text);
+		font-size: var(--font-size-xl);
+		font-weight: var(--font-weight-heading);
+		margin-inline-end: var(--spacing-1);
+	}
+
+	.member-center :global(.section-title) {
+		font-size: var(--font-size-xl);
+		font-weight: var(--font-weight-heading);
+		margin-bottom: var(--spacing-4);
+	}
+
+	.member-center :global(.favorite-list) {
+		list-style: none;
+		padding: 0;
+		display: grid;
+		gap: var(--spacing-2);
+	}
+
+	.member-center :global(.favorite-row) {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-4);
+		padding: var(--spacing-4);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius);
+	}
+
+	.member-center :global(.favorite-copy) {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.member-center :global(.favorite-title) {
+		font-weight: var(--font-weight-heading);
+		text-decoration: none;
+	}
+
+	.member-center :global(.favorite-title:hover) {
+		color: var(--color-brand);
+	}
+
+	.member-center :global(.favorite-meta) {
+		margin-top: var(--spacing-1);
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.member-center :global(.empty),
+	.member-center :global(.note) {
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.member-center :global(.note) {
+		margin-top: var(--spacing-3);
+	}
+</style>

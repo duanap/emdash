@@ -14,6 +14,7 @@
  *   POST auth/logout        登出
  *   GET  activity/state     点赞/收藏计数 + 当前会员的开关状态
  *   POST activity/toggle    点赞/收藏开关（幂等，需会员会话）
+ *   GET  member/overview    会员中心数据（资料 + 计数 + 收藏列表）
  *
  * 配置（管理后台 → 插件设置）：qqClientId / qqClientSecret(secret) /
  * qqCallbackUrl / siteOrigin（returnTo 白名单基址，生产 https://blog.duanap.cn）
@@ -317,6 +318,17 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 					return { ok: true, kind, active: result.active, count: result.count };
 				},
 			},
+
+			"member/overview": {
+				public: true,
+				methods: ["GET"],
+				request: { body: "none" },
+				handler: async (ctx) => {
+					const member = await resolveMemberRecord(ctx.storage, ctx.request);
+					if (!member) return { ok: false, reason: "unauthorized" };
+					return { ok: true, ...(await readMemberOverview(ctx, member)) };
+				},
+			},
 		},
 	});
 }
@@ -599,6 +611,14 @@ function rawJson(status: number, payload: unknown, cookies: string[]) {
 
 export type ActivityKind = "like" | "favorite";
 
+interface ActivityRecord {
+	kind: ActivityKind;
+	memberOpenid: string;
+	targetType: string;
+	targetId: string;
+	createdAt: string;
+}
+
 export interface ActivityState {
 	likeCount: number;
 	favoriteCount: number;
@@ -689,6 +709,69 @@ async function toggleActivity(
 	}
 	const count = await ctx.storage.activity.count({ targetType, targetId, kind });
 	return { active: action === "add", count };
+}
+
+// ─── 会员中心（Phase 5.4） ─────────────────────────────────────────
+
+export interface MemberFavoriteItem {
+	targetType: string;
+	targetId: string;
+	title: string;
+	path: string;
+	createdAt: string;
+}
+
+export interface MemberOverview {
+	member: { displayName: string; avatarUrl: string; createdAt: string };
+	counts: { likes: number; favorites: number };
+	favorites: MemberFavoriteItem[];
+	/** 收藏过但内容已下线/删除的条数（列表里不会出现） */
+	unavailableFavorites: number;
+}
+
+/** 每个集合的详情页前缀（与 seed 的 urlPattern 对应） */
+const ACTIVITY_PATHS: Record<string, string> = {
+	posts: "/posts/",
+	life: "/life/",
+	projects: "/projects/",
+};
+
+async function readMemberOverview(ctx: PluginContext, member: Member): Promise<MemberOverview> {
+	// 单次查询取回该会员的全部互动行（按 kind 在内存里分流，避免多轮查询）
+	const rows = await ctx.storage.activity.query({
+		where: { memberOpenid: member.qqOpenid },
+		limit: 100,
+	});
+	const records = rows.items.map((row) => row.data as ActivityRecord);
+	const likes = records.filter((record) => record.kind === "like");
+	const favorites = records.filter((record) => record.kind === "favorite");
+
+	const items: MemberFavoriteItem[] = [];
+	for (const favorite of favorites) {
+		const item = ctx.content ? await ctx.content.get(favorite.targetType, favorite.targetId) : null;
+		// 与旧站一致：内容已下线/删除就不展示（但计数仍如实反映会员的操作）
+		if (!item || item.status !== "published" || !item.slug) continue;
+		const title = typeof item.data?.title === "string" ? item.data.title : item.slug;
+		items.push({
+			targetType: favorite.targetType,
+			targetId: favorite.targetId,
+			title,
+			path: `${ACTIVITY_PATHS[favorite.targetType] ?? "/"}${item.slug}`,
+			createdAt: favorite.createdAt,
+		});
+	}
+	items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
+	return {
+		member: {
+			displayName: member.displayName,
+			avatarUrl: member.avatarUrl,
+			createdAt: member.createdAt,
+		},
+		counts: { likes: likes.length, favorites: favorites.length },
+		favorites: items,
+		unavailableFavorites: favorites.length - items.length,
+	};
 }
 
 // ─── SSR 辅助（站点页面/布局直接导入） ──────────────────────────────
