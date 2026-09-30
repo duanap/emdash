@@ -335,6 +335,44 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		return section;
 	}
 
+	const COMMENT_STATUS_LABELS: Record<string, string> = {
+		approved: "已发布",
+		pending: "待审核",
+		spam: "垃圾",
+		trash: "已删除",
+	};
+
+	function buildComments(comments: Array<Record<string, unknown>>): HTMLElement {
+		const section = element("section", "comments");
+		section.append(element("h2", "section-title", "我的评论"));
+		if (comments.length === 0) {
+			section.append(
+				element("p", "empty", "还没有评论。登录后评论会自动记到你的名下（邮箱不会公开）。"),
+			);
+		} else {
+			const list = element("ul", "comment-list");
+			for (const item of comments) {
+				const row = element("li", "comment-row");
+				const copy = element("div", "comment-copy");
+				const link = element("a", "comment-target", String(item.targetTitle));
+				link.href = String(item.targetPath);
+				copy.append(link);
+				copy.append(element("p", "comment-body", String(item.body)));
+				copy.append(
+					element(
+						"p",
+						"comment-meta",
+						`${COMMENT_STATUS_LABELS[String(item.status)] ?? String(item.status)} · ${formatDate(item.createdAt)}`,
+					),
+				);
+				row.append(copy);
+				list.append(row);
+			}
+			section.append(list);
+		}
+		return section;
+	}
+
 	function render(overview: Record<string, unknown>) {
 		if (!root) return;
 		const member = (overview.member ?? {}) as Record<string, unknown>;
@@ -347,6 +385,7 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		const { row, favoriteStrong } = buildCounts(counts);
 		root.append(row);
 		root.append(buildFavorites(favorites, Number(overview.unavailableFavorites ?? 0), favoriteStrong));
+		root.append(buildComments((overview.comments ?? []) as Array<Record<string, unknown>>));
 	}
 
 	void (async () => {
@@ -582,6 +621,44 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		margin-top: var(--spacing-1);
 		color: var(--color-muted);
 		font-size: var(--font-size-sm);
+	}
+
+	.member-center :global(.comment-list) {
+		list-style: none;
+		padding: 0;
+		display: grid;
+		gap: var(--spacing-2);
+	}
+
+	.member-center :global(.comment-row) {
+		padding: var(--spacing-4);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius);
+	}
+
+	.member-center :global(.comment-target) {
+		font-weight: var(--font-weight-heading);
+		text-decoration: none;
+	}
+
+	.member-center :global(.comment-target:hover) {
+		color: var(--color-brand);
+	}
+
+	.member-center :global(.comment-body) {
+		margin-top: var(--spacing-1);
+		color: var(--color-text-secondary);
+		overflow-wrap: anywhere;
+	}
+
+	.member-center :global(.comment-meta) {
+		margin-top: var(--spacing-1);
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.member-center :global(.comments) {
+		margin-top: var(--spacing-10);
 	}
 
 	.member-center :global(.empty),

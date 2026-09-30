@@ -16,6 +16,9 @@ import { createPlugin, SESSION_COOKIE } from "../member-plugin/index.ts";
 
 const PLUGIN_BASE = "http://localhost:4321/_emdash/api/plugins/duanap-members";
 
+/** 会员评论身份邮箱的形状（模块作用域，避免每次调用重新编译正则） */
+const MEMBER_IDENTITY_EMAIL_PATTERN = /^member-[0-9a-f]{16}@members\.duanap\.cn$/;
+
 const results = [];
 let failures = 0;
 
@@ -31,9 +34,10 @@ async function test(name, fn) {
 
 const plugin = createPlugin();
 
-function createHarness(content = {}) {
+function createHarness(content = {}, comments = {}) {
 	const collections = new Map();
 	const contentById = new Map(Object.entries(content));
+	const commentsById = new Map(Object.entries(comments));
 
 	function collection(name) {
 		if (!collections.has(name)) collections.set(name, new Map());
@@ -98,11 +102,32 @@ function createHarness(content = {}) {
 				};
 			},
 		},
+		comments: {
+			get: async (id) => {
+				const comment = commentsById.get(id);
+				if (!comment) return null;
+				return {
+					parentId: null,
+					authorName: comment.authorName ?? "会员甲",
+					authorEmail: comment.authorEmail ?? "",
+					ipHash: null,
+					userAgent: null,
+					moderationMetadata: null,
+					updatedAt: comment.createdAt,
+					...comment,
+				};
+			},
+			list: async () => ({ items: [], hasMore: false }),
+			count: async () => 0,
+		},
 		storage: new Proxy({}, { get: (_target, name) => collection(String(name)) }),
 	};
 
 	return {
 		ctx,
+		rows(collectionName) {
+			return collections.get(collectionName) ?? new Map();
+		},
 		async seedMember(member, sessionId = "sess_a") {
 			await ctx.storage.members.put("mem_a", member);
 			await ctx.storage.sessions.put(sessionId, {
@@ -369,6 +394,231 @@ await test("停用会员不能改资料", async () => {
 		ok: false,
 		reason: "unauthorized",
 	});
+});
+
+// ─── 会员评论归属（Phase 5.4c） ───────────────────────────────────
+
+async function statusPayload(harness, cookie) {
+	harness.ctx.request = new Request(`${PLUGIN_BASE}/auth/status`, {
+		headers: cookie ? { cookie } : {},
+	});
+	return plugin.routes["auth/status"].handler(harness.ctx);
+}
+
+async function memberIdentityEmail(harness) {
+	const payload = await statusPayload(harness, `${SESSION_COOKIE}=sess_a`);
+	return payload.data.commentIdentity.email;
+}
+
+function fireCommentCreated(harness, comment, content = {}) {
+	const hook = plugin.hooks["comment:afterCreate"];
+	assert.ok(hook, "expected a comment:afterCreate hook");
+	return hook.handler({ comment, metadata: {}, content }, harness.ctx);
+}
+
+await test("auth/status：匿名没有评论身份，会员带派生身份", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+
+	const anonymous = await statusPayload(harness, null);
+	assert.equal(anonymous.data.commentIdentity, null);
+
+	const authed = await statusPayload(harness, `${SESSION_COOKIE}=sess_a`);
+	assert.equal(authed.data.loggedIn, true);
+	assert.equal(authed.data.commentIdentity.name, "会员甲");
+	assert.match(authed.data.commentIdentity.email, MEMBER_IDENTITY_EMAIL_PATTERN);
+});
+
+await test("派生身份稳定且与 openid 一一对应", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+	const first = await memberIdentityEmail(harness);
+
+	await harness.ctx.storage.members.put("mem_b", { ...MEMBER, qqOpenid: "OPENID-B" });
+	await harness.ctx.storage.sessions.put("sess_b", {
+		memberId: "OPENID-B",
+		expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+		createdAt: new Date().toISOString(),
+	});
+	harness.ctx.request = new Request(`${PLUGIN_BASE}/auth/status`, {
+		headers: { cookie: `${SESSION_COOKIE}=sess_b` },
+	});
+	const second = (await plugin.routes["auth/status"].handler(harness.ctx)).data.commentIdentity.email;
+
+	assert.notEqual(first, second);
+	assert.equal(await memberIdentityEmail(harness), first, "同一 openid 应得到同一身份");
+});
+
+await test("comment:afterCreate：会员身份邮箱的评论被归到会员名下", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+	const memberRef = await memberIdentityEmail(harness);
+
+	await fireCommentCreated(
+		harness,
+		{
+			id: "c1",
+			collection: "posts",
+			contentId: "p1",
+			authorEmail: memberRef,
+			body: "写得不错",
+			status: "pending",
+			createdAt: "2026-09-28T10:00:00.000Z",
+		},
+		{ id: "p1", collection: "posts", slug: "hello", title: "第一篇文章" },
+	);
+
+	const stored = harness.rows("memberComments").get("c1");
+	assert.ok(stored, "应记录归属");
+	assert.equal(stored.memberRef, memberRef);
+	assert.equal(stored.targetSlug, "hello");
+	assert.equal(stored.targetTitle, "第一篇文章");
+});
+
+await test("comment:afterCreate：非会员邮箱被忽略", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+
+	const outsiders = ["guest@example.com", "", "member-0123456789abcdef@example.com", "member-x@members.duanap.cn"];
+	for (const [index, authorEmail] of outsiders.entries()) {
+		await fireCommentCreated(harness, {
+			id: `c-outsider-${index}`,
+			collection: "posts",
+			contentId: "p1",
+			authorEmail,
+			body: "x",
+			status: "pending",
+			createdAt: "2026-09-28T10:00:00.000Z",
+		});
+	}
+
+	assert.equal(harness.rows("memberComments").size, 0, "非派生身份邮箱不应被归属");
+});
+
+await test("comment:afterCreate：大小写与首尾空白先归一，再归属", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+	const memberRef = await memberIdentityEmail(harness);
+
+	await fireCommentCreated(harness, {
+		id: "c-normalized",
+		collection: "posts",
+		contentId: "p1",
+		authorEmail: ` ${memberRef.toUpperCase()} `,
+		body: "x",
+		status: "pending",
+		createdAt: "2026-09-28T10:00:00.000Z",
+	});
+
+	const stored = harness.rows("memberComments").get("c-normalized");
+	assert.ok(stored, "邮箱大小写不应影响归属");
+	assert.equal(stored.memberRef, memberRef, "存的是归一后的身份");
+});
+
+await test("comment:afterCreate：重复事件幂等", async () => {
+	const harness = createHarness();
+	await harness.seedMember(MEMBER);
+	const memberRef = await memberIdentityEmail(harness);
+	const comment = {
+		id: "c1",
+		collection: "posts",
+		contentId: "p1",
+		authorEmail: memberRef,
+		body: "x",
+		status: "pending",
+		createdAt: "2026-09-28T10:00:00.000Z",
+	};
+
+	await fireCommentCreated(harness, comment, { collection: "posts", id: "p1", slug: "hello" });
+	await fireCommentCreated(harness, comment, { collection: "posts", id: "p1", slug: "hello" });
+
+	assert.equal(harness.rows("memberComments").size, 1);
+});
+
+await test("我的评论：解析状态与正文、生成目标链接，已删除的评论跳过", async () => {
+	const harness = createHarness(
+		{},
+		{
+			c1: {
+				collection: "posts",
+				contentId: "p1",
+				body: "第一条评论",
+				status: "pending",
+				createdAt: "2026-09-28T10:00:00.000Z",
+			},
+			c2: {
+				collection: "wall",
+				contentId: "w1",
+				body: "留言墙的评论",
+				status: "approved",
+				createdAt: "2026-09-29T10:00:00.000Z",
+			},
+		},
+	);
+	await harness.seedMember(MEMBER);
+	const memberRef = await memberIdentityEmail(harness);
+	await harness.ctx.storage.memberComments.put("c1", {
+		memberRef,
+		collection: "posts",
+		contentId: "p1",
+		targetTitle: "第一篇文章",
+		targetSlug: "hello",
+		createdAt: "2026-09-28T10:00:00.000Z",
+	});
+	await harness.ctx.storage.memberComments.put("c2", {
+		memberRef,
+		collection: "wall",
+		contentId: "w1",
+		targetTitle: null,
+		targetSlug: null,
+		createdAt: "2026-09-29T10:00:00.000Z",
+	});
+	await harness.ctx.storage.memberComments.put("c3", {
+		memberRef,
+		collection: "posts",
+		contentId: "gone",
+		targetTitle: "已删除的文章",
+		targetSlug: "gone",
+		createdAt: "2026-09-30T10:00:00.000Z",
+	});
+
+	const result = await overview(harness, `${SESSION_COOKIE}=sess_a`);
+	assert.equal(result.comments.length, 2, "评论已被硬删除时应跳过");
+	assert.deepEqual(
+		result.comments.map((item) => [item.targetTitle, item.targetPath, item.status]),
+		[
+			["留言墙", "/messages", "approved"],
+			["第一篇文章", "/posts/hello", "pending"],
+		],
+	);
+	assert.equal(result.comments[1].body, "第一条评论");
+});
+
+await test("我的评论只包含自己的", async () => {
+	const harness = createHarness(
+		{},
+		{
+			c1: {
+				collection: "posts",
+				contentId: "p1",
+				body: "别人的评论",
+				status: "approved",
+				createdAt: "2026-09-28T10:00:00.000Z",
+			},
+		},
+	);
+	await harness.seedMember(MEMBER);
+	await harness.ctx.storage.memberComments.put("c1", {
+		memberRef: "member-ffffffffffffffff@members.duanap.cn",
+		collection: "posts",
+		contentId: "p1",
+		targetTitle: "第一篇文章",
+		targetSlug: "hello",
+		createdAt: "2026-09-28T10:00:00.000Z",
+	});
+
+	const result = await overview(harness, `${SESSION_COOKIE}=sess_a`);
+	assert.deepEqual(result.comments, []);
 });
 
 // ─── 报告 ─────────────────────────────────────────────────────────

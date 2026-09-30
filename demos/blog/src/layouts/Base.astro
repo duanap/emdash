@@ -1115,6 +1115,34 @@ const isLoggedIn = !!Astro.locals.user;
 						const data = json?.data?.data ?? json?.data;
 						if (!data || !data.loggedIn || !data.member) return; // 保持默认登录链接
 						const m = data.member;
+
+						// 会员评论：预填派生身份（邮箱由 openid 派生、不公开），
+						// 服务端 comment:afterCreate 据此把评论记进会员名下
+						const identity = data.commentIdentity;
+						if (identity?.email) {
+							for (const form of document.querySelectorAll(".ec-comment-form")) {
+								const nameInput = form.querySelector<HTMLInputElement>(
+									'input[name="authorName"]',
+								);
+								const emailInput = form.querySelector<HTMLInputElement>(
+									'input[name="authorEmail"]',
+								);
+								if (nameInput) {
+									nameInput.value = identity.name ?? "";
+									nameInput.readOnly = true;
+								}
+								if (emailInput) {
+									emailInput.value = identity.email;
+									emailInput.readOnly = true;
+								}
+								if (!form.querySelector(".ec-member-identity")) {
+									const hint = document.createElement("p");
+									hint.className = "ec-member-identity";
+									hint.textContent = `以会员身份评论：${identity.name ?? ""}（邮箱不会公开）`;
+									form.prepend(hint);
+								}
+							}
+						}
 						host.innerHTML = `
 							<button type="button" class="nav-member-btn" aria-haspopup="true" aria-expanded="false">
 								${m.avatarUrl ? `<img src="${m.avatarUrl}" alt="" class="nav-member-avatar" />` : ""}

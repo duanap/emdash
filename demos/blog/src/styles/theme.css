@@ -49,6 +49,13 @@
 	color: var(--color-accent);
 }
 
+/* 评论表单里的会员身份提示（节点由脚本创建，走全局样式） */
+.ec-member-identity {
+	margin-bottom: var(--spacing-2);
+	color: var(--color-muted);
+	font-size: var(--font-size-sm);
+}
+
 /* Keep the signed-in Admin link separated from the primary navigation. */
 .nav-admin {
 	margin-inline-start: var(--spacing-5);

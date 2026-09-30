@@ -1,5 +1,6 @@
 /**
- * duanap-members — 会员体系 Native 插件（Phase 5.1：QQ 登录；Phase 5.3：点赞/收藏）
+ * duanap-members — 会员体系 Native 插件（5.1 QQ 登录；5.2 留言墙走原生评论；
+ * 5.3 点赞/收藏；5.4 会员中心与资料编辑；5.4c 会员评论归属）
  *
  * 在宿主进程内实现旧站 blog-front 的会员域：
  *   - QQ OAuth 登录（state 双校验：Cookie + KV，10 分钟一次性）
@@ -17,12 +18,15 @@
  *   GET  member/overview    会员中心数据（资料 + 计数 + 收藏列表）
  *   POST member/profile     修改展示资料（昵称/头像/简介，需会员会话）
  *
+ * 会员评论归属：登录会员评论时用派生身份邮箱（member-<hash>@members.duanap.cn），
+ * comment:afterCreate 钩子据此把评论记进会员名下，会员中心「我的评论」按此展示。
+ *
  * 配置（管理后台 → 插件设置）：qqClientId / qqClientSecret(secret) /
  * qqCallbackUrl / siteOrigin（returnTo 白名单基址，生产 https://blog.duanap.cn）
  */
 
 import { definePlugin, pluginResponse } from "emdash";
-import type { PluginDescriptor, PluginContext, ResolvedPlugin, RouteContext } from "emdash";
+import type { PluginDescriptor, PluginContext, ResolvedPlugin } from "emdash";
 
 const PLUGIN_ID = "duanap-members";
 const VERSION = "0.3.0";
@@ -75,7 +79,14 @@ export function duanapMembersPlugin(): PluginDescriptor {
 		version: VERSION,
 		entrypoint: "/member-plugin/index.ts",
 		format: "native",
-		capabilities: ["network:request", "content:read", "hooks.page-fragments:register"],
+		capabilities: [
+			"network:request",
+			"content:read",
+			"comments:read",
+			// comment:afterCreate 事件会带上内容作者，宿主要求该能力否则跳过钩子
+			"users:read",
+			"hooks.page-fragments:register",
+		],
 		allowedHosts: ["graph.qq.com"],
 		storage: {
 			members: { indexes: ["status"], uniqueIndexes: ["qqOpenid"] },
@@ -83,6 +94,8 @@ export function duanapMembersPlugin(): PluginDescriptor {
 			// 点赞与收藏共用一张表：kind 区分，记录 id 为 kind:openid:type:id，
 			// 主键即唯一约束，重复点赞天然幂等（无需复合唯一索引）
 			activity: { indexes: ["targetId", "targetType", "kind", "memberOpenid"] },
+			// 会员评论归属：id 为评论 id，memberRef 为派生身份邮箱
+			memberComments: { indexes: ["memberRef"] },
 		},
 	};
 }
@@ -93,7 +106,14 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 	return definePlugin({
 		id: PLUGIN_ID,
 		version: VERSION,
-		capabilities: ["network:request", "content:read", "hooks.page-fragments:register"],
+		capabilities: [
+			"network:request",
+			"content:read",
+			"comments:read",
+			// comment:afterCreate 事件会带上内容作者，宿主要求该能力否则跳过钩子
+			"users:read",
+			"hooks.page-fragments:register",
+		],
 		allowedHosts: ["graph.qq.com"],
 
 		storage: {
@@ -102,6 +122,7 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 			activity: {
 				indexes: ["targetId", "targetType", "kind", "memberOpenid"] as const,
 			},
+			memberComments: { indexes: ["memberRef"] as const },
 		},
 
 		admin: {
@@ -127,6 +148,22 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 					capturedCtx = ctx;
 				},
 			},
+			// 会员用派生身份邮箱评论 → 归到该会员名下（见「我的评论」）
+			"comment:afterCreate": {
+				handler: async (event, ctx) => {
+					const authorEmail = event.comment?.authorEmail?.trim().toLowerCase() ?? "";
+					if (!MEMBER_IDENTITY_PATTERN.test(authorEmail)) return;
+					await ctx.storage.memberComments.put(event.comment.id, {
+						memberRef: authorEmail,
+						collection: event.comment.collection,
+						contentId: event.comment.contentId,
+						targetTitle: event.content?.title ?? null,
+						targetSlug: event.content?.slug ?? null,
+						createdAt: event.comment.createdAt,
+					} satisfies MemberCommentRecord);
+				},
+			},
+
 			// dev 下 activate 不保证触发；渲染路径兜底捕获
 			"page:fragments": {
 				handler: async (_event, ctx) => {
@@ -143,15 +180,22 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 				request: { body: "none" },
 				handler: async (ctx) => {
 					const config = await readQqConfig(ctx);
-					const member = await resolveMemberFromRequest(ctx);
+					const entry = await resolveMemberEntry(ctx.storage, ctx.request);
 					return {
 						success: true,
 						data: {
-							loggedIn: member !== null,
-							member: member
+							loggedIn: entry !== null,
+							member: entry
 								? {
-										displayName: member.displayName,
-										avatarUrl: member.avatarUrl,
+										displayName: entry.member.displayName,
+										avatarUrl: entry.member.avatarUrl,
+									}
+								: null,
+							// 会员评论时使用的身份（页面据此预填评论表单，邮箱不公开）
+							commentIdentity: entry
+								? {
+										name: entry.member.displayName,
+										email: await memberIdentityEmail(entry.member.qqOpenid),
 									}
 								: null,
 							qqConfigured: config !== null,
@@ -540,11 +584,6 @@ async function createSession(
 
 // ─── 请求侧辅助 ────────────────────────────────────────────────────
 
-/** 路由侧：从当前请求（Cookie 会话）解析会员 */
-async function resolveMemberFromRequest(ctx: RouteContext): Promise<PublicMember | null> {
-	return resolveMemberFromCookie(ctx.storage, ctx.request);
-}
-
 /** Cookie 会话 → 会员记录（含存储 id 与 openid；点赞/收藏按 openid 归属） */
 async function resolveMemberEntry(
 	storage: PluginContext["storage"],
@@ -776,7 +815,18 @@ export interface MemberFavoriteItem {
 	createdAt: string;
 }
 
+export interface MemberCommentItem {
+	id: string;
+	body: string;
+	status: string;
+	collection: string;
+	targetTitle: string;
+	targetPath: string;
+	createdAt: string;
+}
+
 export interface MemberOverview {
+	comments: MemberCommentItem[];
 	member: {
 		displayName: string;
 		avatarUrl: string;
@@ -796,6 +846,25 @@ const ACTIVITY_PATHS: Record<string, string> = {
 	life: "/life/",
 	projects: "/projects/",
 };
+
+/** 会员评论身份：邮箱由 openid 派生，稳定且不暴露 openid 本身 */
+const MEMBER_IDENTITY_DOMAIN = "members.duanap.cn";
+const MEMBER_IDENTITY_PATTERN = /^member-[0-9a-f]{16}@members\.duanap\.cn$/;
+
+interface MemberCommentRecord {
+	memberRef: string;
+	collection: string;
+	contentId: string;
+	targetTitle: string | null;
+	targetSlug: string | null;
+	createdAt: string;
+}
+
+async function memberIdentityEmail(openid: string): Promise<string> {
+	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(openid));
+	const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+	return `member-${hex.slice(0, 16)}@${MEMBER_IDENTITY_DOMAIN}`;
+}
 
 const DISPLAY_NAME_MAX = 40;
 const AVATAR_URL_MAX = 2048;
@@ -887,6 +956,7 @@ async function readMemberOverview(ctx: PluginContext, member: Member): Promise<M
 	items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
 	return {
+		comments: await readMemberComments(ctx, member),
 		member: {
 			displayName: member.displayName,
 			avatarUrl: member.avatarUrl,
@@ -898,6 +968,60 @@ async function readMemberOverview(ctx: PluginContext, member: Member): Promise<M
 		favorites: items,
 		unavailableFavorites: favorites.length - items.length,
 	};
+}
+
+/** 每个集合对应的前台路径前缀；留言墙是单页，没有按 slug 的详情页 */
+const COMMENT_TARGET_PATHS: Record<string, string> = {
+	posts: "/posts/",
+	life: "/life/",
+	projects: "/projects/",
+	pages: "/pages/",
+	wall: "/messages",
+};
+
+const SINGLE_PAGE_COMMENT_TARGETS = new Set(["wall"]);
+const COMMENT_TARGET_LABELS: Record<string, string> = {
+	wall: "留言墙",
+};
+
+/** 会员中心最多展示的评论条数（避免一次渲染打太多评论查询） */
+const MEMBER_COMMENT_LIMIT = 20;
+
+async function readMemberComments(
+	ctx: PluginContext,
+	member: Member,
+): Promise<MemberCommentItem[]> {
+	if (!ctx.comments) return [];
+	const memberRef = await memberIdentityEmail(member.qqOpenid);
+	const records = await ctx.storage.memberComments.query({
+		where: { memberRef },
+		limit: MEMBER_COMMENT_LIMIT,
+	});
+
+	const items: MemberCommentItem[] = [];
+	for (const record of records.items) {
+		const attribution = record.data as MemberCommentRecord;
+		// 以评论当前状态为准（可能已被审核、隐藏或清理）
+		const comment = await ctx.comments.get(record.id);
+		if (!comment) continue;
+		const prefix = COMMENT_TARGET_PATHS[attribution.collection] ?? "/";
+		const singlePage = SINGLE_PAGE_COMMENT_TARGETS.has(attribution.collection);
+		items.push({
+			id: comment.id,
+			body: comment.body,
+			status: comment.status,
+			collection: attribution.collection,
+			targetTitle:
+				attribution.targetTitle ??
+				COMMENT_TARGET_LABELS[attribution.collection] ??
+				attribution.targetSlug ??
+				attribution.collection,
+			targetPath: singlePage || !attribution.targetSlug ? prefix : `${prefix}${attribution.targetSlug}`,
+			createdAt: comment.createdAt,
+		});
+	}
+	items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+	return items;
 }
 
 // ─── SSR 辅助（站点页面/布局直接导入） ──────────────────────────────
