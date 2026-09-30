@@ -11,6 +11,7 @@ import { Image, PortableText, WidgetArea } from "emdash/ui";
 import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
 import MemberActivity from "../../components/MemberActivity.astro";
+import CommentLikes from "../../components/CommentLikes.astro";
 import PostCard from "../../components/PostCard.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
@@ -236,6 +237,7 @@ const publishDate =
 
 				<div class="article-comments">
 					<Comments collection="posts" contentId={post.data.id} threaded />
+					<CommentLikes />
 					<CommentForm collection="posts" contentId={post.data.id} />
 				</div>
 			</div>

@@ -13,7 +13,7 @@
  *   GET  auth/qq/start      生成 state，HTML 跳转页到 graph.qq.com
  *   GET  auth/qq/callback   code 换 openid/资料，建会员+会话，302 回 returnTo
  *   POST auth/logout        登出
- *   GET  activity/state     点赞/收藏计数 + 当前会员的开关状态
+ *   GET  activity/state     点赞/收藏计数 + 当前会员的开关状态（targetIds 支持批量）
  *   POST activity/toggle    点赞/收藏开关（幂等，需会员会话）
  *   GET  member/overview    会员中心数据（资料 + 计数 + 收藏列表）
  *   POST member/profile     修改展示资料（昵称/头像/简介，需会员会话）
@@ -328,6 +328,32 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 					const url = new URL(ctx.request.url);
 					const targetType = url.searchParams.get("targetType") ?? "";
 					const targetId = url.searchParams.get("targetId") ?? "";
+					const targetIds = url.searchParams.get("targetIds");
+
+					// 批量：评论列表用它一次取回所有按钮状态（避免每个评论一次请求）
+					if (targetIds) {
+						const ids = targetIds
+							.split(",")
+							.map((value) => value.trim())
+							.filter((value) => value.length > 0)
+							.slice(0, BATCH_TARGET_LIMIT);
+						if (ids.length === 0 || !ACTIVITY_TARGET_TYPES.has(targetType)) {
+							return { ok: false, reason: "invalid_target" };
+						}
+						const member = await resolveMemberRecord(ctx.storage, ctx.request);
+						const items = await Promise.all(
+							ids.map(async (id) => {
+								const state = await readActivityState(ctx, targetType, id, member);
+								return {
+									targetId: id,
+									likeCount: state.likeCount,
+									liked: state.liked,
+								};
+							}),
+						);
+						return { ok: true, items };
+					}
+
 					if (!isActivityTarget(targetType, targetId)) {
 						return { ok: false, reason: "invalid_target" };
 					}
@@ -355,6 +381,9 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 					const action = input.action === "remove" ? "remove" : "add";
 
 					if (!kind || !isActivityTarget(targetType, targetId)) {
+						return { ok: false, reason: "invalid_target" };
+					}
+					if (targetType === COMMENT_TARGET_TYPE && kind !== "like") {
 						return { ok: false, reason: "invalid_target" };
 					}
 
@@ -720,8 +749,12 @@ export interface ActivityState {
 	favorited: boolean;
 }
 
-/** 可点赞/收藏的目标集合（旧站 article/life/project 对应 EmDash 的这三个集合） */
-const ACTIVITY_TARGET_TYPES = new Set(["posts", "life", "projects"]);
+/** 可点赞/收藏的目标（旧站 article/life/project 对应这三个集合；评论单独用 comment） */
+const ACTIVITY_TARGET_TYPES = new Set(["posts", "life", "projects", "comment"]);
+
+/** 评论目标只允许点赞（旧站也没有"收藏评论"） */
+const COMMENT_TARGET_TYPE = "comment";
+const BATCH_TARGET_LIMIT = 50;
 
 function isActivityTarget(targetType: string, targetId: string): boolean {
 	return ACTIVITY_TARGET_TYPES.has(targetType) && targetId.length > 0 && targetId.length <= 64;
@@ -742,6 +775,11 @@ async function isPublishedTarget(
 	targetType: string,
 	targetId: string,
 ): Promise<boolean> {
+	// 评论目标：确认评论还在（评论可能已被删除）
+	if (targetType === COMMENT_TARGET_TYPE) {
+		if (!ctx.comments) return false;
+		return (await ctx.comments.get(targetId)) !== null;
+	}
 	if (!ctx.content) return true;
 	const item = await ctx.content.get(targetType, targetId);
 	return item?.status === "published";

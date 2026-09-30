@@ -49,6 +49,37 @@
 	color: var(--color-accent);
 }
 
+/* 评论点赞按钮（由脚本注入到原生评论列表，走全局样式） */
+.ec-member-like {
+	margin-inline-start: var(--spacing-3);
+	padding: 0 var(--spacing-2);
+	border: 1px solid transparent;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--color-muted);
+	font: inherit;
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+	transition:
+		color var(--transition-fast),
+		border-color var(--transition-fast);
+}
+
+.ec-member-like:hover:not(:disabled) {
+	color: var(--color-text);
+	border-color: var(--color-border);
+}
+
+.ec-member-like[aria-pressed="true"] {
+	color: var(--color-accent);
+	border-color: var(--color-accent);
+}
+
+.ec-member-like:focus-visible {
+	outline: 2px solid var(--color-brand-ring);
+	outline-offset: 2px;
+}
+
 /* 评论表单里的会员身份提示（节点由脚本创建，走全局样式） */
 .ec-member-identity {
 	margin-bottom: var(--spacing-2);

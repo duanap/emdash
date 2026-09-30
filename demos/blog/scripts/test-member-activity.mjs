@@ -41,6 +41,7 @@ async function test(name, fn) {
 function createHarness(options = {}) {
 	const collections = new Map();
 	const contentById = new Map(Object.entries(options.content ?? {}));
+	const commentsById = new Map(Object.entries(options.comments ?? {}));
 
 	function collection(name) {
 		if (!collections.has(name)) collections.set(name, new Map());
@@ -114,6 +115,24 @@ function createHarness(options = {}) {
 					data: { title: title ?? id },
 				};
 			},
+		},
+		comments: {
+			get: async (id) => {
+				const comment = commentsById.get(id);
+				if (!comment) return null;
+				return {
+					parentId: null,
+					authorName: "会员甲",
+					authorEmail: "",
+					ipHash: null,
+					userAgent: null,
+					moderationMetadata: null,
+					updatedAt: comment.createdAt,
+					...comment,
+				};
+			},
+			list: async () => ({ items: [], hasMore: false }),
+			count: async () => 0,
 		},
 		storage: new Proxy({}, { get: (_target, name) => collection(String(name)) }),
 	};
@@ -485,6 +504,120 @@ await test("内容下线/未发布的收藏：列表隐藏但计入 unavailableF
 		["第一篇"],
 	);
 	assert.equal(result.unavailableFavorites, 2);
+});
+
+// ─── 评论点赞（Phase 5.4c2） ──────────────────────────────────────
+
+const COMMENT_FIXTURE = {
+	comment1: {
+		collection: "posts",
+		contentId: "p1",
+		body: "被点赞的评论",
+		status: "approved",
+		createdAt: "2026-09-28T10:00:00.000Z",
+	},
+	comment2: {
+		collection: "wall",
+		contentId: "w1",
+		body: "第二条评论",
+		status: "approved",
+		createdAt: "2026-09-29T10:00:00.000Z",
+	},
+};
+
+function batchStateRequest(cookie, targetType, targetIds) {
+	const url = new URL(`${PLUGIN_BASE}/activity/state`);
+	url.searchParams.set("targetType", targetType);
+	url.searchParams.set("targetIds", targetIds.join(","));
+	return new Request(url, { headers: cookie ? { cookie } : {} });
+}
+
+await test("评论点赞：存在的评论可点赞，计数与本人状态正确", async () => {
+	const harness = createHarness({ comments: COMMENT_FIXTURE });
+	const sessionId = await seedLoggedIn(harness);
+
+	const like = await toggle(harness, cookieFor(sessionId), likeBody("comment", "comment1"));
+	assert.deepEqual(like, { ok: true, kind: "like", active: true, count: 1 });
+
+	const state = await invoke(
+		"activity/state",
+		harness,
+		stateRequest(cookieFor(sessionId), "comment", "comment1"),
+	);
+	assert.equal(state.likeCount, 1);
+	assert.equal(state.liked, true);
+});
+
+await test("评论点赞：不存在的评论 → not_found", async () => {
+	const harness = createHarness({ comments: COMMENT_FIXTURE });
+	const sessionId = await seedLoggedIn(harness);
+	const result = await toggle(harness, cookieFor(sessionId), likeBody("comment", "gone"));
+	assert.deepEqual(result, { ok: false, reason: "not_found" });
+});
+
+await test("评论不能收藏 → invalid_target", async () => {
+	const harness = createHarness({ comments: COMMENT_FIXTURE });
+	const sessionId = await seedLoggedIn(harness);
+	const result = await toggle(harness, cookieFor(sessionId), {
+		kind: "favorite",
+		targetType: "comment",
+		targetId: "comment1",
+		action: "add",
+	});
+	assert.deepEqual(result, { ok: false, reason: "invalid_target" });
+});
+
+await test("批量状态：一次返回多条评论的计数与本人状态", async () => {
+	const harness = createHarness({ comments: COMMENT_FIXTURE });
+	const sessionId = await seedLoggedIn(harness);
+	const cookie = cookieFor(sessionId);
+
+	await toggle(harness, cookie, likeBody("comment", "comment1"));
+
+	const result = await invoke(
+		"activity/state",
+		harness,
+		batchStateRequest(cookie, "comment", ["comment1", "comment2"]),
+	);
+	assert.equal(result.ok, true);
+	assert.deepEqual(result.items, [
+		{ targetId: "comment1", likeCount: 1, liked: true },
+		{ targetId: "comment2", likeCount: 0, liked: false },
+	]);
+
+	// 匿名也能拿到计数，但不能拿到本人状态
+	const anonymous = await invoke(
+		"activity/state",
+		harness,
+		batchStateRequest(null, "comment", ["comment1"]),
+	);
+	assert.deepEqual(anonymous.items, [{ targetId: "comment1", likeCount: 1, liked: false }]);
+});
+
+await test("批量状态：空列表或未知集合 → invalid_target", async () => {
+	const harness = createHarness({ comments: COMMENT_FIXTURE });
+	const empty = await invoke("activity/state", harness, batchStateRequest(null, "comment", []));
+	assert.deepEqual(empty, { ok: false, reason: "invalid_target" });
+
+	const unknown = await invoke(
+		"activity/state",
+		harness,
+		batchStateRequest(null, "pages", ["comment1"]),
+	);
+	assert.deepEqual(unknown, { ok: false, reason: "invalid_target" });
+});
+
+await test("批量状态：忽略空白项，顺序保持不变（服务端不去重，去重由调用方做）", async () => {
+	const harness = createHarness({ comments: COMMENT_FIXTURE });
+	const result = await invoke(
+		"activity/state",
+		harness,
+		batchStateRequest(null, "comment", ["comment1", "", " comment2 ", "comment1"]),
+	);
+	assert.deepEqual(
+		result.items.map((item) => item.targetId),
+		["comment1", "comment2", "comment1"],
+	);
 });
 
 // ─── 报告 ─────────────────────────────────────────────────────────

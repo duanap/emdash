@@ -11,6 +11,7 @@ import { Image, PortableText } from "emdash/ui";
 import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
 import MemberActivity from "../../components/MemberActivity.astro";
+import CommentLikes from "../../components/CommentLikes.astro";
 import PostCard from "../../components/PostCard.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
@@ -158,6 +159,7 @@ const otherRecordsWithTags = otherRecords.map((r) => ({
 
 				<div class="article-comments">
 					<Comments collection="life" contentId={record.data.id} threaded />
+					<CommentLikes />
 					<CommentForm collection="life" contentId={record.data.id} />
 				</div>
 			</div>

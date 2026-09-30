@@ -1,0 +1,121 @@
+---
+/**
+ * 评论点赞（Phase 5.4c2）。
+ *
+ * 评论列表由 core 的 `Comments` 组件渲染，这里在客户端给每条评论补一个会员维度的点赞
+ * 按钮（core 自带的 reactions 是另一套、且不是会员归属）。按钮状态用**一次批量请求**
+ * 取回，不按评论循环请求；未登录点击会跳到登录页。
+ *
+ * 组件本身不渲染标记，只挂一段脚本。
+ */
+---
+
+<script>
+	const endpointBase = "/_emdash/api/plugins/duanap-members";
+
+	function payloadOf(json: unknown): Record<string, unknown> | null {
+		const outer = json as { data?: { data?: unknown } | unknown } | null;
+		const data = (outer?.data as { data?: unknown } | undefined)?.data ?? outer?.data;
+		return typeof data === "object" && data !== null ? (data as Record<string, unknown>) : null;
+	}
+
+	function ensureActions(comment: HTMLElement): HTMLElement {
+		const existing = comment.querySelector<HTMLElement>(".ec-comment-actions");
+		if (existing) return existing;
+		const actions = document.createElement("div");
+		actions.className = "ec-comment-actions";
+		comment.append(actions);
+		return actions;
+	}
+
+	function setButtonState(button: HTMLButtonElement, liked: boolean, count: number) {
+		button.setAttribute("aria-pressed", liked ? "true" : "false");
+		const counter = button.querySelector<HTMLElement>("[data-ec-member-like-count]");
+		if (counter) counter.textContent = String(count);
+	}
+
+	void (async () => {
+		const comments = [
+			...document.querySelectorAll<HTMLElement>(".ec-comment[data-comment-id]"),
+		];
+		if (comments.length === 0) return;
+
+		const ids = [
+			...new Set(comments.map((comment) => comment.dataset.commentId).filter(Boolean) as string[]),
+		];
+		if (ids.length === 0) return;
+
+		const buttons = new Map<string, HTMLButtonElement>();
+		for (const comment of comments) {
+			const commentId = comment.dataset.commentId;
+			if (!commentId || buttons.has(commentId)) continue;
+			const actions = ensureActions(comment);
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "ec-member-like";
+			button.dataset.commentId = commentId;
+			button.setAttribute("aria-pressed", "false");
+			button.setAttribute("aria-label", "点赞这条评论");
+			button.append(document.createTextNode("♥ "));
+			const counter = document.createElement("span");
+			counter.dataset.ecMemberLikeCount = "true";
+			counter.textContent = "0";
+			button.append(counter);
+
+			button.addEventListener("click", async () => {
+				const active = button.getAttribute("aria-pressed") === "true";
+				button.disabled = true;
+				try {
+					const res = await fetch(`${endpointBase}/activity/toggle`, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							"X-EmDash-Request": "1",
+						},
+						body: JSON.stringify({
+							kind: "like",
+							targetType: "comment",
+							targetId: commentId,
+							action: active ? "remove" : "add",
+						}),
+					});
+					const payload = payloadOf(await res.json());
+					if (payload?.ok) {
+						setButtonState(button, payload.active === true, Number(payload.count ?? 0));
+						return;
+					}
+					if (payload?.reason === "unauthorized") {
+						const returnTo = location.pathname + location.search;
+						location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+						return;
+					}
+					button.title = "点赞失败，请稍后重试";
+				} catch {
+					button.title = "网络异常，请稍后重试";
+				} finally {
+					button.disabled = false;
+				}
+			});
+
+			actions.append(button);
+			buttons.set(commentId, button);
+		}
+
+		// 一次批量拿回所有按钮的初始状态
+		try {
+			const res = await fetch(
+				`${endpointBase}/activity/state?targetType=comment&targetIds=${encodeURIComponent(ids.join(","))}`,
+			);
+			const payload = payloadOf(await res.json());
+			if (!payload?.ok || !Array.isArray(payload.items)) return;
+			for (const item of payload.items as Array<Record<string, unknown>>) {
+				const button = buttons.get(String(item.targetId));
+				if (button) {
+					setButtonState(button, item.liked === true, Number(item.likeCount ?? 0));
+				}
+			}
+		} catch {
+			// 状态拿不到就保持 0，不影响阅读
+		}
+	})();
+</script>
