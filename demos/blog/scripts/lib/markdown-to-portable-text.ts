@@ -45,6 +45,9 @@ const QUOTE_PATTERN = /^(\s*)>\s?(.*)$/;
 const HEADING_PATTERN = /^(#{1,6})\s+(.*)$/;
 const IMAGE_PATTERN = /^!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)$/;
 const BREAK_PATTERN = /^(?:-{3,}|\*{3,}|_{3,})$/;
+const INLINE_CODE_PATTERN = /^(`+)([\s\S]*?)\1/;
+const INLINE_LINK_PATTERN = /^\[([^\]]*)\]\((\S+?)(?:\s+"[^"]*")?\)/;
+const INLINE_IMAGE_PATTERN = /^!\[([^\]]*)\]\((\S+?)\)/;
 
 /** 图片地址：绝对地址原样保留，旧站相对地址交给调用方改写 */
 export type ImageUrlResolver = (url: string) => string;
@@ -100,7 +103,7 @@ function parseInline(text: string, keyPrefix: string, resolveImageUrl: ImageUrlR
 
 		// 行内代码（内部不再解析）
 		if (char === "`") {
-			const match = /^(`+)([\s\S]*?)\1/.exec(rest);
+			const match = INLINE_CODE_PATTERN.exec(rest);
 			if (match) {
 				pushText(match[2]!, ["code"]);
 				index += match[0].length;
@@ -110,7 +113,7 @@ function parseInline(text: string, keyPrefix: string, resolveImageUrl: ImageUrlR
 
 		// 链接
 		if (char === "[") {
-			const match = /^\[([^\]]*)\]\((\S+?)(?:\s+"[^"]*")?\)/.exec(rest);
+			const match = INLINE_LINK_PATTERN.exec(rest);
 			if (match) {
 				// 先冲掉缓冲区，否则链接文本会排到前面的文字之前
 				flush();
@@ -130,7 +133,7 @@ function parseInline(text: string, keyPrefix: string, resolveImageUrl: ImageUrlR
 
 		// 独占一行的图片落到这里说明是行内图片：保留为链接形式，避免丢内容
 		if (rest.startsWith("![")) {
-			const match = /^!\[([^\]]*)\]\((\S+?)\)/.exec(rest);
+			const match = INLINE_IMAGE_PATTERN.exec(rest);
 			if (match) {
 				const href = resolveImageUrl(match[2]!);
 				const key = `${keyPrefix}m${markDefs.length}`;
