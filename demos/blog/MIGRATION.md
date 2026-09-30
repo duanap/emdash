@@ -29,6 +29,7 @@
 - **图片**：旧站 `/uploads/*` 经媒体 API 入库，正文与封面里的旧路径统一改写。
 - **会员与互动**：`members`/`member_identities` 进插件存储（`qqOpenid` 取旧站 provider_subject），`member_likes`/`member_favorites` 进 `activity`（`article→posts` 等目标类型映射 + 数字 ID → 新 ULID 映射）。
 - **评论**：`published→approved`、`pending→pending`、`hidden→spam`；有会员的评论用会员派生身份邮箱（与 Phase 5.4c 一致），自动归到会员名下。
+- **友链**：旧站存在设置项 `friends.items`（JSON 数组），迁移脚本转成 Portable Text 写进新站 `friends` 页面（过滤非 http(s) 地址；`PUT` 写的是草稿修订，写完要再发布才可见）。
 - **不迁移**：管理员密码与会话（新站用 passkey 重建）、旧站浏览量、旧站作品详情（不存在）。
 
 ## 总体策略
