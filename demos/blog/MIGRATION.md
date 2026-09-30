@@ -15,9 +15,10 @@
 - ✅ 页面：首页（featured + 文章/生活/作品三区块）、文章列表/详情（含原生评论）、生活列表（分类过滤）/详情/标签页、作品列表（类型过滤 + 精选区）/详情（截图画廊）、归档（年/月两级 + `/archives/{year}` `/archives/{year}/{month}`）、关于、友链、404、搜索（四集合）
 - ✅ 中文占位内容：8 篇文章 + 6 条生活 + 4 个作品 + 2 个页面；本地 SVG 渐变封面
 - ✅ 质量：`astro check` 0 错误、生产构建通过、18 条路由巡检通过、sitemap（分集合）/robots/RSS 由 core 注入、移动端（390px）与亮暗双主题截图审核通过
+- ✅ **留言墙视觉**：双轨无缝滚动卡片（奇偶分轨，轨道前一半可读可点赞，补位与副本 `aria-hidden`），悬停/聚焦暂停，`prefers-reduced-motion` 退化为静态网格；点赞走会员 activity 路由（`targetType=comment`）。
 - 🔁 **停止性方案**：core 公开 UI（评论表单/列表、搜索与归档 widget）的英文文案由 `src/scripts/zh-copy.ts` 在 DOM 层转中文（core 尚无前台 i18n，字符串硬编码、无 locale 入口）——上游支持后应整体移除；也适合给上游提 i18n PR。站点自有标记里的英文（主题按钮 aria-label、footer 署名）直接改源码，不走兜底。回归见 `scripts/test-zh-copy.mjs`（含「不该翻译的内容一个字都不许动」的负例）
 
-**尚未做（后续会话）**：真实内容迁移（旧 SQLite → 新站，含 Markdown→Portable Text 转换与 ID 映射表）、会员/QQ 登录/点赞/收藏/留言墙（Phase 5 决策）、部署切换（Phase 6，等用户指令 + 雷池 WAF 放行）。
+**尚未做（后续会话）**：真实内容迁移（旧 SQLite → 新站，含 Markdown→Portable Text 转换与 ID 映射表）、部署切换（Phase 6 的最后一步：切流量，等用户指令 + 雷池 WAF 放行）。Phase 5（会员/QQ 登录/点赞/收藏/留言墙）与 Phase 6 的**准备工作**已完成：部署 runbook 见 `night-work/DEPLOY.md`，本机已用数据库副本跑通生产模式冒烟（13/13，含 dev 端点在生产返回 403）。
 
 ## 总体策略
 
