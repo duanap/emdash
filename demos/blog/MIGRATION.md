@@ -81,7 +81,7 @@
   - **5.1** QQ OAuth 插件：state 存 ctx.kv + `auth/qq/start|callback` 公开路由 + members/identities/sessions 存储集合 + 登录岛（复用旧站 callback-bridge 双域机制；QQ secret 用 emdash secrets 管理）
   - **5.2 ✅ 留言墙**：**复用 EmDash 原生评论**而不是插件存储（旧站同样是复用 comments 表）。seed 新增 `wall` 集合（`commentsEnabled`）+ 唯一公开条目作为评论目标 + 导航「留言墙」；`src/pages/messages.astro` 服务端取已审核留言渲染卡片，表单复用 `CommentForm`。提交进 `pending`，**审核直接用后台「评论」页**（按 collection=wall 过滤）。已知差异：核心评论 schema 要求 `authorEmail`，所以表单比旧站多一个必填邮箱（公开 API 不返回邮箱，已在表单下说明）
   - **5.3 ✅ 点赞/收藏**：插件 `activity` 集合（点赞与收藏共用表，`kind` 区分；记录 id = `kind:openid:targetType:targetId`，**主键即唯一约束**，幂等无需复合索引）+ 公开路由 `activity/state`、`activity/toggle`（需会员会话，用 `content:read` 校验目标已发布）+ `MemberActivity.astro` 卡片岛（文章/生活/作品详情页）。**匿名访客 SSR 零查询**（计数由客户端拉取），仅会员注入开关态。旧站还支持给评论点赞，本次未做
-  - **5.4** 会员中心页 + 旧 Fastify 退役
+  - **5.4 ✅ 会员中心页**：`/member`（资料卡 + 点赞/收藏计数 + 收藏列表，可取消收藏；页头会员岛下拉指向它）。数据走插件公开路由 `GET member/overview`，页面**客户端渲染**——页面 frontmatter 早于布局渲染，拿不到 `page:fragments` 捕获的 ctx（实测预热进程也拿不到），路由自带 ctx 始终可靠；页面私有且 noindex。**未做**：① 资料编辑（昵称/头像/简介）——QQ 登录会用 QQ 资料回写覆盖用户编辑，需先加「已自定义」标记；② 我的评论/评论点赞——EmDash 评论按 `authorEmail` 归属，与会员 openid 无关联，需先设计归属机制。**旧 Fastify 退役**依赖 Phase 6 部署，冻结中
 - 会员数据迁移：members/identities/likes/favorites 按映射表导入插件存储（content 目标 id 用 `.migration/mapping.json` 换算）
 - 评论已原生；旧评论数据导入 `POST /_emdash/api/comments`（占位 email `old-<id>@migrated.duanap.cn`）
 ### Phase 6 — 部署切换（等用户明确指令）
