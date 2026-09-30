@@ -136,12 +136,17 @@ export async function dispatchPluginApiRequest({
 
 	let response: Response;
 	if (routeMeta.response === "raw") {
+		// Trusted plugins run in-process with host privileges, so their raw
+		// responses may set cookies and redirect off-origin (OAuth callbacks).
+		// Sandboxed plugins keep the same-origin, header-stripped policy.
+		const rawOptions = routeMeta.trusted
+			? { allowExternalLocation: true, allowSetCookie: true }
+			: routeMeta.public
+				? { publicRequestUrl: request.url }
+				: { allowExternalLocation: true };
 		try {
 			response = pluginRouteResponseFromWire(
-				await pluginRouteResponseToWire(
-					result.data,
-					routeMeta.public ? { publicRequestUrl: request.url } : { allowExternalLocation: true },
-				),
+				await pluginRouteResponseToWire(result.data, rawOptions),
 				method,
 			);
 		} catch (error) {

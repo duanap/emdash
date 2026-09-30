@@ -50,6 +50,12 @@ export interface PluginRouteResponseWire {
 
 export interface PluginRouteResponseWireOptions {
 	allowExternalLocation?: boolean;
+	/**
+	 * Trusted (in-process) plugins may set cookies. Sandboxed plugins never can:
+	 * their code is untrusted, and a plugin-supplied `Set-Cookie` could shadow
+	 * host session cookies.
+	 */
+	allowSetCookie?: boolean;
 	publicRequestUrl?: string;
 }
 
@@ -239,6 +245,9 @@ export async function pluginRouteResponseToWire(
 
 	const headers = new Headers();
 	sourceHeaders.forEach((headerValue, name) => {
+		// Collected separately below: multiple Set-Cookie values must survive as
+		// separate headers, and a Headers round-trip would merge them.
+		if (name === "set-cookie") return;
 		if (ALLOWED_RESPONSE_HEADERS.has(name)) {
 			headers.set(name, headerValue);
 			return;
@@ -259,6 +268,12 @@ export async function pluginRouteResponseToWire(
 		}
 		throw new TypeError("Public raw plugin route redirects must stay on the site origin");
 	});
+	const setCookies: Array<[string, string]> = [];
+	if (options.allowSetCookie) {
+		for (const entry of value.headers) {
+			if (entry[0].toLowerCase() === "set-cookie") setCookies.push(["set-cookie", entry[1]]);
+		}
+	}
 	if (!headers.has("content-type")) headers.set("content-type", "application/octet-stream");
 	const mediaType = (headers.get("content-type") ?? "application/octet-stream")
 		.split(";", 1)[0]
@@ -289,7 +304,7 @@ export async function pluginRouteResponseToWire(
 
 	return {
 		status: value.status,
-		headers: [...headers.entries()],
+		headers: [...headers.entries(), ...setCookies],
 		body,
 	};
 }
