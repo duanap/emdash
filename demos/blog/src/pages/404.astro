@@ -1,33 +1,11 @@
 ---
 import Base from "../layouts/Base.astro";
+import NotFound from "../components/NotFound.astro";
+
+// 被 rewrite 到此页时（条目缺失），原始 URL 也拿到真实的 404 状态
+Astro.response.status = 404;
 ---
 
 <Base title="页面不存在">
-	<div class="not-found">
-		<h1>404</h1>
-		<p>你访问的页面不存在或已被移除。</p>
-		<a href="/">返回首页</a>
-	</div>
+	<NotFound />
 </Base>
-
-<style>
-	.not-found {
-		text-align: center;
-		padding: var(--spacing-24) var(--spacing-6);
-	}
-
-	.not-found h1 {
-		font-size: var(--font-size-5xl);
-		margin-bottom: var(--spacing-2);
-		color: var(--color-border);
-	}
-
-	.not-found p {
-		color: var(--color-muted);
-		margin-bottom: var(--spacing-6);
-	}
-
-	.not-found a {
-		color: var(--color-text);
-	}
-</style>

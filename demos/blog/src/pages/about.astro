@@ -11,7 +11,7 @@ import { resolveBlogSiteIdentity } from "../utils/site-identity";
 const { entry: page, cacheHint } = await getEmDashEntry("pages", "about");
 
 if (!page) {
-	return Astro.redirect("/404");
+	return Astro.rewrite("/404");
 }
 
 if (Astro.cache?.enabled) Astro.cache.set(cacheHint);

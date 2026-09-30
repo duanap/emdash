@@ -6,14 +6,14 @@ import { getArchiveItems } from "../../utils/archive-items";
 const year = Number.parseInt(Astro.params.year ?? "", 10);
 
 if (!year || year < 2000 || year > 2100) {
-	return Astro.redirect("/404");
+	return Astro.rewrite("/404");
 }
 
 const { items } = await getArchiveItems();
 const yearItems = items.filter((item) => item.date.getFullYear() === year);
 
 if (yearItems.length === 0) {
-	return Astro.redirect("/404");
+	return Astro.rewrite("/404");
 }
 ---
 

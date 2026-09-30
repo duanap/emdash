@@ -1,0 +1,38 @@
+---
+/**
+ * 未找到提示块。404 页面与各详情页的"条目不存在"分支共用，
+ * 后者会同时把响应状态置为 404（软 302 跳转对 SEO 不友好）。
+ */
+interface Props {
+	message?: string;
+}
+const { message = "你访问的页面不存在或已被移除。" } = Astro.props;
+---
+
+<div class="not-found">
+	<h1>404</h1>
+	<p>{message}</p>
+	<a href="/">返回首页</a>
+</div>
+
+<style>
+	.not-found {
+		text-align: center;
+		padding: var(--spacing-24) var(--spacing-6);
+	}
+
+	.not-found h1 {
+		font-size: var(--font-size-5xl);
+		margin-bottom: var(--spacing-2);
+		color: var(--color-border);
+	}
+
+	.not-found p {
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-6);
+	}
+
+	.not-found a {
+		color: var(--color-text);
+	}
+</style>
