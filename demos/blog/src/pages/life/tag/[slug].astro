@@ -1,16 +1,17 @@
 ---
+import { pageSlug } from "../../../utils/page-slug.js";
+import { htmlPageUrl } from "../../../utils/public-page-url.js";
 import {
 	getTaxonomyTermsWithCacheHint,
 	getEmDashCollection,
 	getTermsForEntries,
-	decodeSlug,
 } from "emdash";
 import Base from "../../../layouts/Base.astro";
 import PostCard from "../../../components/PostCard.astro";
 import { getReadingTime } from "../../../utils/reading-time";
 import { toDate } from "../../../utils/date";
 
-const slug = decodeSlug(Astro.params.slug);
+const slug = pageSlug(Astro.params.slug);
 const termsResult = await getTaxonomyTermsWithCacheHint("tag", {
 	includeCounts: false,
 });
@@ -70,7 +71,7 @@ const filteredRecords = records.map((record) => ({
 						<PostCard
 							title={record.data.title ?? "未命名"}
 							featuredImage={record.data.featured_image}
-							href={`/life/${record.id}`}
+							href={htmlPageUrl(`/life/${record.id}`)}
 							date={toDate(record.data.record_date ?? record.data.publishedAt)}
 							readingTime={getReadingTime(record.data.content)}
 							tags={tags}
@@ -84,12 +85,12 @@ const filteredRecords = records.map((record) => ({
 
 		<nav class="pagination" aria-label="分页">
 			{
-				cursor && <a href={`/life/tag/${term.slug}`}>第一页</a>
+				cursor && <a href={htmlPageUrl(`/life/tag/${term.slug}`)}>第一页</a>
 			}
 			{
 				nextCursor && (
 					<a
-						href={`/life/tag/${term.slug}?cursor=${encodeURIComponent(nextCursor)}`}
+						href={htmlPageUrl(`/life/tag/${term.slug}?cursor=${encodeURIComponent(nextCursor)}`)}
 					>
 						下一页
 					</a>
@@ -98,7 +99,7 @@ const filteredRecords = records.map((record) => ({
 		</nav>
 
 		<p class="back-link">
-			<a href="/life">← 返回生活记录</a>
+			<a href={htmlPageUrl("/life")}>← 返回生活记录</a>
 		</p>
 	</section>
 </Base>

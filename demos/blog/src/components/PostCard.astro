@@ -1,6 +1,8 @@
 ---
+import { htmlPageUrl } from "../utils/public-page-url.js";
 import type { ContentBylineCredit, EditProxy, MediaValue } from "emdash";
 import { Image } from "emdash/ui";
+import { DEFAULT_AVATAR, resolveCover } from "../utils/default-images";
 
 interface Props {
 	title: string;
@@ -14,6 +16,8 @@ interface Props {
 	edit?: EditProxy;
 	/** Base path for tag links; life records use /life/tag */
 	tagBasePath?: string;
+	compactMobile?: boolean;
+	fullMobileCover?: boolean;
 }
 
 const {
@@ -27,7 +31,13 @@ const {
 	bylines,
 	edit,
 	tagBasePath = "/tag",
+	compactMobile = false,
+	fullMobileCover = false,
 } = Astro.props;
+const cover = resolveCover(
+	featuredImage,
+	href.startsWith("/life/") ? "life" : "posts",
+);
 
 const formattedDate = date
 	? date.toLocaleDateString("zh-CN", {
@@ -38,17 +48,16 @@ const formattedDate = date
 	: null;
 ---
 
-<article class="post-card">
-	<a href={href} class="card-link">
-		{
-			featuredImage ? (
-				<div class="card-image" {...edit?.featured_image}>
-					<Image image={featuredImage} />
-				</div>
-			) : (
-				<div class="card-placeholder" />
-			)
-		}
+<article
+	class:list={[
+		"post-card",
+		{ "compact-mobile": compactMobile, "full-mobile-cover": fullMobileCover },
+	]}
+>
+	<a href={htmlPageUrl(href)} class="card-link">
+		<div class="card-image" {...edit?.featured_image}>
+			<Image image={cover} />
+		</div>
 		<div class="card-body">
 			<div class="card-meta">
 				{
@@ -57,13 +66,17 @@ const formattedDate = date
 							<div class="card-bylines">
 								{bylines.slice(0, 1).map((credit) => (
 									<span class="card-byline">
-										{credit.byline.avatarMediaId && (
+										{
 											<img
-												src={`/_emdash/api/media/file/${credit.byline.avatarMediaId}`}
+												src={
+													credit.byline.avatarMediaId
+														? `/_emdash/api/media/file/${credit.byline.avatarMediaId}`
+														: DEFAULT_AVATAR
+												}
 												alt={credit.byline.displayName}
 												class="card-byline-avatar"
 											/>
-										)}
+										}
 										<span class="card-byline-name">
 											{credit.byline.displayName}
 										</span>
@@ -95,14 +108,20 @@ const formattedDate = date
 				{readingTime && <span>{readingTime} 分钟</span>}
 			</div>
 			<h2 class="card-title" {...edit?.title}>{title}</h2>
-			{excerpt && <p class="card-excerpt" {...edit?.excerpt}>{excerpt}</p>}
+			{
+				excerpt && (
+					<p class="card-excerpt" {...edit?.excerpt}>
+						{excerpt}
+					</p>
+				)
+			}
 		</div>
 	</a>
 	{
 		tags && tags.length > 0 && (
 			<div class="card-tags">
 				{tags.slice(0, 2).map((tag) => (
-					<a href={`${tagBasePath}/${tag.slug}`} class="card-tag">
+					<a href={htmlPageUrl(`${tagBasePath}/${tag.slug}`)} class="card-tag">
 						{tag.label}
 					</a>
 				))}
@@ -112,6 +131,54 @@ const formattedDate = date
 </article>
 
 <style>
+	@media (max-width: 640px) {
+		.full-mobile-cover .card-image {
+			aspect-ratio: auto;
+		}
+		.full-mobile-cover .card-image img {
+			height: auto;
+			object-fit: contain;
+		}
+		.full-mobile-cover .card-title {
+			font-size: 15px;
+		}
+		.full-mobile-cover .card-meta {
+			font-size: 11px;
+		}
+		.full-mobile-cover .card-excerpt {
+			font-size: 12px;
+		}
+		.full-mobile-cover .card-link:hover .card-image img {
+			transform: none;
+		}
+		.compact-mobile .card-link {
+			display: grid;
+			grid-template-columns: 96px minmax(0, 1fr);
+			gap: 12px;
+			align-items: start;
+		}
+		.compact-mobile .card-image {
+			margin: 0;
+			aspect-ratio: 4 / 3;
+		}
+		.compact-mobile .card-title {
+			font-size: 15px;
+			margin-bottom: 4px;
+		}
+		.compact-mobile .card-meta {
+			font-size: 10px;
+			margin-bottom: 5px;
+			gap: 4px;
+		}
+		.compact-mobile .card-excerpt {
+			font-size: 12px;
+			-webkit-line-clamp: 2;
+		}
+		.compact-mobile .card-tags {
+			margin-inline-start: 108px;
+			margin-top: 6px;
+		}
+	}
 	.post-card {
 		display: flex;
 		flex-direction: column;
@@ -140,13 +207,6 @@ const formattedDate = date
 
 	.card-link:hover .card-image img {
 		transform: scale(1.03);
-	}
-
-	.card-placeholder {
-		aspect-ratio: 16 / 10;
-		border-radius: var(--radius-lg);
-		background: var(--color-surface);
-		margin-bottom: var(--spacing-4);
 	}
 
 	.card-body {

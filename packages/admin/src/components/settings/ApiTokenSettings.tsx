@@ -8,7 +8,6 @@ import { Banner, Button, Checkbox, Input, Loader, Select, Tooltip } from "@cloud
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { Copy, Eye, EyeSlash, Key, Plus, Trash } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -21,6 +20,7 @@ import {
 	type ApiTokenScopeValue,
 } from "../../lib/api/api-tokens.js";
 import { fetchPlugins } from "../../lib/api/plugins.js";
+import { Copy, Eye, EyeSlash, Key, Plus, Trash } from "../../lib/icons.js";
 import { parseTimestamp } from "../../lib/utils.js";
 import { ConfirmDialog } from "../ConfirmDialog.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";

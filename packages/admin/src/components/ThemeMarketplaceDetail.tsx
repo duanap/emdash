@@ -10,20 +10,12 @@
 
 import { Badge, Button, LinkButton } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import {
-	ArrowSquareOut,
-	Eye,
-	GithubLogo,
-	Globe,
-	Palette,
-	ShieldCheck,
-	X,
-} from "@phosphor-icons/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
 
 import { fetchTheme, generatePreviewUrl } from "../lib/api/theme-marketplace.js";
+import { ArrowSquareOut, Eye, GithubLogo, Globe, Palette, ShieldCheck, X } from "../lib/icons.js";
 import { ArrowPrev, CaretNext, CaretPrev } from "./ArrowIcons.js";
 
 /** Only allow safe URL protocols for external links */

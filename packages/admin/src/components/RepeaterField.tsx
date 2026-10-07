@@ -17,10 +17,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { Plus, Trash, DotsSixVertical, CaretDown } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { fromDatetimeLocalInputValue, toDatetimeLocalInputValue } from "../lib/datetime-local.js";
+import { Plus, Trash, DotsSixVertical, CaretDown } from "../lib/icons.js";
 import { cn } from "../lib/utils.js";
 import { CaretNext } from "./ArrowIcons.js";
 import { ImageFieldRenderer, type ImageFieldValue } from "./ImageFieldRenderer.js";

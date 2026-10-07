@@ -12,12 +12,12 @@
 
 import { Button } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { BracketsAngle, DotsSixVertical, Trash } from "@phosphor-icons/react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
 import * as React from "react";
 
+import { BracketsAngle, DotsSixVertical, Trash } from "../../lib/icons.js";
 import { cn } from "../../lib/utils";
 
 // ---------------------------------------------------------------------------

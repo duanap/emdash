@@ -1,7 +1,6 @@
 import { Sidebar as KumoSidebar, useSidebar } from "@cloudflare/kumo";
 import { isSafePluginPagePath, normalizePluginPagePath } from "@emdash-cms/blocks";
 import { useLingui } from "@lingui/react/macro";
-import { Gear, Storefront, Users } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
 import * as React from "react";
@@ -9,7 +8,9 @@ import * as React from "react";
 import { formatAdminVersion } from "../lib/admin-version.js";
 import { fetchCommentCounts } from "../lib/api/comments";
 import { useCurrentUser } from "../lib/api/current-user";
+import { Gear } from "../lib/icons.js";
 import { resolvePluginPagePath, usePluginAdmins } from "../lib/plugin-context";
+import { isSettingsPath, settingsSection } from "../lib/settings-section.js";
 import {
 	groupNavItems,
 	taxonomyGroup,
@@ -38,19 +39,7 @@ export { resolveNavIcon, toPhosphorIconName };
 const ROLE_ADMIN = 50;
 const ROLE_EDITOR = 40;
 
-/**
- * Static invariants for nav entries that have AC-level visibility
- * requirements (Phase 5 of Discussion #1174: "Admin sees the 'Byline
- * Schema' entry; Editor does not").
- *
- * Exported as plain data so a unit test can assert the route + role
- * pairing without mounting Kumo's Sidebar primitive — which portals
- * its rendered content to `document.body` and applies collapse-state
- * CSS (`display:none` on labels at narrow viewports), making
- * full-DOM tests of role filtering brittle. The runtime `adminItems`
- * array below references these constants directly so the test
- * effectively guards the production list.
- */
+/** Minimum role for the byline schema settings entry. */
 export const BYLINE_SCHEMA_NAV_ITEM = {
 	to: "/byline-schema" as const,
 	minRole: ROLE_ADMIN,
@@ -362,6 +351,9 @@ export function resolveItemPath(item: NavItem): string {
 export function isItemActive(itemPath: string, currentPath: string): boolean {
 	const queryIndex = itemPath.indexOf("?");
 	const path = queryIndex === -1 ? itemPath : itemPath.slice(0, queryIndex);
+	if (path === "/settings/site" || path === "/settings/system") {
+		return isSettingsPath(currentPath) && `/settings/${settingsSection(currentPath)}` === path;
+	}
 	return path === "/"
 		? currentPath === "/"
 		: currentPath === path || currentPath.startsWith(`${path}/`);
@@ -406,28 +398,13 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 			params: { collection: name },
 		});
 	}
-	contentItems.push({ to: "/media", label: t`Media`, icon: ADMIN_NAV_ICONS.media });
+	contentItems.push({ to: "/media", label: t`Media Library`, icon: ADMIN_NAV_ICONS.media });
 
 	const collectionGroups = new Map(
 		visibleCollectionEntries(manifest.collections).map(([name, config]) => [name, config.group]),
 	);
 
 	const manageItems: NavItem[] = [
-		{
-			to: "/comments",
-			label: t`Comments`,
-			icon: ADMIN_NAV_ICONS.comments,
-			minRole: ROLE_EDITOR,
-			badge: commentCounts?.pending,
-		},
-		{ to: "/menus", label: t`Menus`, icon: ADMIN_NAV_ICONS.menus, minRole: ROLE_EDITOR },
-		{
-			to: "/redirects",
-			label: t`Redirects`,
-			icon: ADMIN_NAV_ICONS.redirects,
-			minRole: ROLE_ADMIN,
-		},
-		{ to: "/widgets", label: t`Widgets`, icon: ADMIN_NAV_ICONS.widgets, minRole: ROLE_EDITOR },
 		{ to: "/sections", label: t`Sections`, icon: ADMIN_NAV_ICONS.sections, minRole: ROLE_EDITOR },
 		{ to: "/bylines", label: t`Bylines`, icon: ADMIN_NAV_ICONS.bylines, minRole: ROLE_EDITOR },
 	];
@@ -448,45 +425,32 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 		if (group) {
 			contentItems.push({ ...item, group, groupRank: GROUP_RANK.taxonomy });
 		} else {
-			manageItems.splice(manageItems.length - 1, 0, item);
+			manageItems.push(item);
 		}
 	}
 
 	const adminItems: NavItem[] = [
 		{
-			to: "/content-types",
-			label: t`Content Types`,
-			icon: ADMIN_NAV_ICONS.contentTypes,
-			minRole: ROLE_ADMIN,
+			to: "/comments",
+			label: t`Comments`,
+			icon: ADMIN_NAV_ICONS.comments,
+			minRole: ROLE_EDITOR,
+			badge: commentCounts?.pending,
 		},
-		{ ...BYLINE_SCHEMA_NAV_ITEM, label: t`Byline Schema` },
-		{ to: "/users", label: t`Users`, icon: Users, minRole: ROLE_ADMIN },
 		{
-			to: "/plugins-manager",
-			label: t`Plugins`,
-			icon: ADMIN_NAV_ICONS.plugins,
-			minRole: ROLE_ADMIN,
+			to: "/messages",
+			label: t`Message board`,
+			icon: ADMIN_NAV_ICONS.comments,
+			minRole: ROLE_EDITOR,
 		},
+		{
+			to: "/settings/site",
+			label: t`Website settings`,
+			icon: ADMIN_NAV_ICONS.menus,
+			minRole: ROLE_EDITOR,
+		},
+		{ to: "/settings/system", label: t`System settings`, icon: Gear, minRole: ROLE_ADMIN },
 	];
-
-	if (manifest.registry) {
-		adminItems.push({
-			to: "/plugins/registry",
-			label: t`Registry`,
-			icon: Storefront,
-			minRole: ROLE_ADMIN,
-		});
-	}
-
-	adminItems.push(
-		{
-			to: "/import/wordpress",
-			label: t`Import`,
-			icon: ADMIN_NAV_ICONS.import,
-			minRole: ROLE_ADMIN,
-		},
-		{ to: "/settings", label: t`Settings`, icon: Gear, minRole: ROLE_ADMIN },
-	);
 
 	const pluginItems: NavItem[] = [];
 	for (const [pluginId, config] of Object.entries(manifest.plugins)) {
@@ -586,7 +550,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 				</KumoSidebar.Group>
 
 				{/* Content — collections + media */}
-				{visibleContent.length > 1 && (
+				{visibleContent.length > 0 && (
 					<KumoSidebar.Group>
 						<KumoSidebar.GroupLabel>{t`Content`}</KumoSidebar.GroupLabel>
 						<KumoSidebar.Menu>{renderNavEntries(visibleContent)}</KumoSidebar.Menu>
@@ -596,15 +560,32 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 				{/* Manage — comments, menus, taxonomies, etc. */}
 				{visibleManage.length > 0 && (
 					<KumoSidebar.Group>
-						<KumoSidebar.GroupLabel>{t`Manage`}</KumoSidebar.GroupLabel>
-						<KumoSidebar.Menu>{renderNavItems(visibleManage)}</KumoSidebar.Menu>
+						<KumoSidebar.Menu>
+							<NavFolderMenu
+								folder={{ kind: "folder", label: t`Content tools`, items: visibleManage }}
+								currentPath={currentPath}
+								open={
+									folders.state["content-tools"] ??
+									visibleManage.some((item) => isItemActive(resolveItemPath(item), currentPath))
+								}
+								onToggle={() =>
+									folders.setOpen(
+										"content-tools",
+										!(
+											folders.state["content-tools"] ??
+											visibleManage.some((item) => isItemActive(resolveItemPath(item), currentPath))
+										),
+									)
+								}
+							/>
+						</KumoSidebar.Menu>
 					</KumoSidebar.Group>
 				)}
 
 				{/* Admin — content types, users, plugins, import */}
 				{visibleAdmin.length > 0 && (
 					<KumoSidebar.Group>
-						<KumoSidebar.GroupLabel>{t`Admin`}</KumoSidebar.GroupLabel>
+						<KumoSidebar.GroupLabel>{t`Operations and settings`}</KumoSidebar.GroupLabel>
 						<KumoSidebar.Menu>{renderNavItems(visibleAdmin)}</KumoSidebar.Menu>
 					</KumoSidebar.Group>
 				)}
@@ -612,7 +593,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 				{/* Plugin pages */}
 				{visiblePlugins.length > 0 && (
 					<KumoSidebar.Group>
-						<KumoSidebar.GroupLabel>{t`Plugins`}</KumoSidebar.GroupLabel>
+						<KumoSidebar.GroupLabel>{t`Extensions`}</KumoSidebar.GroupLabel>
 						<KumoSidebar.Menu>{renderNavItems(visiblePlugins)}</KumoSidebar.Menu>
 					</KumoSidebar.Group>
 				)}

@@ -61,7 +61,11 @@ function indentLevel(indent: string, unit = 2): number {
 /**
  * 行内解析：支持嵌套优先级（代码 → 链接 → 粗体 → 删除线 → 斜体 → 转义）。
  */
-function parseInline(text: string, keyPrefix: string, resolveImageUrl: ImageUrlResolver): InlineResult {
+function parseInline(
+	text: string,
+	keyPrefix: string,
+	resolveImageUrl: ImageUrlResolver,
+): InlineResult {
 	const children: PortableSpan[] = [];
 	const markDefs: MarkDef[] = [];
 	let buffer = "";
@@ -199,8 +203,8 @@ export function markdownToPortableText(
 	const blocks: PortableBlock[] = [];
 	let blockIndex = 0;
 
-	const pushBlock = (block: Omit<PortableBlock, "_key">) => {
-		blocks.push({ ...block, _key: `b${blockIndex++}` } as PortableBlock);
+	const pushBlock = (block: Omit<PortableBlock, "_key"> & { _type: string }) => {
+		blocks.push({ ...block, _key: `b${blockIndex++}` });
 	};
 
 	const pushInlineBlock = (text: string, extra: Record<string, unknown> = {}) => {

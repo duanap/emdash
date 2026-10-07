@@ -27,7 +27,8 @@ async function test(name, fn) {
 }
 
 /** 只取文本，方便断言 */
-const texts = (blocks) => blocks.map((block) => block.children?.map((child) => child.text).join("") ?? "");
+const texts = (blocks) =>
+	blocks.map((block) => block.children?.map((child) => child.text).join("") ?? "");
 
 await test("空输入产出空数组", () => {
 	assert.deepEqual(markdownToPortableText(""), []);

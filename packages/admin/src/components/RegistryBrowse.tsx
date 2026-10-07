@@ -11,7 +11,6 @@
 
 import { Badge, Button, Input } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { MagnifyingGlass } from "@phosphor-icons/react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
@@ -23,6 +22,7 @@ import {
 	type RegistryClientConfig,
 	type RegistryPackageView,
 } from "../lib/api/registry.js";
+import { MagnifyingGlass } from "../lib/icons.js";
 import {
 	parseRegistryPublicName,
 	registryIdentityPublisherParam,

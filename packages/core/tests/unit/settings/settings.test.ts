@@ -33,6 +33,23 @@ describe("Site Settings", () => {
 	});
 
 	describe("setSiteSettings", () => {
+		it("keeps footer notices and uploaded icon URLs across other settings updates", async () => {
+			const footerLinks = [
+				{
+					label: "ICP备案",
+					url: "https://beian.miit.gov.cn/",
+					iconUrl: "/_emdash/api/media/file/notice-icon.png",
+				},
+			];
+			await setSiteSettings({ title: "Test", footerLinks }, db);
+			await setSiteSettings({ tagline: "Welcome" }, db);
+			expect((await getSiteSettingsWithDb(db)).footerLinks).toEqual(footerLinks);
+			await setSiteSettings({ footerLinks: [] }, db);
+			const settings = await getSiteSettingsWithDb(db);
+			expect(settings.footerLinks).toEqual([]);
+			expect(settings.title).toBe("Test");
+			expect(settings.tagline).toBe("Welcome");
+		});
 		it("should store settings with site: prefix", async () => {
 			await setSiteSettings({ title: "Test Site" }, db);
 

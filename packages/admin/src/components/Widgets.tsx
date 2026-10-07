@@ -32,8 +32,6 @@ import { CSS } from "@dnd-kit/utilities";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { Plus, DotsSixVertical, Trash, CaretDown } from "@phosphor-icons/react";
-import { X } from "@phosphor-icons/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -54,6 +52,8 @@ import {
 	type CreateWidgetInput,
 	type UpdateWidgetInput,
 } from "../lib/api";
+import { Plus, DotsSixVertical, Trash, CaretDown } from "../lib/icons.js";
+import { X } from "../lib/icons.js";
 import { getPluginBlocks } from "../lib/pluginBlocks";
 import { CaretNext } from "./ArrowIcons.js";
 import { ConfirmDialog } from "./ConfirmDialog.js";

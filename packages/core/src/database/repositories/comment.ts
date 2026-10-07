@@ -304,6 +304,27 @@ export class CommentRepository {
 		return this.findById(id);
 	}
 
+	/**
+	 * Update editable fields of a stored comment (admin edits: body,
+	 * author name/email). Only provided fields are written.
+	 */
+	async updateFields(
+		id: string,
+		fields: { body?: string; authorName?: string; authorEmail?: string },
+	): Promise<Comment | null> {
+		const patch: Record<string, string> = {};
+		if (fields.body !== undefined) patch.body = fields.body;
+		if (fields.authorName !== undefined) patch.author_name = fields.authorName;
+		if (fields.authorEmail !== undefined) patch.author_email = fields.authorEmail;
+		if (Object.keys(patch).length === 0) return this.findById(id);
+		patch.updated_at = new Date().toISOString();
+
+		await this.db.updateTable("_emdash_comments").set(patch).where("id", "=", id).execute();
+
+		invalidateCommentObjectCache();
+		return this.findById(id);
+	}
+
 	/** Atomically change status only when the caller's observed state is current. */
 	async updateStatusIf(
 		id: string,

@@ -9,14 +9,6 @@ import { Badge, Button, Input, Select } from "@cloudflare/kumo";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	MagnifyingGlass,
-	DownloadSimple,
-	ShieldCheck,
-	ShieldWarning,
-	Warning,
-	ArrowsClockwise,
-} from "@phosphor-icons/react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
@@ -27,6 +19,14 @@ import {
 	type MarketplacePluginSummary,
 	type MarketplaceSearchOpts,
 } from "../lib/api/marketplace.js";
+import {
+	MagnifyingGlass,
+	DownloadSimple,
+	ShieldCheck,
+	ShieldWarning,
+	Warning,
+	ArrowsClockwise,
+} from "../lib/icons.js";
 import { safeIconUrl } from "../lib/url.js";
 import { ADMIN_NAV_ICONS } from "./admin-navigation-icons.js";
 

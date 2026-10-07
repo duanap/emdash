@@ -8,10 +8,10 @@
 import { BlockRenderer } from "@emdash-cms/blocks";
 import type { Block, BlockInteraction, BlockResponse } from "@emdash-cms/blocks";
 import { useLingui } from "@lingui/react/macro";
-import { CircleNotch, WarningCircle } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiFetch, API_BASE } from "../lib/api/client.js";
+import { CircleNotch, WarningCircle } from "../lib/icons.js";
 import { resolvePluginLinkTarget } from "../lib/plugin-links.js";
 
 interface SandboxedPluginPageProps {

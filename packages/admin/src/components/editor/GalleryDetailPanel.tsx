@@ -26,10 +26,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useLingui } from "@lingui/react/macro";
-import { X, Plus, Trash, ImageSquare, PencilSimple } from "@phosphor-icons/react";
 import * as React from "react";
 
 import type { MediaItem } from "../../lib/api";
+import { X, Plus, Trash, ImageSquare, PencilSimple } from "../../lib/icons.js";
 import { canonicalMediaProviderId, metaString } from "../../lib/media-utils";
 import { cn } from "../../lib/utils";
 import { useMediaAssetEditor } from "../media/useMediaAssetEditor.js";

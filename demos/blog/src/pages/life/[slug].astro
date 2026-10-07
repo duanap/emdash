@@ -1,10 +1,11 @@
 ---
+import { pageSlug } from "../../utils/page-slug.js";
+import { htmlPageUrl } from "../../utils/public-page-url.js";
 import {
 	getEmDashEntry,
 	getEmDashCollection,
 	getTermsForEntries,
 	getSeoMeta,
-	decodeSlug,
 	getSiteSettings,
 } from "emdash";
 import { Image, PortableText } from "emdash/ui";
@@ -17,8 +18,9 @@ import { getReadingTime } from "../../utils/reading-time";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
 import { formatDateZh, toDate } from "../../utils/date";
 import { lookupLegacyRedirect } from "../../utils/legacy-redirects";
+import { resolveCover } from "../../utils/default-images";
 
-const slug = decodeSlug(Astro.params.slug);
+const slug = pageSlug(Astro.params.slug);
 
 // 旧站用数字 ID（/life/12），新站用 slug；命中映射就 301，省掉一次无用的内容查询
 const legacyTarget = slug ? lookupLegacyRedirect(`/life/${slug}`) : null;
@@ -38,7 +40,9 @@ if (!record) {
 
 if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
 
-const recordDate = formatDateZh(record.data.record_date ?? record.data.publishedAt);
+const recordDate = formatDateZh(
+	record.data.record_date ?? record.data.publishedAt,
+);
 
 const { siteTitle } = resolveBlogSiteIdentity(await getSiteSettings());
 
@@ -53,11 +57,15 @@ function getImageUrl(img: unknown): string | undefined {
 	return undefined;
 }
 
+const cover = resolveCover(record.data.featured_image, "life");
 const seo = getSeoMeta(record, {
 	siteTitle,
 	siteUrl: Astro.url.origin,
 	path: Astro.url.pathname.replace(/\/$/, ""),
-	defaultOgImage: getImageUrl(record.data.featured_image),
+	defaultOgImage:
+		typeof cover === "string"
+			? new URL(cover, Astro.url.origin).href
+			: getImageUrl(cover),
 });
 
 const readingTime = getReadingTime(record.data.content);
@@ -94,21 +102,16 @@ const otherRecordsWithTags = otherRecords.map((r) => ({
 	canonical={seo.canonical}
 	robots={seo.robots}
 	type="article"
-	publishedTime={
-		toDate(record.data.record_date ?? record.data.publishedAt)?.toISOString() ??
-		null
-	}
+	publishedTime={toDate(
+		record.data.record_date ?? record.data.publishedAt,
+	)?.toISOString() ?? null}
 	modifiedTime={record.data.updatedAt.toISOString()}
 	content={{ collection: "life", id: record.data.id, slug }}
 >
 	<article class="life-article">
-		{
-			record.data.featured_image && (
-				<div class="article-hero" {...record.edit.featured_image}>
-					<Image image={record.data.featured_image} />
-				</div>
-			)
-		}
+		<div class="article-hero" {...record.edit.featured_image}>
+			<Image image={cover} priority />
+		</div>
 
 		<div class="article-grid">
 			<aside class="article-meta-col">
@@ -131,7 +134,7 @@ const otherRecordsWithTags = otherRecords.map((r) => ({
 								<span class="meta-label">标签</span>
 								<div class="meta-tags">
 									{tags.map((t) => (
-										<a href={`/life/tag/${t.slug}`} class="meta-tag">
+										<a href={htmlPageUrl(`/life/tag/${t.slug}`)} class="meta-tag">
 											{t.label}
 										</a>
 									))}
@@ -141,7 +144,7 @@ const otherRecordsWithTags = otherRecords.map((r) => ({
 					}
 					<div class="meta-block">
 						<span class="meta-label">返回</span>
-						<a href="/life" class="meta-value back-link">← 全部生活记录</a>
+						<a href={htmlPageUrl("/life")} class="meta-value back-link">← 全部生活记录</a>
 					</div>
 				</div>
 			</aside>
@@ -176,9 +179,7 @@ const otherRecordsWithTags = otherRecords.map((r) => ({
 					<nav class="toc" aria-label="页面目录">
 						<h2 class="toc-title">关于这条记录</h2>
 						<div class="toc-content">
-							<p class="toc-note">
-								生活记录是简短的碎片，不需要目录。
-							</p>
+							<p class="toc-note">生活记录是简短的碎片，不需要目录。</p>
 						</div>
 					</nav>
 				</div>
@@ -196,7 +197,7 @@ const otherRecordsWithTags = otherRecords.map((r) => ({
 							<PostCard
 								title={r.data.title}
 								featuredImage={r.data.featured_image}
-								href={`/life/${r.id}`}
+								href={htmlPageUrl(`/life/${r.id}`)}
 								date={toDate(r.data.record_date ?? r.data.publishedAt)}
 								readingTime={getReadingTime(r.data.content)}
 								tags={recordTags}

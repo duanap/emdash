@@ -9,7 +9,6 @@
 
 import { Button } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Images, Trash, SlidersHorizontal } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import type { NodeViewProps } from "@tiptap/react";
 import { Node } from "@tiptap/react";
@@ -17,6 +16,7 @@ import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
 import * as React from "react";
 
 import { fetchMediaItem } from "../../lib/api/media.js";
+import { Images, Trash, SlidersHorizontal } from "../../lib/icons.js";
 import {
 	canonicalMediaProviderId,
 	getMediaObjectPosition,

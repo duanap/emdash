@@ -118,6 +118,7 @@ export interface SchemaField {
 		maxLength?: number;
 		pattern?: string;
 		options?: string[];
+		allowCustom?: boolean;
 		allowedMimeTypes?: string[];
 		targetCollection?: string;
 		multiple?: boolean;
@@ -193,6 +194,7 @@ export interface CreateFieldInput {
 		maxLength?: number;
 		pattern?: string;
 		options?: string[];
+		allowCustom?: boolean;
 		allowedMimeTypes?: string[];
 		targetCollection?: string;
 		multiple?: boolean;
@@ -221,6 +223,7 @@ export interface UpdateFieldInput {
 		maxLength?: number;
 		pattern?: string;
 		options?: string[];
+		allowCustom?: boolean;
 		allowedMimeTypes?: string[];
 		targetCollection?: string;
 		multiple?: boolean;

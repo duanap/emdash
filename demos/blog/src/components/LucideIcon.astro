@@ -1,0 +1,46 @@
+---
+import {
+	Search,
+	Moon,
+	ChevronLeft,
+	ChevronRight,
+	Heart,
+	Star,
+	ArrowUpRight,
+} from "lucide";
+const icons = {
+	search: Search,
+	moon: Moon,
+	"chevron-left": ChevronLeft,
+	"chevron-right": ChevronRight,
+	heart: Heart,
+	star: Star,
+	"arrow-up-right": ArrowUpRight,
+};
+interface Props {
+	name: keyof typeof icons;
+	size?: number;
+	class?: string;
+}
+const { name, size = 20, class: className } = Astro.props;
+---
+
+<svg
+	class:list={["lucide", `lucide-${name}`, className]}
+	width={size}
+	height={size}
+	viewBox="0 0 24 24"
+	fill="none"
+	stroke="currentColor"
+	stroke-width="2"
+	stroke-linecap="round"
+	stroke-linejoin="round"
+	aria-hidden="true"
+>
+	{
+		icons[name].map(([tag, attributes]) => {
+			const Tag = tag;
+			return <Tag {...attributes} />;
+		})
+	}
+</svg>

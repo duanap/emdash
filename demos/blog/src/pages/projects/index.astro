@@ -1,4 +1,5 @@
 ---
+import { htmlPageUrl } from "../../utils/public-page-url.js";
 import {
 	getEmDashCollection,
 	getTermsForEntries,
@@ -66,14 +67,14 @@ const gridCards =
 			types.length > 0 && (
 				<nav class="type-filter" aria-label="项目类型过滤">
 					<a
-						href="/projects"
+						href={htmlPageUrl("/projects")}
 						class:list={["type-chip", { active: !activeTerm }]}
 					>
 						全部
 					</a>
 					{types.map((t) => (
 						<a
-							href={`/projects?type=${t.slug}`}
+							href={htmlPageUrl(`/projects?type=${t.slug}`)}
 							class:list={["type-chip", { active: activeTerm?.slug === t.slug }]}
 						>
 							{t.label}
@@ -97,7 +98,7 @@ const gridCards =
 										title={project.data.title ?? "未命名"}
 										summary={project.data.summary}
 										cover={project.data.cover_image}
-										href={`/projects/${project.id}`}
+										href={htmlPageUrl(`/projects/${project.id}`)}
 										tech={project.data.tech}
 										typeLabel={typeLabel}
 										featured={project.data.featured}
@@ -119,7 +120,7 @@ const gridCards =
 										title={project.data.title ?? "未命名"}
 										summary={project.data.summary}
 										cover={project.data.cover_image}
-										href={`/projects/${project.id}`}
+										href={htmlPageUrl(`/projects/${project.id}`)}
 										tech={project.data.tech}
 										typeLabel={typeLabel}
 										featured={project.data.featured}

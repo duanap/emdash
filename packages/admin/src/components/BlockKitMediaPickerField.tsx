@@ -1,9 +1,9 @@
 import { Button } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Image as ImageIcon, ImageBroken, X } from "@phosphor-icons/react";
 import * as React from "react";
 
 import type { MediaItem } from "../lib/api";
+import { Image as ImageIcon, ImageBroken, X } from "../lib/icons.js";
 import { isSafeUrl } from "../lib/url";
 import { MediaPickerModal } from "./MediaPickerModal";
 

@@ -1,8 +1,8 @@
 import { Button, DatePicker, Dialog, Input, Select, Text } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Globe, PencilSimple, X } from "@phosphor-icons/react";
 import * as React from "react";
 
+import { Globe, PencilSimple, X } from "../lib/icons.js";
 import {
 	getPublishingTimeZone,
 	publishingFieldsMatchInstant,

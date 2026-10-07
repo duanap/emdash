@@ -65,6 +65,7 @@ export function createRequestMetrics(start: number): RequestMetrics {
 export interface EmDashRequestContext {
 	/** Whether the current request is in visual editing mode */
 	editMode: boolean;
+	publicPageSuffix?: ".html";
 	/**
 	 * The response may be stored by Astro's route cache.
 	 *

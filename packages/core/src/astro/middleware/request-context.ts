@@ -15,7 +15,7 @@
  */
 
 import { loadVisualEditingToolbarLabels } from "@emdash-cms/admin/locales/server";
-import type { APIContext } from "astro";
+import type { APIContext, MiddlewareHandler } from "astro";
 import { defineMiddleware } from "astro:middleware";
 // @ts-ignore - virtual module
 import virtualConfig from "virtual:emdash/config";
@@ -152,7 +152,15 @@ function redirectToCanonical(url: URL): Response {
 	});
 }
 
-export const onRequest = defineMiddleware(async (context, next) => {
+export const onRequest: MiddlewareHandler = defineMiddleware(async (context, next) => {
+	const suffix = virtualConfig?.publicPageSuffix;
+	const parentContext = getRequestContext();
+	if (suffix && parentContext?.publicPageSuffix !== suffix) {
+		return runWithContext(
+			{ ...parentContext, editMode: parentContext?.editMode ?? false, publicPageSuffix: suffix },
+			() => onRequest(context, next),
+		);
+	}
 	const { cookies, url } = context;
 
 	// Skip /_emdash routes (admin has its own UI, no rendering context needed)

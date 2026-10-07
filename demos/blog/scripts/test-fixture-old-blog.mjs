@@ -132,9 +132,45 @@ db.prepare(
 const insComment = db.prepare(
 	"INSERT INTO comments (id,target_type,target_id,parent_id,author,initials,time_label,content,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
 );
-insComment.run(1, "article", 1, null, "测试访客", "访", "3 天前", "这篇文章帮大忙了！", "published", now, now);
-insComment.run(2, "article", 1, 1, "duanap", "du", "2 天前", "@测试访客 感谢支持", "published", now, now);
+insComment.run(
+	1,
+	"article",
+	1,
+	null,
+	"测试访客",
+	"访",
+	"3 天前",
+	"这篇文章帮大忙了！",
+	"published",
+	now,
+	now,
+);
+insComment.run(
+	2,
+	"article",
+	1,
+	1,
+	"duanap",
+	"du",
+	"2 天前",
+	"@测试访客 感谢支持",
+	"published",
+	now,
+	now,
+);
 insComment.run(3, "life", 7, null, "另一访客", "另", "1 天前", "记录真勤", "published", now, now);
-insComment.run(4, "message", 0, null, "留言者", "留", "刚刚", "留言墙消息，应被跳过", "published", now, now);
+insComment.run(
+	4,
+	"message",
+	0,
+	null,
+	"留言者",
+	"留",
+	"刚刚",
+	"留言墙消息，应被跳过",
+	"published",
+	now,
+	now,
+);
 
 console.log(`合成旧库已生成: ${out}`);

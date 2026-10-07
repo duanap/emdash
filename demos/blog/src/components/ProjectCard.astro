@@ -1,6 +1,8 @@
 ---
+import { htmlPageUrl } from "../utils/public-page-url.js";
 import type { EditProxy, MediaValue } from "emdash";
 import { Image } from "emdash/ui";
+import { DEFAULT_PROJECT_ICON, resolveCover } from "../utils/default-images";
 
 interface Props {
 	title: string;
@@ -11,6 +13,7 @@ interface Props {
 	typeLabel?: string;
 	featured?: boolean;
 	edit?: EditProxy;
+	fullMobileCover?: boolean;
 }
 
 const {
@@ -22,20 +25,24 @@ const {
 	typeLabel,
 	featured,
 	edit,
+	fullMobileCover = false,
 } = Astro.props;
+const coverImage = resolveCover(cover, "projects");
 ---
 
-<article class="project-card">
-	<a href={href} class="card-link">
-		{
-			cover ? (
-				<div class="card-image" {...edit?.cover_image}>
-					<Image image={cover} />
-				</div>
-			) : (
-				<div class="card-placeholder" />
-			)
-		}
+<article
+	class:list={["project-card", { "full-mobile-cover": fullMobileCover }]}
+>
+	<a href={htmlPageUrl(href)} class="card-link">
+		<div
+			class:list={[
+				"card-image",
+				{ "default-icon": coverImage === DEFAULT_PROJECT_ICON },
+			]}
+			{...edit?.cover_image}
+		>
+			<Image image={coverImage} />
+		</div>
 		<div class="card-body">
 			<div class="card-meta">
 				{typeLabel && <span class="card-type">{typeLabel}</span>}
@@ -43,7 +50,13 @@ const {
 				{featured && <span class="card-featured">精选</span>}
 			</div>
 			<h2 class="card-title" {...edit?.title}>{title}</h2>
-			{summary && <p class="card-summary" {...edit?.summary}>{summary}</p>}
+			{
+				summary && (
+					<p class="card-summary" {...edit?.summary}>
+						{summary}
+					</p>
+				)
+			}
 		</div>
 	</a>
 	{
@@ -58,6 +71,28 @@ const {
 </article>
 
 <style>
+	@media (max-width: 640px) {
+		.full-mobile-cover .card-image {
+			aspect-ratio: auto;
+		}
+		.full-mobile-cover .card-image img {
+			height: auto;
+			object-fit: contain;
+		}
+		.full-mobile-cover .default-icon img {
+			padding: 0;
+		}
+		.full-mobile-cover .card-title {
+			font-size: 15px;
+		}
+		.full-mobile-cover .card-summary,
+		.full-mobile-cover .card-meta {
+			font-size: 12px;
+		}
+		.full-mobile-cover .card-link:hover .card-image img {
+			transform: none;
+		}
+	}
 	.project-card {
 		display: flex;
 		flex-direction: column;
@@ -89,11 +124,9 @@ const {
 		transform: scale(1.03);
 	}
 
-	.card-placeholder {
-		aspect-ratio: 16 / 10;
-		border-radius: var(--radius-lg);
-		background: var(--color-surface);
-		margin-bottom: var(--spacing-4);
+	.default-icon img {
+		object-fit: contain;
+		padding: var(--spacing-4);
 	}
 
 	.card-body {

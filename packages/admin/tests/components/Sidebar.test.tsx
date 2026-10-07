@@ -23,14 +23,6 @@
  * the contract, the filter pins the gate.
  */
 
-import {
-	Plug,
-	Gear,
-	Trophy,
-	ClockCounterClockwise,
-	IdentificationCard,
-	SquaresFour,
-} from "@phosphor-icons/react";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, it, expect } from "vitest";
@@ -48,6 +40,14 @@ import {
 	toPhosphorIconName,
 	visibleCollectionEntries,
 } from "../../src/components/Sidebar";
+import {
+	Plug,
+	Gear,
+	Trophy,
+	ClockCounterClockwise,
+	IdentificationCard,
+	SquaresFour,
+} from "../../src/lib/icons.js";
 import { render } from "../utils/render.tsx";
 
 // Mirror @emdash-cms/auth Role levels. Kept inline (matching Sidebar.tsx)

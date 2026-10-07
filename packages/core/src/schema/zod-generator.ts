@@ -128,7 +128,9 @@ function getBaseSchema(type: FieldType, field: Pick<Field, "validation">): ZodTy
 
 		case "multiSelect": {
 			const multiOptions = field.validation?.options;
-			if (multiOptions && multiOptions.length > 0) {
+			// allowCustom keeps the listed options as editor suggestions but
+			// accepts any string value (e.g. free-form tech-stack labels).
+			if (!field.validation?.allowCustom && multiOptions && multiOptions.length > 0) {
 				const [first, ...rest] = multiOptions;
 				return z.array(z.enum([first, ...rest]));
 			}
@@ -604,7 +606,7 @@ function fieldTypeToTypeScript(field: {
 
 		case "multiSelect":
 			const multiOptions = field.validation?.options;
-			if (multiOptions && multiOptions.length > 0) {
+			if (!field.validation?.allowCustom && multiOptions && multiOptions.length > 0) {
 				return `(${multiOptions.map((o) => `"${o}"`).join(" | ")})[]`;
 			}
 			return "string[]";

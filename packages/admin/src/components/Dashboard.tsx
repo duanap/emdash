@@ -1,18 +1,20 @@
-import { Badge, Banner, Button, LayerCard, SkeletonLine } from "@cloudflare/kumo";
+import { Badge, Banner, Button, LayerCard, Popover, SkeletonLine } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { FileArrowUp, Plus, Upload, X } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
 
 import type { AdminManifest } from "../lib/api";
+import { fetchCommentCounts } from "../lib/api/comments.js";
 import { useCurrentUser } from "../lib/api/current-user.js";
 import type { CollectionStats, DashboardStats, RecentItem } from "../lib/api/dashboard";
 import { dismissScheduledPolicyRejection, fetchDashboardStats } from "../lib/api/dashboard";
 import { fetchTransferCapabilities, TRANSFER_CAPABILITIES_QUERY_KEY } from "../lib/api/transfer.js";
+import { FileArrowUp, Plus, Upload, X, Images, Globe, Gear, Shield, Chats } from "../lib/icons.js";
 import { usePluginWidget } from "../lib/plugin-context";
 import { cn, formatRelativeTime } from "../lib/utils";
+import { getCollectionNavIcon } from "./admin-navigation-icons.js";
 import { ArrowNext } from "./ArrowIcons";
 import {
 	ContentStatusIcon,
@@ -49,7 +51,7 @@ export interface DashboardProps {
  * Admin dashboard — quick actions, status, collections, recent activity.
  */
 export function Dashboard({ manifest }: DashboardProps) {
-	const { t } = useLingui();
+	const { t, i18n } = useLingui();
 	const { data: user } = useCurrentUser();
 	const {
 		data: stats,
@@ -62,13 +64,28 @@ export function Dashboard({ manifest }: DashboardProps) {
 	});
 	const hasDashboardData = stats !== undefined;
 	const showDashboardData = !isError || hasDashboardData;
+	const { data: comments } = useQuery({
+		queryKey: ["commentCounts"],
+		queryFn: fetchCommentCounts,
+		staleTime: 60_000,
+		retry: false,
+		enabled: (user?.role ?? 0) >= ROLE_EDITOR,
+	});
 
 	return (
-		<div className="space-y-6">
+		<div className="emdash-dashboard mx-auto max-w-7xl space-y-6">
 			{manifest.marketplace && (user?.role ?? 0) >= ROLE_ADMIN && <MarketplaceMigrationBanner />}
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<h1 className="text-2xl font-semibold leading-tight">{t`Dashboard`}</h1>
-				<QuickActions manifest={manifest} />
+				<div>
+					<h1 className="text-3xl font-semibold leading-tight">{t`Dashboard`}</h1>
+					<p className="mt-2 text-sm text-kumo-subtle">{t`Your website content and tasks at a glance.`}</p>
+				</div>
+				<div className="flex items-center gap-3">
+					<span className="hidden text-sm text-kumo-subtle xl:inline">
+						{new Intl.DateTimeFormat(i18n.locale, { dateStyle: "full" }).format(new Date())}
+					</span>
+					<CreateContentMenu manifest={manifest} />
+				</div>
 			</div>
 
 			<CoreUpdateBanner />
@@ -81,17 +98,27 @@ export function Dashboard({ manifest }: DashboardProps) {
 					{stats && (
 						<SchedulerWarning stats={stats} canDismissPolicy={(user?.role ?? 0) >= ROLE_EDITOR} />
 					)}
-					<SummaryMetrics stats={stats} loading={isLoading} />
+					<CollectionOverview
+						manifest={manifest}
+						stats={stats}
+						pendingComments={comments?.pending}
+						canModerate={(user?.role ?? 0) >= ROLE_EDITOR}
+						loading={isLoading}
+					/>
 
 					{/* Collections + Recent activity */}
-					<div className="grid gap-6 lg:grid-cols-2">
-						<CollectionList
-							collections={stats?.collections ?? []}
-							manifest={manifest}
-							loading={isLoading}
-						/>
-						<RecentActivity items={stats?.recentItems ?? []} loading={isLoading} />
+					<div className="grid gap-6 xl:grid-cols-2">
+						<QuickActions manifest={manifest} />
+						<div className="space-y-6">
+							<RecentActivity items={stats?.recentItems ?? []} loading={isLoading} />
+							<SummaryMetrics stats={stats} loading={isLoading} />
+						</div>
 					</div>
+					<CollectionList
+						collections={stats?.collections ?? []}
+						manifest={manifest}
+						loading={isLoading}
+					/>
 				</>
 			)}
 
@@ -319,30 +346,169 @@ function DashboardCardInset({ className, ...props }: React.ComponentPropsWithout
 
 // --- Quick actions ---
 
+function CreateContentMenu({ manifest }: { manifest: AdminManifest }) {
+	const { t } = useLingui();
+	const { data: user } = useCurrentUser();
+	if ((user?.role ?? 0) < 20) return null;
+	return (
+		<Popover>
+			<Popover.Trigger asChild>
+				<Button variant="primary" icon={<Plus />}>{t`New content`}</Button>
+			</Popover.Trigger>
+			<Popover.Content className="w-60 p-2" align="end">
+				<div className="grid gap-1">
+					{visibleCollectionEntries(manifest.collections)
+						.filter(([, config]) => config.quickCreate !== false)
+						.map(([slug, config]) => (
+							<RouterLinkButton
+								key={slug}
+								to="/content/$collection/new"
+								params={{ collection: slug }}
+								search={{ locale: undefined }}
+								variant="ghost"
+								className="justify-start"
+							>
+								{config.labelSingular ?? config.label}
+							</RouterLinkButton>
+						))}
+				</div>
+			</Popover.Content>
+		</Popover>
+	);
+}
+
+function CollectionOverview({
+	manifest,
+	stats,
+	pendingComments,
+	canModerate,
+	loading,
+}: {
+	manifest: AdminManifest;
+	stats?: DashboardStats;
+	pendingComments?: number;
+	canModerate: boolean;
+	loading: boolean;
+}) {
+	const { t } = useLingui();
+	const visible = new Set(visibleCollectionEntries(manifest.collections).map(([slug]) => slug));
+	const priorities = new Map(["posts", "pages", "projects"].map((slug, index) => [slug, index]));
+	const collections =
+		stats?.collections
+			.filter((collection) => visible.has(collection.slug))
+			.toSorted((a, b) => (priorities.get(a.slug) ?? 3) - (priorities.get(b.slug) ?? 3))
+			.slice(0, 3) ?? [];
+	return (
+		<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			{loading
+				? [1, 2, 3, 4].map((key) => (
+						<div key={key} className="rounded-xl border border-kumo-line bg-kumo-base p-5">
+							<SkeletonLine />
+						</div>
+					))
+				: collections.map((collection) => {
+						const Icon = getCollectionNavIcon(
+							collection.slug,
+							manifest.collections[collection.slug]?.icon,
+						);
+						return (
+							<Link
+								key={collection.slug}
+								to="/content/$collection"
+								params={{ collection: collection.slug }}
+								search={{ locale: undefined }}
+								aria-label={t`View ${collection.label}`}
+								className="flex items-start gap-4 rounded-xl border border-kumo-line bg-kumo-base p-5 hover:bg-kumo-tint"
+							>
+								<span className="flex size-11 items-center justify-center rounded-xl bg-kumo-tint text-kumo-brand">
+									<Icon className="size-6" />
+								</span>
+								<div>
+									<span className="text-sm text-kumo-subtle">
+										{manifest.collections[collection.slug]?.label ?? collection.label}
+									</span>
+									<p className="mt-1 text-3xl font-semibold tabular-nums">{collection.total}</p>
+								</div>
+							</Link>
+						);
+					})}
+			{!loading && canModerate && (
+				<Link
+					to="/comments"
+					className="flex items-start gap-4 rounded-xl border border-kumo-line bg-kumo-base p-5 hover:bg-kumo-tint"
+				>
+					<span className="flex size-11 items-center justify-center rounded-xl bg-kumo-tint text-kumo-brand">
+						<Chats className="size-6" />
+					</span>
+					<div>
+						<span className="text-sm text-kumo-subtle">{t`Pending comments`}</span>
+						<p className="mt-1 text-3xl font-semibold tabular-nums">{pendingComments ?? "—"}</p>
+					</div>
+				</Link>
+			)}
+		</div>
+	);
+}
+
 function QuickActions({ manifest }: { manifest: AdminManifest }) {
 	const { t } = useLingui();
+	const { data: user } = useCurrentUser();
+	const role = user?.role ?? 0;
 	const collections = visibleCollectionEntries(manifest.collections).filter(
 		([, config]) => config.quickCreate !== false,
 	);
+	const preferred = ["posts", "pages"].flatMap((slug) =>
+		collections.filter(([name]) => name === slug),
+	);
+	const prominent = (preferred.length ? preferred : collections).slice(0, 2);
+	const cardClass =
+		"h-auto min-h-28 w-full flex-col items-start justify-start gap-3 whitespace-normal rounded-xl p-4 text-start";
+	const actions = [
+		{ to: "/media", label: t`Upload Media`, Icon: Upload, minRole: 20 },
+		{ to: "/comments", label: t`Review comments`, Icon: Chats, minRole: 40 },
+		{ to: "/settings/sitemap", label: t`Update sitemap`, Icon: Globe, minRole: 50 },
+		{ to: "/settings/carousel", label: t`Homepage Carousel`, Icon: Images, minRole: 50 },
+		{ to: "/menus", label: t`Website navigation`, Icon: Gear, minRole: 40 },
+		{ to: "/settings/footer", label: t`Registration and footer links`, Icon: Shield, minRole: 50 },
+	] as const;
 
 	return (
-		<div className="flex flex-wrap items-center gap-2">
-			{collections.map(([slug, config]) => (
-				<RouterLinkButton
-					key={slug}
-					to="/content/$collection/new"
-					params={{ collection: slug }}
-					search={{ locale: undefined }}
-					variant="secondary"
-					icon={<Plus aria-hidden="true" />}
-				>
-					{config.labelSingular ?? config.label}
-				</RouterLinkButton>
-			))}
-			<RouterLinkButton to="/media" variant="secondary" icon={<Upload aria-hidden="true" />}>
-				{t`Upload Media`}
-			</RouterLinkButton>
-		</div>
+		<section
+			className="rounded-xl border border-kumo-line bg-kumo-base p-5"
+			aria-label={t`Quick actions`}
+		>
+			<h2 className="text-lg font-semibold">{t`Quick actions`}</h2>
+			<p className="mt-1 text-sm text-kumo-subtle">{t`Create content, review interactions, and maintain your website.`}</p>
+			<div className="mt-5 grid gap-3 sm:grid-cols-2">
+				{role >= 20 &&
+					prominent.map(([slug, config]) => (
+						<RouterLinkButton
+							key={slug}
+							to="/content/$collection/new"
+							params={{ collection: slug }}
+							search={{ locale: undefined }}
+							variant="outline"
+							className={cardClass}
+							icon={<Plus aria-hidden="true" className="size-6 text-kumo-brand" />}
+						>
+							{config.labelSingular ?? config.label}
+						</RouterLinkButton>
+					))}
+				{actions
+					.filter((action) => role >= action.minRole)
+					.map(({ to, label, Icon }) => (
+						<RouterLinkButton
+							key={to}
+							to={to}
+							variant="outline"
+							className={cardClass}
+							icon={<Icon className="size-6 text-kumo-brand" aria-hidden="true" />}
+						>
+							{label}
+						</RouterLinkButton>
+					))}
+			</div>
+		</section>
 	);
 }
 

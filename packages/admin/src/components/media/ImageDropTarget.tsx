@@ -1,10 +1,10 @@
 import { Button, Loader } from "@cloudflare/kumo";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { UploadSimple } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
 import { uploadMedia, type MediaItem } from "../../lib/api/media.js";
+import { UploadSimple } from "../../lib/icons.js";
 import { matchesMimeAllowlist } from "../../lib/mime-utils.js";
 import { cn } from "../../lib/utils.js";
 import { getMutationError } from "../DialogError.js";

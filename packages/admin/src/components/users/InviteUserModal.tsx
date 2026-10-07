@@ -1,8 +1,8 @@
 import { Button, Dialog, Input, Select } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Check, Copy, X } from "@phosphor-icons/react";
 import * as React from "react";
 
+import { Check, Copy, X } from "../../lib/icons.js";
 import { useRolesConfig } from "./useRolesConfig.js";
 
 export interface InviteUserModalProps {

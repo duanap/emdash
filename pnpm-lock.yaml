@@ -576,7 +576,7 @@ importers:
     dependencies:
       '@astrojs/cloudflare':
         specifier: 'catalog:'
-        version: 14.3.1(@types/node@26.1.1)(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(wrangler@4.125.0(@cloudflare/workers-types@5.20260911.1))(yaml@2.9.0)
+        version: 14.3.1(@types/node@26.1.1)(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(wrangler@4.125.0(@cloudflare/workers-types@5.20260911.1))(yaml@2.9.1)
       '@atcute/lexicons':
         specifier: 'catalog:'
         version: 2.0.0
@@ -594,7 +594,7 @@ importers:
         version: link:../../packages/registry-verification
       astro:
         specifier: 'catalog:'
-        version: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
+        version: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1)
       marked:
         specifier: ^17.0.3
         version: 17.0.3
@@ -803,6 +803,9 @@ importers:
       emdash:
         specifier: workspace:*
         version: link:../../packages/core
+      lucide:
+        specifier: ^1.49.0
+        version: 1.49.0
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -1658,6 +1661,9 @@ importers:
       lowlight:
         specifier: 'catalog:'
         version: 3.3.0
+      lucide-react:
+        specifier: ^1.49.0
+        version: 1.49.0(@types/react@19.2.14)(react@19.2.4)
       marked:
         specifier: ^17.0.3
         version: 17.0.3
@@ -3482,9 +3488,6 @@ packages:
   '@astrojs/compiler-rs@0.4.0':
     resolution: {integrity: sha512-koVikeon1kreEy+/JzLQRy3vzHHQVOjycs4degg4vFufKApZOwMZvSSAEztYNhmcQVfNVsVZZI4cEge3cexAbQ==}
     engines: {node: '>=22.12.0'}
-
-  '@astrojs/compiler@2.13.0':
-    resolution: {integrity: sha512-mqVORhUJViA28fwHYaWmsXSzLO9osbdZ5ImUfxBarqsYdMlPbqAqGJCxsNzvppp1BEzc1mJNjOVvQqeDN8Vspw==}
 
   '@astrojs/compiler@2.13.1':
     resolution: {integrity: sha512-f3FN83d2G/v32ipNClRKgYv30onQlMZX1vCeZMjPsMMPl1mDpmbl0+N5BYo4S/ofzqJyS5hvwacEo0CCVDn/Qg==}
@@ -10645,6 +10648,18 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
+  lucide-react@1.49.0:
+    resolution: {integrity: sha512-ApfaNM4/7jBrVopqLJ84Jz8TMQ1Q1JeZ1PmKh25aeS3E1FTVcMkSh1bEQB7dfzdIrwXRP8p3z4AJjTIHHb5IIA==}
+    peerDependencies:
+      '@types/react': '*'
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
+  lucide@1.49.0:
+    resolution: {integrity: sha512-Dyl20SJao+7GUAYqa1Wz/x5wiIYzVRlDXwtFDvf44HULQObsb8YjXE81YGv24WMFQQYLqlxHu86ikEAqG4Mbww==}
+
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
     hasBin: true
@@ -13293,15 +13308,15 @@ snapshots:
       - utf-8-validate
       - yaml
 
-  '@astrojs/cloudflare@14.3.1(@types/node@26.1.1)(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(wrangler@4.125.0(@cloudflare/workers-types@5.20260911.1))(yaml@2.9.0)':
+  '@astrojs/cloudflare@14.3.1(@types/node@26.1.1)(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(wrangler@4.125.0(@cloudflare/workers-types@5.20260820.1))(yaml@2.9.1)':
     dependencies:
       '@astrojs/internal-helpers': 0.11.0
       '@astrojs/underscore-redirects': 1.0.4
-      '@cloudflare/vite-plugin': 1.53.0(vite@8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))(wrangler@4.125.0(@cloudflare/workers-types@5.20260911.1))
-      astro: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
+      '@cloudflare/vite-plugin': 1.53.0(vite@8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))(wrangler@4.125.0(@cloudflare/workers-types@5.20260820.1))
+      astro: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1)
       piccolore: 0.1.3
-      vite: 8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
-      wrangler: 4.125.0(@cloudflare/workers-types@5.20260911.1)
+      vite: 8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1)
+      wrangler: 4.125.0(@cloudflare/workers-types@5.20260820.1)
     transitivePeerDependencies:
       - '@types/node'
       - '@vitejs/devtools'
@@ -13318,15 +13333,15 @@ snapshots:
       - utf-8-validate
       - yaml
 
-  '@astrojs/cloudflare@14.3.1(@types/node@26.1.1)(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(wrangler@4.125.0(@cloudflare/workers-types@5.20260820.1))(yaml@2.9.1)':
+  '@astrojs/cloudflare@14.3.1(@types/node@26.1.1)(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(wrangler@4.125.0(@cloudflare/workers-types@5.20260911.1))(yaml@2.9.1)':
     dependencies:
       '@astrojs/internal-helpers': 0.11.0
       '@astrojs/underscore-redirects': 1.0.4
-      '@cloudflare/vite-plugin': 1.53.0(vite@8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))(wrangler@4.125.0(@cloudflare/workers-types@5.20260820.1))
+      '@cloudflare/vite-plugin': 1.53.0(vite@8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))(wrangler@4.125.0(@cloudflare/workers-types@5.20260911.1))
       astro: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1)
       piccolore: 0.1.3
       vite: 8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1)
-      wrangler: 4.125.0(@cloudflare/workers-types@5.20260820.1)
+      wrangler: 4.125.0(@cloudflare/workers-types@5.20260911.1)
     transitivePeerDependencies:
       - '@types/node'
       - '@vitejs/devtools'
@@ -13421,8 +13436,6 @@ snapshots:
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
-
-  '@astrojs/compiler@2.13.0': {}
 
   '@astrojs/compiler@2.13.1': {}
 
@@ -15075,7 +15088,7 @@ snapshots:
       cjs-module-lexer: 1.2.3
       esbuild: 0.28.1
       miniflare: 5.20260820.0-alpha
-      vitest: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.10.13)(@vitest/browser-playwright@4.1.10)(@vitest/ui@4.1.10)(jsdom@26.1.0)(vite@8.0.11(@types/node@24.10.13)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
+      vitest: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@26.1.1)(@vitest/browser-playwright@4.1.10)(@vitest/ui@4.1.10)(jsdom@26.1.0)(vite@8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))
       wrangler: 4.125.0(@cloudflare/workers-types@5.20260911.1)
       zod: 4.4.3
     transitivePeerDependencies:
@@ -19050,7 +19063,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vitest: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.10.13)(@vitest/browser-playwright@4.1.10)(@vitest/ui@4.1.10)(jsdom@26.1.0)(vite@8.0.11(@types/node@24.10.13)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
+      vitest: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@26.1.1)(@vitest/browser-playwright@4.1.10)(@vitest/ui@4.1.10)(jsdom@26.1.0)(vite@8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))
 
   '@vitest/utils@4.1.10':
     dependencies:
@@ -19446,97 +19459,6 @@ snapshots:
       zod: 4.5.4
     optionalDependencies:
       sharp: 0.35.4(@types/node@24.10.13)
-    transitivePeerDependencies:
-      - '@azure/app-configuration'
-      - '@azure/cosmos'
-      - '@azure/data-tables'
-      - '@azure/identity'
-      - '@azure/keyvault-secrets'
-      - '@azure/storage-blob'
-      - '@capacitor/preferences'
-      - '@deno/kv'
-      - '@emnapi/core'
-      - '@emnapi/runtime'
-      - '@netlify/blobs'
-      - '@planetscale/database'
-      - '@types/node'
-      - '@upstash/redis'
-      - '@vercel/blob'
-      - '@vercel/functions'
-      - '@vercel/kv'
-      - '@vitejs/devtools'
-      - aws4fetch
-      - db0
-      - idb-keyval
-      - ioredis
-      - jiti
-      - less
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - uploadthing
-      - yaml
-
-  astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)(aws4fetch@1.0.20)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0):
-    dependencies:
-      '@astrojs/compiler-rs': 0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)
-      '@astrojs/internal-helpers': 0.11.0
-      '@astrojs/markdown-satteri': 0.4.1
-      '@astrojs/telemetry': 3.3.3
-      '@capsizecss/unpack': 4.0.0
-      '@clack/prompts': 1.8.0
-      '@oslojs/encoding': 1.1.0
-      am-i-vibing: 0.4.0
-      aria-query: 5.3.2
-      axobject-query: 4.1.0
-      ci-info: 4.4.0
-      clsx: 2.1.1
-      common-ancestor-path: 2.0.0
-      cookie: 2.0.1
-      devalue: 5.8.1
-      diff: 9.0.0
-      dset: 3.1.4
-      es-module-lexer: 2.0.0
-      esbuild: 0.28.1
-      find-proc: 0.1.0
-      flattie: 1.1.1
-      fontace: 0.4.1
-      get-tsconfig: 5.0.0-beta.4
-      github-slugger: 2.0.0
-      html-escaper: 3.0.3
-      http-cache-semantics: 4.2.0
-      js-yaml: 4.3.0
-      jsonc-parser: 3.3.1
-      magic-string: 1.3.1
-      magicast: 0.5.2
-      mrmime: 2.0.1
-      neotraverse: 1.0.1
-      obug: 2.1.1
-      p-limit: 7.3.0
-      p-queue: 9.1.0
-      package-manager-detector: 1.8.0
-      piccolore: 0.1.3
-      picomatch: 4.0.7
-      semver: 7.8.5
-      shiki: 4.0.2
-      smol-toml: 1.8.0
-      svgo: 4.0.1
-      tinyclip: 0.1.12
-      tinyexec: 1.3.0
-      tinyglobby: 0.2.17
-      ultrahtml: 1.6.0
-      unifont: 0.7.5
-      unstorage: 1.17.5(aws4fetch@1.0.20)
-      vite: 8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
-      vitefu: 1.1.2(vite@8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))
-      xxhash-wasm: 1.1.0
-      yargs-parser: 22.0.0
-      zod: 4.5.4
-    optionalDependencies:
-      sharp: 0.35.4(@types/node@26.1.1)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -21313,6 +21235,14 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
+  lucide-react@1.49.0(@types/react@19.2.14)(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+    optionalDependencies:
+      '@types/react': 19.2.14
+
+  lucide@1.49.0: {}
+
   lz-string@1.5.0: {}
 
   magic-string@0.30.21:
@@ -22269,7 +22199,7 @@ snapshots:
 
   prettier-plugin-astro@0.14.1:
     dependencies:
-      '@astrojs/compiler': 2.13.0
+      '@astrojs/compiler': 2.13.1
       prettier: 3.9.5
       sass-formatter: 0.7.9
 
@@ -23671,21 +23601,6 @@ snapshots:
       tinyglobby: 0.2.17
     optionalDependencies:
       '@types/node': 25.9.1
-      esbuild: 0.28.1
-      fsevents: 2.3.3
-      jiti: 2.7.0
-      tsx: 4.21.0
-      yaml: 2.9.0
-
-  vite@8.0.16(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0):
-    dependencies:
-      lightningcss: 1.33.0
-      picomatch: 4.0.7
-      postcss: 8.5.26
-      rolldown: 1.0.3
-      tinyglobby: 0.2.17
-    optionalDependencies:
-      '@types/node': 26.1.1
       esbuild: 0.28.1
       fsevents: 2.3.3
       jiti: 2.7.0

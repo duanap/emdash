@@ -1,4 +1,5 @@
 ---
+import { htmlPageUrl } from "../../utils/public-page-url.js";
 import {
 	getEmDashCollection,
 	getTermsForEntries,
@@ -68,12 +69,12 @@ const recordsWithTags = records.map((record) => ({
 		{
 			categories.length > 0 && (
 				<nav class="cat-filter" aria-label="生活分类过滤">
-					<a href="/life" class:list={["cat-chip", { active: !activeTerm }]}>
+					<a href={htmlPageUrl("/life")} class:list={["cat-chip", { active: !activeTerm }]}>
 						全部
 					</a>
 					{categories.map((cat) => (
 						<a
-							href={`/life?cat=${cat.slug}`}
+							href={htmlPageUrl(`/life?cat=${cat.slug}`)}
 							class:list={["cat-chip", { active: activeTerm?.slug === cat.slug }]}
 						>
 							{cat.label}
@@ -92,7 +93,7 @@ const recordsWithTags = records.map((record) => ({
 						<PostCard
 							title={record.data.title ?? "未命名"}
 							featuredImage={record.data.featured_image}
-							href={`/life/${record.id}`}
+							href={htmlPageUrl(`/life/${record.id}`)}
 							date={toDate(record.data.record_date ?? record.data.publishedAt)}
 							readingTime={getReadingTime(record.data.content)}
 							tags={tags}
@@ -107,18 +108,18 @@ const recordsWithTags = records.map((record) => ({
 		<nav class="pagination" aria-label="分页">
 			{
 				activeTerm && cursor && (
-					<a href={`/life?cat=${activeTerm.slug}`}>第一页</a>
+					<a href={htmlPageUrl(`/life?cat=${activeTerm.slug}`)}>第一页</a>
 				)
 			}
 			{
-				!activeTerm && cursor && <a href="/life">第一页</a>
+				!activeTerm && cursor && <a href={htmlPageUrl("/life")}>第一页</a>
 			}
 			{
 				nextCursor && (
 					<a
-						href={`/life?cursor=${encodeURIComponent(nextCursor)}${
+						href={htmlPageUrl(`/life?cursor=${encodeURIComponent(nextCursor)}${
 							activeTerm ? `&cat=${activeTerm.slug}` : ""
-						}`}
+						}`)}
 					>
 						下一页
 					</a>

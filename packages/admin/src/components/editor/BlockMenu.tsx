@@ -14,6 +14,10 @@ import { Button, DropdownMenu } from "@cloudflare/kumo";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
+import { NodeSelection } from "@tiptap/pm/state";
+import type { Editor } from "@tiptap/react";
+import * as React from "react";
+
 import {
 	DotsSixVertical,
 	Paragraph,
@@ -30,11 +34,7 @@ import {
 	Copy,
 	Trash,
 	type Icon as PhosphorIcon,
-} from "@phosphor-icons/react";
-import { NodeSelection } from "@tiptap/pm/state";
-import type { Editor } from "@tiptap/react";
-import * as React from "react";
-
+} from "../../lib/icons.js";
 import { cn } from "../../lib/utils";
 import { getLocaleDir } from "../../locales/config.js";
 import { CaretNext, CaretPrev } from "../ArrowIcons.js";

@@ -1,5 +1,6 @@
 import { useLingui } from "@lingui/react/macro";
 
+import { settingsSection } from "../../lib/settings-section.js";
 import { ArrowPrev } from "../ArrowIcons.js";
 import { RouterLinkButton } from "../RouterLinkButton.js";
 
@@ -11,9 +12,10 @@ import { RouterLinkButton } from "../RouterLinkButton.js";
  */
 export function BackToSettingsLink() {
 	const { t } = useLingui();
+	const section = settingsSection(window.location.pathname);
 	return (
 		<RouterLinkButton
-			to="/settings"
+			to={`/settings/${section}`}
 			variant="ghost"
 			shape="square"
 			aria-label={t`Back to settings`}

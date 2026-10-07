@@ -42,7 +42,9 @@ const outDir = resolve(arg("--out", "./.migration"));
 const redirectsOut = resolve(arg("--redirects-out", "./src/data/legacy-redirects.json"));
 
 if (!existsSync(oldDbPath)) {
-	console.error(`找不到旧库：${oldDbPath}\n（真实数据到位前可先用 scripts/make-old-site-fixture.mjs 造夹具）`);
+	console.error(
+		`找不到旧库：${oldDbPath}\n（真实数据到位前可先用 scripts/make-old-site-fixture.mjs 造夹具）`,
+	);
 	process.exit(1);
 }
 if (!dryRun && !cookie && !token) {
@@ -50,7 +52,15 @@ if (!dryRun && !cookie && !token) {
 	process.exit(1);
 }
 
-const report = { entries: [], media: [], comments: [], members: [], activity: [], warnings: [], failures: [] };
+const report = {
+	entries: [],
+	media: [],
+	comments: [],
+	members: [],
+	activity: [],
+	warnings: [],
+	failures: [],
+};
 const idMap = { articles: {}, life: {}, projects: {}, comments: {} };
 
 // 续跑支持：上一次的映射表里已经有结果时直接复用，避免重复插入（评论尤其如此）
@@ -61,7 +71,9 @@ if (existsSync(idMapFile)) {
 		for (const key of ["articles", "life", "projects", "comments"]) {
 			Object.assign(idMap[key], previous?.idMap?.[key] ?? {});
 		}
-		report.warnings.push(`复用上一次的映射表：${Object.values(idMap).reduce((sum, group) => sum + Object.keys(group).length, 0)} 条`);
+		report.warnings.push(
+			`复用上一次的映射表：${Object.values(idMap).flatMap((group) => Object.keys(group)).length} 条`,
+		);
 	} catch {
 		report.warnings.push(`上一次的映射表无法解析，按首次迁移处理：${idMapFile}`);
 	}
@@ -150,7 +162,8 @@ const PROJECT_TECH_OPTIONS = new Set([
 	"SQLite",
 ]);
 
-const resolveImageUrl = (url) => (url?.startsWith("/uploads/") ? mediaByOldPath.get(url)?.url ?? url : url);
+const resolveImageUrl = (url) =>
+	url?.startsWith("/uploads/") ? (mediaByOldPath.get(url)?.url ?? url) : url;
 
 function collectMediaPaths() {
 	const paths = new Set();
@@ -192,12 +205,16 @@ async function uploadMedia() {
 		const extension = basename(oldPath).split(".").pop()?.toLowerCase() ?? "";
 		form.append(
 			"file",
-			new Blob([readFileSync(file)], { type: MIME_BY_EXT[extension] ?? "application/octet-stream" }),
+			new Blob([readFileSync(file)], {
+				type: MIME_BY_EXT[extension] ?? "application/octet-stream",
+			}),
 			basename(oldPath),
 		);
 		const result = await api("/_emdash/api/media", { method: "POST", body: form });
 		if (!result.ok) {
-			report.failures.push(`媒体上传失败 ${oldPath}：${result.status} ${result.text.slice(0, 160)}`);
+			report.failures.push(
+				`媒体上传失败 ${oldPath}：${result.status} ${result.text.slice(0, 160)}`,
+			);
 			continue;
 		}
 		const item = unwrap(result.json)?.item ?? unwrap(result.json);
@@ -272,7 +289,9 @@ async function findEntry(collection, slug) {
 		const item = unwrap(direct.json)?.item ?? unwrap(direct.json);
 		if (item?.id) return item;
 	}
-	const list = await api(`/_emdash/api/content/${collection}?slug=${encodeURIComponent(slug)}&limit=5`);
+	const list = await api(
+		`/_emdash/api/content/${collection}?slug=${encodeURIComponent(slug)}&limit=5`,
+	);
 	if (!list.ok) return null;
 	const payload = unwrap(list.json);
 	const items = payload?.items ?? [];
@@ -281,7 +300,9 @@ async function findEntry(collection, slug) {
 
 async function createEntry(collection, { slug, data, status, publishedAt, createdAt, taxonomies }) {
 	if (dryRun) {
-		report.entries.push(`[dry-run] ${collection}/${slug} status=${status} taxonomies=${JSON.stringify(taxonomies ?? {})}`);
+		report.entries.push(
+			`[dry-run] ${collection}/${slug} status=${status} taxonomies=${JSON.stringify(taxonomies ?? {})}`,
+		);
 		return { id: `dry-${collection}-${slug}`, slug };
 	}
 	const created = await api(`/_emdash/api/content/${collection}`, {
@@ -310,12 +331,18 @@ async function createEntry(collection, { slug, data, status, publishedAt, create
 	const item = unwrap(created.json)?.item ?? unwrap(created.json);
 	const id = item?.id;
 	if (status === "published" && id) {
-		const published = await api(`/_emdash/api/content/${collection}/${id}/publish`, { method: "POST" });
+		const published = await api(`/_emdash/api/content/${collection}/${id}/publish`, {
+			method: "POST",
+		});
 		if (!published.ok) {
-			report.failures.push(`${collection}/${slug} 发布失败：${published.status} ${published.text.slice(0, 160)}`);
+			report.failures.push(
+				`${collection}/${slug} 发布失败：${published.status} ${published.text.slice(0, 160)}`,
+			);
 		}
 	}
-	report.entries.push(`${collection}/${slug} → ${id ?? "(无 id)"}${status === "published" ? " published" : " draft"}`);
+	report.entries.push(
+		`${collection}/${slug} → ${id ?? "(无 id)"}${status === "published" ? " published" : " draft"}`,
+	);
 	return { id, slug };
 }
 
@@ -365,12 +392,12 @@ for (const row of lifeRecords) {
 	const tags = await taxonomyAssignment("tag", parseJsonArray(row.tags));
 	if (tags.length > 0) taxonomies.tag = tags;
 	const result = await createEntry("life", {
-		slug: `life-${row.id}`,
+		slug: `life-${String(row.id)}`,
 		data: {
 			title: row.title,
 			excerpt: row.summary ?? "",
 			content: markdownToPortableText(row.content ?? "", { resolveImageUrl }),
-			record_date: row.record_date ? `${row.record_date}T00:00:00Z` : null,
+			record_date: row.record_date ? `${String(row.record_date)}T00:00:00Z` : null,
 			...(row.cover_image && mediaByOldPath.has(row.cover_image)
 				? { featured_image: { src: mediaByOldPath.get(row.cover_image).url, alt: row.title } }
 				: {}),
@@ -389,15 +416,17 @@ for (const row of projects) {
 	const tech = parseJsonArray(row.tech);
 	const kept = tech.filter((item) => PROJECT_TECH_OPTIONS.has(item));
 	const dropped = tech.filter((item) => !PROJECT_TECH_OPTIONS.has(item));
-	if (dropped.length > 0) report.warnings.push(`作品「${row.name}」丢弃非枚举技术栈：${dropped.join(", ")}`);
+	if (dropped.length > 0)
+		report.warnings.push(`作品「${String(row.name)}」丢弃非枚举技术栈：${dropped.join(", ")}`);
 	const screenshots = parseJsonArray(row.screenshots).flatMap((shot) => {
 		const media = mediaByOldPath.get(shot);
 		return media ? [{ image: { src: media.url, alt: row.name }, caption: "" }] : [];
 	});
-	const cover = row.cover_image && mediaByOldPath.has(row.cover_image) ? row.cover_image : row.home_image;
+	const cover =
+		row.cover_image && mediaByOldPath.has(row.cover_image) ? row.cover_image : row.home_image;
 	const typeSlug = row.type ? await ensureTerm("project_type", row.type) : null;
 	const result = await createEntry("projects", {
-		slug: `project-${row.id}`,
+		slug: `project-${String(row.id)}`,
 		data: {
 			title: row.name,
 			summary: row.description ?? "",
@@ -435,9 +464,11 @@ const wallEntry = await (async () => {
 
 const commentTarget = (row) => {
 	if (row.target_type === "message") return { collection: "wall", entry: wallEntry };
-	if (row.target_type === "article") return { collection: "posts", entry: idMap.articles[row.target_id] };
+	if (row.target_type === "article")
+		return { collection: "posts", entry: idMap.articles[row.target_id] };
 	if (row.target_type === "life") return { collection: "life", entry: idMap.life[row.target_id] };
-	if (row.target_type === "project") return { collection: "projects", entry: idMap.projects[row.target_id] };
+	if (row.target_type === "project")
+		return { collection: "projects", entry: idMap.projects[row.target_id] };
 	return { collection: null, entry: null };
 };
 
@@ -451,18 +482,25 @@ function openCommentWindows() {
 		return () => {};
 	}
 	const db = new DatabaseSync(newDbPath);
-	const rows = db.prepare("select slug, comments_closed_after_days from _emdash_collections").all().filter((row) => Number(row.comments_closed_after_days) > 0);
+	const rows = db
+		.prepare("select slug, comments_closed_after_days from _emdash_collections")
+		.all()
+		.filter((row) => Number(row.comments_closed_after_days) > 0);
 	if (rows.length === 0) {
 		db.close();
 		return () => {};
 	}
-	const update = db.prepare("update _emdash_collections set comments_closed_after_days = ? where slug = ?");
+	const update = db.prepare(
+		"update _emdash_collections set comments_closed_after_days = ? where slug = ?",
+	);
 	for (const row of rows) update.run(0, row.slug);
 	db.close();
 	report.warnings.push(`迁移期间临时打开评论窗口：${rows.map((row) => row.slug).join(", ")}`);
 	return () => {
 		const restore = new DatabaseSync(newDbPath);
-		const updateBack = restore.prepare("update _emdash_collections set comments_closed_after_days = ? where slug = ?");
+		const updateBack = restore.prepare(
+			"update _emdash_collections set comments_closed_after_days = ? where slug = ?",
+		);
 		for (const row of rows) updateBack.run(Number(row.comments_closed_after_days), row.slug);
 		restore.close();
 	};
@@ -479,64 +517,78 @@ const commentIdMap = new Map();
 const closeCommentWindows = dryRun ? () => {} : openCommentWindows();
 try {
 	for (const row of comments) {
-	if (idMap.comments[row.id]) {
-		report.comments.push(`跳过（已迁移）：评论 ${row.id} → ${idMap.comments[row.id]}`);
-		commentIdMap.set(row.id, idMap.comments[row.id]);
-		continue;
-	}
-	const target = commentTarget(row);
-	if (!target.collection || !target.entry?.id) {
-		report.warnings.push(`评论 ${row.id} 找不到目标（${row.target_type}#${row.target_id}），跳过`);
-		continue;
-	}
-	const identity = row.member_id ? identityByMember.get(row.member_id) : null;
-	const author = memberEmail(identity) ?? { name: row.author, email: `legacy-comment-${row.id}@import.local` };
-	const parentNewId = row.parent_id ? commentIdMap.get(row.parent_id) : null;
-	if (dryRun) {
-		report.comments.push(`[dry-run] ${row.target_type}#${row.target_id} 「${row.author}」${row.status} parent=${parentNewId ?? "无"}`);
-		commentIdMap.set(row.id, `dry-c-${row.id}`);
-		continue;
-	}
-	// 匿名提交：带上管理员会话的话，宿主会把评论归给该 CMS 用户，作者名就变成了管理员
-	const created = await fetch(`${site}/_emdash/api/comments/${target.collection}/${target.entry.id}`, {
-		method: "POST",
-		headers: { "content-type": "application/json" },
-		body: JSON.stringify({
-			authorName: author.name,
-			authorEmail: author.email,
-			body: row.content,
-			...(parentNewId ? { parentId: parentNewId } : {}),
-		}),
-	});
-	const createdText = await created.text();
-	if (!created.ok) {
-		report.failures.push(`评论 ${row.id} 创建失败：${created.status} ${createdText.slice(0, 160)}`);
-		continue;
-	}
-	const createdJson = (() => {
-		try {
-			return JSON.parse(createdText);
-		} catch {
-			return null;
+		if (idMap.comments[row.id]) {
+			report.comments.push(`跳过（已迁移）：评论 ${String(row.id)} → ${idMap.comments[row.id]}`);
+			commentIdMap.set(row.id, idMap.comments[row.id]);
+			continue;
 		}
-	})();
-	const newId = unwrap(createdJson)?.id;
-	commentIdMap.set(row.id, newId);
-	idMap.comments[row.id] = newId;
-	const status = row.status === "published" ? "approved" : row.status === "hidden" ? "spam" : "pending";
-	// 一律显式设置：公开接口有自己的审核策略（例如老访客自动通过），不能假设它给出 pending
-	const updated = await api(`/_emdash/api/admin/comments/${newId}/status`, {
-		method: "PUT",
-		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ status }),
-	});
-	if (!updated.ok) report.failures.push(`评论 ${row.id} 状态设置失败：${updated.status}`);
-		report.comments.push(`${row.target_type}#${row.target_id} 「${row.author}」→ ${status}`);
+		const target = commentTarget(row);
+		if (!target.collection || !target.entry?.id) {
+			report.warnings.push(
+				`评论 ${String(row.id)} 找不到目标（${String(row.target_type)}#${String(row.target_id)}），跳过`,
+			);
+			continue;
+		}
+		const identity = row.member_id ? identityByMember.get(row.member_id) : null;
+		const author = memberEmail(identity) ?? {
+			name: row.author,
+			email: `legacy-comment-${String(row.id)}@import.local`,
+		};
+		const parentNewId = row.parent_id ? commentIdMap.get(row.parent_id) : null;
+		if (dryRun) {
+			report.comments.push(
+				`[dry-run] ${String(row.target_type)}#${String(row.target_id)} 「${String(row.author)}」${String(row.status)} parent=${parentNewId ?? "无"}`,
+			);
+			commentIdMap.set(row.id, `dry-c-${String(row.id)}`);
+			continue;
+		}
+		// 匿名提交：带上管理员会话的话，宿主会把评论归给该 CMS 用户，作者名就变成了管理员
+		const created = await fetch(
+			`${site}/_emdash/api/comments/${target.collection}/${target.entry.id}`,
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					authorName: author.name,
+					authorEmail: author.email,
+					body: row.content,
+					...(parentNewId ? { parentId: parentNewId } : {}),
+				}),
+			},
+		);
+		const createdText = await created.text();
+		if (!created.ok) {
+			report.failures.push(
+				`评论 ${String(row.id)} 创建失败：${created.status} ${createdText.slice(0, 160)}`,
+			);
+			continue;
+		}
+		const createdJson = (() => {
+			try {
+				return JSON.parse(createdText);
+			} catch {
+				return null;
+			}
+		})();
+		const newId = unwrap(createdJson)?.id;
+		commentIdMap.set(row.id, newId);
+		idMap.comments[row.id] = newId;
+		const status =
+			row.status === "published" ? "approved" : row.status === "hidden" ? "spam" : "pending";
+		// 一律显式设置：公开接口有自己的审核策略（例如老访客自动通过），不能假设它给出 pending
+		const updated = await api(`/_emdash/api/admin/comments/${newId}/status`, {
+			method: "PUT",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ status }),
+		});
+		if (!updated.ok) report.failures.push(`评论 ${String(row.id)} 状态设置失败：${updated.status}`);
+		report.comments.push(
+			`${String(row.target_type)}#${String(row.target_id)} 「${String(row.author)}」→ ${status}`,
+		);
 	}
 } finally {
 	closeCommentWindows();
 }
-
 
 // ─── 友链（旧站是 settings 里的 friends.items） ────────────────────
 
@@ -549,9 +601,7 @@ function friendsToPortableText(items) {
 		const desc = String(item.desc ?? "").trim();
 		if (!name || !FRIEND_URL_PATTERN.test(url)) return;
 		const markKey = `friends${index}`;
-		const children = [
-			{ _type: "span", _key: `f${index}s0`, text: name, marks: [markKey] },
-		];
+		const children = [{ _type: "span", _key: `f${index}s0`, text: name, marks: [markKey] }];
 		if (desc) children.push({ _type: "span", _key: `f${index}s1`, text: ` — ${desc}`, marks: [] });
 		blocks.push({
 			_type: "block",
@@ -620,12 +670,12 @@ function pluginStorageWrites() {
 	for (const member of members) {
 		const identity = identityByMember.get(member.id);
 		if (!identity) {
-			report.warnings.push(`会员 ${member.id} 没有身份记录（登录方式无法迁移），跳过`);
+			report.warnings.push(`会员 ${String(member.id)} 没有身份记录（登录方式无法迁移），跳过`);
 			continue;
 		}
 		rows.push({
 			collection: "members",
-			id: `mem_${member.id}`,
+			id: `mem_${String(member.id)}`,
 			data: {
 				displayName: member.display_name,
 				avatarUrl: member.avatar_url ?? "",
@@ -636,7 +686,9 @@ function pluginStorageWrites() {
 				updatedAt: iso(member.updated_at) ?? now,
 			},
 		});
-		report.members.push(`会员 ${member.id} → mem_${member.id} (qq:${identity.provider_subject})`);
+		report.members.push(
+			`会员 ${String(member.id)} → mem_${String(member.id)} (qq:${String(identity.provider_subject)})`,
+		);
 	}
 
 	const memberById = new Map(members.map((row) => [row.id, row]));
@@ -653,7 +705,7 @@ function pluginStorageWrites() {
 		else if (targetType === "comment") targetId = idMap.comments[row.target_id] ?? targetId;
 		rows.push({
 			collection: "activity",
-			id: `${kind}:${identity.provider_subject}:${targetType}:${targetId}`,
+			id: `${kind}:${String(identity.provider_subject)}:${targetType}:${targetId}`,
 			data: {
 				kind,
 				memberOpenid: identity.provider_subject,
@@ -711,7 +763,9 @@ writeFileSync(
 	"utf8",
 );
 if (settings.length > 0) {
-	report.warnings.push(`旧站 settings 未映射（新站设置项不同）：${settings.map((row) => row.key).join(", ")}`);
+	report.warnings.push(
+		`旧站 settings 未映射（新站设置项不同）：${settings.map((row) => row.key).join(", ")}`,
+	);
 }
 
 const summary = [

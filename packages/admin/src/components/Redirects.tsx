@@ -1,15 +1,6 @@
 import { Badge, Button, Dialog, Input, Label, Select, Switch } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	Plus,
-	ArrowsLeftRight,
-	FileX,
-	Trash,
-	PencilSimple,
-	WarningCircle,
-	X,
-} from "@phosphor-icons/react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
@@ -26,6 +17,15 @@ import type {
 	Redirect,
 	UpdateRedirectInput,
 } from "../lib/api/redirects.js";
+import {
+	Plus,
+	ArrowsLeftRight,
+	FileX,
+	Trash,
+	PencilSimple,
+	WarningCircle,
+	X,
+} from "../lib/icons.js";
 import { cn } from "../lib/utils.js";
 import { ADMIN_NAV_ICONS } from "./admin-navigation-icons.js";
 import { ArrowNext } from "./ArrowIcons.js";

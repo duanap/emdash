@@ -2,12 +2,14 @@ import { defineConfig } from "vitest/config";
 
 import baseConfig from "./vitest.config.js";
 
+const resolvedConfig = await baseConfig;
+
 export default defineConfig({
-	...baseConfig,
+	...resolvedConfig,
 	test: {
-		...baseConfig.test,
+		...resolvedConfig.test,
 		include: ["test/encryption-verification-workflow.test.ts"],
-		exclude: baseConfig.test.exclude.filter(
+		exclude: resolvedConfig.test.exclude.filter(
 			(pattern) => pattern !== "test/encryption-verification-workflow.test.ts",
 		),
 	},

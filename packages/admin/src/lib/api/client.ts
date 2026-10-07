@@ -9,6 +9,7 @@ import { msg } from "@lingui/core/macro";
 import type { EditorDraftAccessDeclaration } from "../sandboxed-editor-extensions.js";
 
 export const API_BASE = "/_emdash/api";
+const CHINESE_TEXT_PATTERN = /[\u3400-\u9fff]/;
 
 /**
  * Fetch wrapper that adds the X-EmDash-Request CSRF protection header
@@ -30,6 +31,7 @@ export class ApiResponseError extends Error {
 		public code: string,
 		message: string,
 		public details?: Record<string, unknown>,
+		public serverMessage?: string,
 	) {
 		super(message);
 		this.name = "ApiResponseError";
@@ -111,9 +113,41 @@ export async function throwResponseError(res: Response, fallback: string): Promi
 	throw new ApiResponseError(
 		res.status,
 		code,
-		message || `${fallback}: ${res.statusText}`,
+		i18n.locale === "zh-CN"
+			? localizedApiError(code, message, fallback)
+			: message || `${fallback}: ${res.statusText}`,
 		details,
+		message,
 	);
+}
+
+function localizedApiError(code: string, message: string | undefined, fallback: string): string {
+	if (message) {
+		const translated = i18n._(message);
+		if (translated !== message || CHINESE_TEXT_PATTERN.test(message)) return translated;
+	}
+	switch (code) {
+		case "UNAUTHORIZED":
+		case "AUTH_REQUIRED":
+			return i18n._(msg`Please sign in to continue.`);
+		case "FORBIDDEN":
+		case "PERMISSION_DENIED":
+			return i18n._(msg`You do not have permission to perform this action.`);
+		case "NOT_FOUND":
+			return i18n._(msg`The requested item was not found.`);
+		case "VALIDATION_ERROR":
+			return i18n._(msg`Check the submitted fields and try again.`);
+		case "CONFLICT":
+			return i18n._(msg`This item has changed. Refresh and try again.`);
+		case "RATE_LIMITED":
+			return i18n._(msg`Too many requests. Please try again later.`);
+		default: {
+			const translated = i18n._(fallback);
+			return CHINESE_TEXT_PATTERN.test(translated)
+				? translated
+				: i18n._(msg`The request failed. Please try again.`);
+		}
+	}
 }
 
 /**
@@ -151,7 +185,7 @@ export interface AdminManifest {
 			titleField?: string;
 			dateField?: string;
 			hidden?: boolean;
-			/** Phosphor icon name for the sidebar entry */
+			/** Icon name for the sidebar entry */
 			icon?: string;
 			/** Sidebar folder shared with other collections of the same group */
 			group?: string;
@@ -323,6 +357,7 @@ export interface AdminManifest {
 		siteName?: string;
 		footerLabel?: string | false;
 		favicon?: string;
+		messageBoardCollection?: string;
 	};
 }
 

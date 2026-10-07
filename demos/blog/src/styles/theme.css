@@ -28,12 +28,10 @@
 	/* System font stack (no webfont fetch: keeps dev/build offline-safe
 	   and fast in CN networks). Headings share the body face. */
 	--font-body:
-		"Inter", "HarmonyOS Sans SC", "MiSans", "PingFang SC",
-		"Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC",
-		"Noto Sans CJK SC", system-ui, -apple-system, "Segoe UI", sans-serif;
+		"Inter", "HarmonyOS Sans SC", "MiSans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+		"Source Han Sans SC", "Noto Sans CJK SC", system-ui, -apple-system, "Segoe UI", sans-serif;
 	--font-mono:
-		"JetBrains Mono", "Cascadia Code", "SF Mono", Consolas, Menlo,
-		"Courier New", monospace;
+		"JetBrains Mono", "Cascadia Code", "SF Mono", Consolas, Menlo, "Courier New", monospace;
 	--font-heading: var(--font-body);
 
 	/* CJK text breathes better with slightly relaxed leading and no
@@ -68,6 +66,14 @@
 .ec-member-like:hover:not(:disabled) {
 	color: var(--color-text);
 	border-color: var(--color-border);
+}
+
+.ec-member-like .lucide {
+	display: inline-block;
+	vertical-align: middle;
+}
+.ec-member-like[aria-pressed="true"] .lucide {
+	fill: currentColor;
 }
 
 .ec-member-like[aria-pressed="true"] {
@@ -118,4 +124,15 @@
 
 .ec-comment-form-submit:hover:not(:disabled) {
 	background: var(--color-brand-hover);
+}
+
+.ec-comment-author::before {
+	content: "";
+	display: inline-block;
+	width: 2rem;
+	height: 2rem;
+	margin-inline-end: var(--spacing-2);
+	vertical-align: middle;
+	border-radius: 50%;
+	background: url("/defaults/user-avatar.png") center / contain no-repeat;
 }

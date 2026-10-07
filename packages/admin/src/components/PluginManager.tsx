@@ -9,18 +9,6 @@
 import { Badge, Button, Checkbox, Link as KumoLink, Switch, Toast } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import {
-	Gear,
-	FileText,
-	SquaresFour,
-	WebhooksLogo,
-	CaretDown,
-	ArrowsClockwise,
-	Storefront,
-	Trash,
-	ShieldCheck,
-	Robot,
-} from "@phosphor-icons/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
@@ -53,6 +41,18 @@ import {
 	type RegistryUpdateOpts,
 	type RegistryRecordVerificationSummary,
 } from "../lib/api/registry.js";
+import {
+	Gear,
+	FileText,
+	SquaresFour,
+	WebhooksLogo,
+	CaretDown,
+	ArrowsClockwise,
+	Storefront,
+	Trash,
+	ShieldCheck,
+	Robot,
+} from "../lib/icons.js";
 import { safeIconUrl } from "../lib/url.js";
 import { cn } from "../lib/utils";
 import { ADMIN_NAV_ICONS } from "./admin-navigation-icons.js";

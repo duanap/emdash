@@ -16,7 +16,6 @@ import {
 	useKumoToastManager,
 } from "@cloudflare/kumo";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { DownloadSimple, Trash } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
@@ -30,6 +29,7 @@ import {
 	updateBackupSettings,
 	type BackupArchive,
 } from "../../lib/api/backups.js";
+import { DownloadSimple, Trash } from "../../lib/icons.js";
 import { ConfirmDialog } from "../ConfirmDialog.js";
 import { getMutationError } from "../DialogError.js";
 import { SaveButton } from "../SaveButton.js";

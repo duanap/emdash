@@ -6,15 +6,6 @@
 
 import { Button, Dialog, Input, Select, Toast } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import {
-	Plus,
-	Trash,
-	CaretUp,
-	CaretDown,
-	Link as LinkIcon,
-	X,
-	File as FileIcon,
-} from "@phosphor-icons/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import * as React from "react";
@@ -30,6 +21,15 @@ import {
 	type MenuItem,
 } from "../lib/api";
 import { fetchManifest } from "../lib/api/client.js";
+import {
+	Plus,
+	Trash,
+	CaretUp,
+	CaretDown,
+	Link as LinkIcon,
+	X,
+	File as FileIcon,
+} from "../lib/icons.js";
 import { ArrowPrev } from "./ArrowIcons.js";
 import { ContentPickerModal } from "./ContentPickerModal";
 import { DialogError, getMutationError } from "./DialogError.js";

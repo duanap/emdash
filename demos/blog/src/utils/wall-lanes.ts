@@ -24,10 +24,13 @@ export interface WallLaneCard<T> {
 }
 
 /** 留言按奇偶分到两条轨道；空轨道丢弃（只有一条留言时就是单轨） */
-export function buildWallLanes<T>(items: readonly T[], minCards = WALL_MIN_LANE_CARDS): WallLane<T>[] {
+export function buildWallLanes<T>(
+	items: readonly T[],
+	minCards = WALL_MIN_LANE_CARDS,
+): WallLane<T>[] {
 	const split: T[][] = [[], []];
 	items.forEach((item, index) => {
-		split[index % 2]!.push(item);
+		split[index % 2]?.push(item);
 	});
 
 	return split

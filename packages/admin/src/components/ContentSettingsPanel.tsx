@@ -13,19 +13,6 @@ import {
 	Tooltip,
 } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import {
-	ArrowSquareOut,
-	CalendarDots,
-	CalendarPlus,
-	CalendarX,
-	CaretDown,
-	Eye,
-	EyeSlash,
-	Info,
-	Trash,
-	Upload,
-	X,
-} from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Editor } from "@tiptap/react";
 import * as React from "react";
@@ -47,6 +34,19 @@ import {
 	getContentPublishingState,
 	type ContentPublishingState,
 } from "../lib/content-publishing-state.js";
+import {
+	ArrowSquareOut,
+	CalendarDots,
+	CalendarPlus,
+	CalendarX,
+	CaretDown,
+	Eye,
+	EyeSlash,
+	Info,
+	Trash,
+	Upload,
+	X,
+} from "../lib/icons.js";
 import { usePluginAdmins } from "../lib/plugin-context";
 import {
 	formatPublishingInstant,

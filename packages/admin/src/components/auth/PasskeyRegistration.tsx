@@ -13,6 +13,9 @@
 
 import { Button, Input, LinkButton, Loader } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
+import * as React from "react";
+
+import { apiFetch, parseApiResponse } from "../../lib/api/client";
 import {
 	DeviceMobile,
 	Fingerprint,
@@ -21,10 +24,7 @@ import {
 	ShieldCheck,
 	Usb,
 	WindowsLogo,
-} from "@phosphor-icons/react";
-import * as React from "react";
-
-import { apiFetch, parseApiResponse } from "../../lib/api/client";
+} from "../../lib/icons.js";
 import {
 	detectPasskeyPlatform,
 	getPasskeyClientCapabilities,

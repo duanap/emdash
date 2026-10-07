@@ -1,5 +1,6 @@
 import { Badge, type BadgeVariant } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
+
 import {
 	Archive,
 	ArrowsClockwise,
@@ -8,8 +9,7 @@ import {
 	CircleDashed,
 	LockKey,
 	type Icon,
-} from "@phosphor-icons/react";
-
+} from "../lib/icons.js";
 import { cn } from "../lib/utils";
 
 export type ContentStatusState =

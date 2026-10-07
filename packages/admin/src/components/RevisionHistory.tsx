@@ -1,11 +1,11 @@
 import { Badge, Button, Collapsible, Loader, Text, Toast } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { ArrowCounterClockwise, CaretDown, Plus, Minus, PencilSimple } from "@phosphor-icons/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
 import { fetchRevisions, restoreRevision, type ContentItem, type Revision } from "../lib/api";
+import { ArrowCounterClockwise, CaretDown, Plus, Minus, PencilSimple } from "../lib/icons.js";
 import { cn, formatRelativeTime, parseTimestamp } from "../lib/utils";
 import { ConfirmDialog } from "./ConfirmDialog";
 

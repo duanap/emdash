@@ -6,13 +6,13 @@
 
 import { Button, Dialog, Input } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { MagnifyingGlass, FolderOpen } from "@phosphor-icons/react";
-import { X } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
 import { fetchSections, type Section } from "../lib/api";
 import { useDebouncedValue } from "../lib/hooks";
+import { MagnifyingGlass, FolderOpen } from "../lib/icons.js";
+import { X } from "../lib/icons.js";
 import { cn } from "../lib/utils";
 import { ADMIN_NAV_ICONS } from "./admin-navigation-icons.js";
 

@@ -1,3 +1,10 @@
+import { describe, expect, it } from "vitest";
+
+import {
+	ADMIN_NAV_ICONS,
+	getCollectionNavIcon,
+	getTaxonomyNavIcon,
+} from "../../src/components/admin-navigation-icons";
 import {
 	Browser,
 	CalendarBlank,
@@ -19,14 +26,7 @@ import {
 	SquaresFour,
 	Tag,
 	Trophy,
-} from "@phosphor-icons/react";
-import { describe, expect, it } from "vitest";
-
-import {
-	ADMIN_NAV_ICONS,
-	getCollectionNavIcon,
-	getTaxonomyNavIcon,
-} from "../../src/components/admin-navigation-icons";
+} from "../../src/lib/icons.js";
 
 describe("ADMIN_NAV_ICONS", () => {
 	it("keeps shared admin navigation surfaces on the approved icon set", () => {

@@ -1,8 +1,8 @@
 import { Sidebar } from "@cloudflare/kumo";
-import { Calendar, Tag } from "@phosphor-icons/react";
 import * as React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+import { Calendar, Tag } from "../../src/lib/icons.js";
 import { render } from "../utils/render.tsx";
 
 vi.mock("@tanstack/react-router", async () => {

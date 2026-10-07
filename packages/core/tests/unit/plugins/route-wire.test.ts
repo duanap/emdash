@@ -170,9 +170,9 @@ describe("raw plugin route responses", () => {
 		);
 
 		expect(wire.status).toBe(302);
-		expect(wire.headers.filter(([name]) => name === "set-cookie").map(([, value]) => value)).toEqual(
-			cookies,
-		);
+		expect(
+			wire.headers.filter(([name]) => name === "set-cookie").map(([, value]) => value),
+		).toEqual(cookies);
 		expect(wire.headers).toContainEqual(["location", "https://graph.qq.com/oauth2.0/authorize"]);
 		expect(wire.headers.some(([name]) => name === "x-plugin")).toBe(false);
 	});

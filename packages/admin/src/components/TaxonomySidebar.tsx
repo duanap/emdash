@@ -16,12 +16,12 @@ import { Popover as PopoverPrimitive } from "@cloudflare/kumo/primitives/popover
 import { i18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { MagnifyingGlass, Plus, X } from "@phosphor-icons/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
 import { apiFetch, parseApiResponse, throwResponseError } from "../lib/api/client.js";
 import { createTerm, createTermTranslation, withLocale } from "../lib/api/taxonomies.js";
+import { MagnifyingGlass, Plus, X } from "../lib/icons.js";
 import { inlineLabel } from "../lib/inline-label.js";
 import { resolveTaxonomyDefinitions } from "../lib/taxonomy-definitions.js";
 import { foldForMatch, termExactMatches, termMatches } from "../lib/taxonomy-match.js";

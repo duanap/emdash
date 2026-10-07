@@ -19,7 +19,6 @@
 
 import { Button, Checkbox, Dialog, Input, Loader, Select } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { MagnifyingGlass, FolderOpen, X } from "@phosphor-icons/react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -27,6 +26,7 @@ import { fetchCollections, fetchContentList, fetchManifest, getDraftStatus } fro
 import type { ContentItem } from "../lib/api";
 import { getEntryTitle } from "../lib/entryTitle.js";
 import { useDebouncedValue } from "../lib/hooks";
+import { MagnifyingGlass, FolderOpen, X } from "../lib/icons.js";
 import { cn } from "../lib/utils";
 import { ContentStatusLabel, type ContentStatusState } from "./ContentStatusBadge.js";
 

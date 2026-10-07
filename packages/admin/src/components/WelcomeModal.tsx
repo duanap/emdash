@@ -8,11 +8,11 @@ import { Badge, Button, Dialog } from "@cloudflare/kumo";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { UserCircleIcon, X } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
 import { apiFetch, throwResponseError } from "../lib/api/client";
+import { UserCircleIcon, X } from "../lib/icons.js";
 import { LogoIcon } from "./Logo.js";
 
 interface WelcomeModalProps {

@@ -13,22 +13,6 @@ import {
 import type { DateRange } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	Plus,
-	Pencil,
-	Trash,
-	ArrowCounterClockwise,
-	ArrowSquareOut,
-	Calendar,
-	Copy,
-	CaretUp,
-	CaretDown,
-	CaretUpDown,
-	CircleDashed,
-	Tag,
-	Upload,
-	X,
-} from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
 
@@ -46,6 +30,22 @@ import {
 } from "../lib/content-list-columns.js";
 import { getEntryTitle } from "../lib/entryTitle.js";
 import { useDebouncedValue } from "../lib/hooks.js";
+import {
+	Plus,
+	Pencil,
+	Trash,
+	ArrowCounterClockwise,
+	ArrowSquareOut,
+	Calendar,
+	Copy,
+	CaretUp,
+	CaretDown,
+	CaretUpDown,
+	CircleDashed,
+	Tag,
+	Upload,
+	X,
+} from "../lib/icons.js";
 import { inlineLabel } from "../lib/inline-label.js";
 import { usePluginAdmins } from "../lib/plugin-context.js";
 import { contentUrl } from "../lib/url.js";
@@ -60,6 +60,7 @@ import {
 	isBylineFilterActive,
 	type BylineFilterState,
 } from "./BylineFilter.js";
+import { ConfirmDialog } from "./ConfirmDialog.js";
 import {
 	ContentStatusBadge,
 	ContentStatusLabel,
@@ -185,6 +186,8 @@ export interface ContentListProps {
 	onBulkPublish?: BulkActionHandler;
 	onBulkUnpublish?: BulkActionHandler;
 	onBulkDelete?: BulkActionHandler;
+	onBulkRestore?: BulkActionHandler;
+	onBulkPermanentDelete?: BulkActionHandler;
 	/** Taxonomies editors can bulk-assign terms from; empty disables the action. */
 	bulkTagTaxonomies?: BulkTagTaxonomy[];
 	/** Current role used only for contributed-column visibility, not authorization. */
@@ -274,6 +277,8 @@ export function ContentList({
 	onBulkPublish,
 	onBulkUnpublish,
 	onBulkDelete,
+	onBulkRestore,
+	onBulkPermanentDelete,
 	bulkTagTaxonomies = [],
 	userRole = 0,
 	pluginStates,
@@ -284,6 +289,50 @@ export function ContentList({
 	const [searchQuery, setSearchQuery] = React.useState("");
 	const [page, setPage] = React.useState(0);
 	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
+	const [selectedTrashIds, setSelectedTrashIds] = React.useState<Set<string>>(() => new Set());
+	const [trashBusy, setTrashBusy] = React.useState(false);
+	const [trashDeleteOpen, setTrashDeleteOpen] = React.useState(false);
+	const [trashActionError, setTrashActionError] = React.useState<unknown>(null);
+	const trashSelectable = Boolean(onBulkRestore || onBulkPermanentDelete);
+	React.useEffect(() => {
+		setSelectedTrashIds((previous) => {
+			if (previous.size === 0) return previous;
+			const next = new Set(
+				[...previous].filter((id) => trashedItems.some((item) => item.id === id)),
+			);
+			return next.size === previous.size ? previous : next;
+		});
+	}, [trashedItems]);
+	React.useEffect(() => {
+		setSelectedTrashIds(new Set());
+	}, [collection, activeLocale, activeTab]);
+	const toggleTrash = (id: string) =>
+		setSelectedTrashIds((previous) => {
+			const next = new Set(previous);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	const allTrashSelected =
+		trashedItems.length > 0 && trashedItems.every((item) => selectedTrashIds.has(item.id));
+	const toggleAllTrash = () =>
+		setSelectedTrashIds(
+			allTrashSelected ? new Set() : new Set(trashedItems.map((item) => item.id)),
+		);
+	const runTrashAction = async (action: BulkActionHandler | undefined) => {
+		if (!action || trashBusy || selectedTrashIds.size === 0) return;
+		setTrashBusy(true);
+		setTrashActionError(null);
+		try {
+			const failed = await action([...selectedTrashIds]);
+			setSelectedTrashIds(new Set(failed));
+			setTrashDeleteOpen(false);
+		} catch (error) {
+			setTrashActionError(error);
+		} finally {
+			setTrashBusy(false);
+		}
+	};
 	const [bulkTagSelection, setBulkTagSelection] = React.useState<SelectedBulkTagPost[] | null>(
 		null,
 	);
@@ -418,7 +467,7 @@ export function ContentList({
 	};
 	const colSpan =
 		(i18n ? 5 : 4) + listColumns.length + extensionColumns.length + (bulkEnabled ? 1 : 0);
-	const trashColSpan = i18n ? 4 : 3;
+	const trashColSpan = (i18n ? 4 : 3) + (trashSelectable ? 1 : 0);
 
 	return (
 		<div className="space-y-4">
@@ -816,10 +865,54 @@ export function ContentList({
 			) : (
 				<>
 					{/* Trash Table */}
+					{trashSelectable && trashedItems.length > 0 && (
+						<div className="flex flex-wrap items-center gap-3 rounded-lg border bg-kumo-base p-3">
+							<Button variant="outline" size="sm" onClick={toggleAllTrash} disabled={trashBusy}>
+								{allTrashSelected ? t`Clear selection` : t`Select all loaded items`}
+							</Button>
+							<span className="text-sm text-kumo-subtle">{t`${selectedTrashIds.size} selected`}</span>
+							{onBulkRestore && (
+								<Button
+									size="sm"
+									disabled={trashBusy || selectedTrashIds.size === 0}
+									onClick={() => void runTrashAction(onBulkRestore)}
+								>{t`Restore selected`}</Button>
+							)}
+							{onBulkPermanentDelete && (
+								<Button
+									variant="destructive"
+									size="sm"
+									disabled={trashBusy || selectedTrashIds.size === 0}
+									onClick={() => setTrashDeleteOpen(true)}
+								>{t`Delete selected permanently`}</Button>
+							)}
+							<ConfirmDialog
+								open={trashDeleteOpen}
+								onClose={() => setTrashDeleteOpen(false)}
+								title={t`Delete Permanently?`}
+								description={t`Permanently delete ${selectedTrashIds.size} selected items? This cannot be undone.`}
+								confirmLabel={t`Delete Permanently`}
+								pendingLabel={t`Deleting...`}
+								isPending={trashBusy}
+								error={trashActionError}
+								onConfirm={() => void runTrashAction(onBulkPermanentDelete)}
+							/>
+						</div>
+					)}
 					<div className="rounded-md border bg-kumo-base overflow-x-auto">
 						<table className="w-full">
 							<thead>
 								<tr className="border-b bg-kumo-tint/50">
+									{trashSelectable && (
+										<th scope="col" className="w-10 px-3 py-3">
+											<Checkbox
+												checked={allTrashSelected}
+												onCheckedChange={toggleAllTrash}
+												disabled={trashBusy || trashedItems.length === 0}
+												aria-label={t`Select all trashed items`}
+											/>
+										</th>
+									)}
 									<th scope="col" className="px-4 py-3 text-start text-sm font-medium">
 										{t`Title`}
 									</th>
@@ -861,6 +954,10 @@ export function ContentList({
 											showLocale={!!i18n}
 											onRestore={onRestore}
 											onPermanentDelete={onPermanentDelete}
+											selectable={trashSelectable}
+											selected={selectedTrashIds.has(item.id)}
+											onToggle={() => toggleTrash(item.id)}
+											busy={trashBusy}
 										/>
 									))
 								)}
@@ -1563,6 +1660,10 @@ interface TrashedListItemProps {
 	showLocale?: boolean;
 	onRestore?: (id: string) => void;
 	onPermanentDelete?: (id: string) => void;
+	selectable?: boolean;
+	selected?: boolean;
+	onToggle?: () => void;
+	busy?: boolean;
 }
 
 function TrashedListItem({
@@ -1571,6 +1672,10 @@ function TrashedListItem({
 	showLocale,
 	onRestore,
 	onPermanentDelete,
+	selectable,
+	selected,
+	onToggle,
+	busy,
 }: TrashedListItemProps) {
 	const { t } = useLingui();
 	const title = getEntryTitle(item, titleField);
@@ -1578,6 +1683,16 @@ function TrashedListItem({
 
 	return (
 		<tr className="hover:bg-kumo-tint/25">
+			{selectable && (
+				<td className="px-3 py-3">
+					<Checkbox
+						checked={selected}
+						onCheckedChange={onToggle}
+						disabled={busy}
+						aria-label={t`Select ${title}`}
+					/>
+				</td>
+			)}
 			<td className="px-4 py-3">
 				<span className="font-medium text-kumo-subtle">{title}</span>
 			</td>

@@ -10,7 +10,6 @@
 import { Button } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { ArrowRight, Pencil, Plus, Trash } from "@phosphor-icons/react";
 import * as React from "react";
 
 import type { SchemaCollection } from "../lib/api";
@@ -19,6 +18,7 @@ import type {
 	RelationWithUsage,
 	UpdateRelationInput,
 } from "../lib/api/relations.js";
+import { ArrowRight, Pencil, Plus, Trash } from "../lib/icons.js";
 import { ArrowPrev } from "./ArrowIcons.js";
 import { RelationDeleteDialog } from "./RelationDeleteDialog.js";
 import { RelationDialog } from "./RelationDialog.js";

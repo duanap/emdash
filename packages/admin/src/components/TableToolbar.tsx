@@ -1,7 +1,7 @@
 import { InputGroup } from "@cloudflare/kumo";
-import { MagnifyingGlass } from "@phosphor-icons/react";
 import type * as React from "react";
 
+import { MagnifyingGlass } from "../lib/icons.js";
 import { cn } from "../lib/utils.js";
 
 interface TableToolbarProps {

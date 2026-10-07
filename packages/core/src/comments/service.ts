@@ -40,6 +40,7 @@ export interface CommentCreateInput {
 	authorEmail: string;
 	authorUserId?: string | null;
 	body: string;
+	requireApproval?: boolean;
 	ipHash?: string | null;
 	userAgent?: string | null;
 }
@@ -143,7 +144,11 @@ export async function createComment(
 		priorApprovedCount,
 	};
 
-	const decision = await hooks.runModerate(moderateEvent);
+	const proposedDecision = await hooks.runModerate(moderateEvent);
+	const decision: ModerationDecision =
+		input.requireApproval && proposedDecision.status === "approved"
+			? { ...proposedDecision, status: "pending", reason: "Manual approval required" }
+			: proposedDecision;
 
 	// 5. Save comment with determined status
 	const comment = await repo.create({

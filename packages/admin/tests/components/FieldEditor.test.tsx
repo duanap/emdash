@@ -954,3 +954,26 @@ describe("FieldEditor", () => {
 		});
 	});
 });
+
+it("preserves custom multi-select values after saving field settings", async () => {
+	const onSave = vi.fn();
+	const screen = await renderInRouter(
+		<FieldEditor
+			open
+			onOpenChange={() => {}}
+			onSave={onSave}
+			field={makeField({
+				slug: "tech",
+				label: "Technology",
+				type: "multiSelect",
+				validation: { options: ["Astro"], allowCustom: true },
+			})}
+		/>,
+	);
+	await expect.element(screen.getByRole("button", { name: "Update Field" })).toBeInTheDocument();
+	screen.getByRole("button", { name: "Update Field" }).element().click();
+	expect(onSave.mock.calls[0]?.[0]?.validation).toMatchObject({
+		options: ["Astro"],
+		allowCustom: true,
+	});
+});

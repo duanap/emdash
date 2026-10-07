@@ -19,7 +19,6 @@ import { CSS } from "@dnd-kit/utilities";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Plus, DotsSixVertical, Pencil, Trash, Database, FileText } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as React from "react";
@@ -37,6 +36,7 @@ import type {
 	RelationDef,
 	UpdateRelationInput,
 } from "../lib/api/relations.js";
+import { Plus, DotsSixVertical, Pencil, Trash, Database, FileText } from "../lib/icons.js";
 import { cn } from "../lib/utils";
 import { ArrowPrev } from "./ArrowIcons.js";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -570,7 +570,7 @@ export function ContentTypeEditor({
 										disabled={isFromCode}
 									/>
 									<p className="text-xs text-kumo-subtle mt-1">
-										{t`Phosphor icon name, e.g. calendar-blank or trophy`}
+										{t`Lucide icon name, e.g. calendar or trophy`}
 									</p>
 								</div>
 								<Switch

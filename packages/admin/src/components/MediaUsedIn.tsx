@@ -10,16 +10,6 @@ import {
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	ArrowCounterClockwise,
-	CircleNotch,
-	Clock,
-	Gear,
-	Question,
-	ArrowUpRight,
-	Warning,
-	XCircle,
-} from "@phosphor-icons/react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
@@ -33,6 +23,16 @@ import {
 	type MediaUsageEntryDetail,
 	type MediaUsageSiteSettingDetail,
 } from "../lib/api/index.js";
+import {
+	ArrowCounterClockwise,
+	CircleNotch,
+	Clock,
+	Gear,
+	Question,
+	ArrowUpRight,
+	Warning,
+	XCircle,
+} from "../lib/icons.js";
 import { getCollectionNavIcon } from "./admin-navigation-icons.js";
 
 const USAGE_PAGE_SIZE = 50;

@@ -255,7 +255,7 @@ export async function handleCommentDelete(
 export async function handleCommentBulk(
 	db: Kysely<Database>,
 	ids: string[],
-	action: "approve" | "spam" | "trash" | "delete",
+	action: "approve" | "spam" | "trash" | "delete" | "restore",
 ): Promise<ApiResult<{ affected: number }>> {
 	try {
 		const repo = new CommentRepository(db);
@@ -268,6 +268,7 @@ export async function handleCommentBulk(
 				approve: "approved",
 				spam: "spam",
 				trash: "trash",
+				restore: "pending",
 			};
 			affected = await repo.bulkUpdateStatus(ids, statusMap[action]);
 		}
@@ -298,4 +299,80 @@ export async function hashIp(ip: string, salt: string): Promise<string> {
 	const data = `ip:${salt}:${ip}`;
 	const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(data));
 	return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// ---------------------------------------------------------------------------
+// Admin: Create a stored comment directly (message board entries, edits)
+// ---------------------------------------------------------------------------
+
+export interface AdminCommentCreateInput {
+	collection: string;
+	contentId: string;
+	authorName: string;
+	authorEmail: string;
+	body: string;
+	parentId?: string | null;
+	/** Defaults to approved: admin-authored entries publish immediately. */
+	status?: CommentStatus;
+}
+
+export async function handleAdminCommentCreate(
+	db: Kysely<Database>,
+	input: AdminCommentCreateInput,
+): Promise<ApiResult<Comment>> {
+	try {
+		const repo = new CommentRepository(db);
+		const comment = await repo.create({
+			collection: input.collection,
+			contentId: input.contentId,
+			parentId: input.parentId ?? null,
+			authorName: input.authorName,
+			authorEmail: input.authorEmail,
+			authorUserId: null,
+			body: input.body,
+			status: input.status ?? "approved",
+			moderationMetadata: { source: "admin" },
+		});
+		return { success: true, data: comment };
+	} catch (error) {
+		console.error("Admin comment create error:", error);
+		return {
+			success: false,
+			error: {
+				code: "COMMENT_CREATE_ERROR",
+				message: "Failed to create comment",
+			},
+		};
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Admin: Edit stored comment fields (body / author)
+// ---------------------------------------------------------------------------
+
+export async function handleAdminCommentUpdate(
+	db: Kysely<Database>,
+	id: string,
+	fields: { body?: string; authorName?: string; authorEmail?: string },
+): Promise<ApiResult<Comment>> {
+	try {
+		const repo = new CommentRepository(db);
+		const updated = await repo.updateFields(id, fields);
+		if (!updated) {
+			return {
+				success: false,
+				error: { code: "NOT_FOUND", message: `Comment not found: ${id}` },
+			};
+		}
+		return { success: true, data: updated };
+	} catch (error) {
+		console.error("Admin comment update error:", error);
+		return {
+			success: false,
+			error: {
+				code: "COMMENT_UPDATE_ERROR",
+				message: "Failed to update comment",
+			},
+		};
+	}
 }

@@ -11,7 +11,6 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui as useLinguiContext } from "@lingui/react";
 import { useLingui } from "@lingui/react/macro";
-import { ArrowsLeftRight, Gear, Users, MagnifyingGlass } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as React from "react";
@@ -19,6 +18,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 
 import { apiFetch, type AdminManifest } from "../lib/api/client.js";
 import { useCurrentUser } from "../lib/api/current-user";
+import { ArrowsLeftRight, Gear, Users, MagnifyingGlass } from "../lib/icons.js";
 import {
 	ADMIN_NAV_ICONS,
 	getCollectionNavIcon,
@@ -109,6 +109,8 @@ interface ResultItem {
 
 interface AdminCommandPaletteProps {
 	manifest: CommandPaletteManifest;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
 async function searchContent(query: string): Promise<SearchResponse> {
@@ -259,6 +261,50 @@ export function buildNavItems(
 		},
 	);
 
+	items.push(
+		{
+			id: "website-settings",
+			title: msg`Website settings`,
+			to: "/settings/site",
+			icon: Gear,
+			minRole: ROLE_EDITOR,
+		},
+		{
+			id: "system-settings",
+			title: msg`System settings`,
+			to: "/settings/system",
+			icon: Gear,
+			minRole: ROLE_ADMIN,
+		},
+		{
+			id: "personal-settings",
+			title: msg`Personal settings`,
+			to: "/settings/personal",
+			icon: Gear,
+		},
+		{
+			id: "sitemap",
+			title: msg`Update sitemap`,
+			to: "/settings/sitemap",
+			icon: Gear,
+			minRole: ROLE_ADMIN,
+		},
+		{
+			id: "carousel",
+			title: msg`Homepage Carousel`,
+			to: "/settings/carousel",
+			icon: ADMIN_NAV_ICONS.media,
+			minRole: ROLE_ADMIN,
+		},
+		{
+			id: "footer-links",
+			title: msg`Registration and footer links`,
+			to: "/settings/footer",
+			icon: Gear,
+			minRole: ROLE_ADMIN,
+		},
+	);
+
 	// Add plugin pages
 	for (const [pluginId, config] of Object.entries(manifest.plugins)) {
 		if (config.enabled === false) continue;
@@ -299,7 +345,11 @@ function filterNavItems(
 	});
 }
 
-export function AdminCommandPalette({ manifest }: AdminCommandPaletteProps) {
+export function AdminCommandPalette({
+	manifest,
+	open: controlledOpen,
+	onOpenChange,
+}: AdminCommandPaletteProps) {
 	const { t } = useLingui();
 	// The runtime hook (the macro useLingui() omits `_`): `_` translates the
 	// dynamic plugin labels, and both it and `i18n.locale` invalidate the
@@ -307,7 +357,9 @@ export function AdminCommandPalette({ manifest }: AdminCommandPaletteProps) {
 	// switches; the `_` rebind covers catalog merges that arrive without a
 	// locale change (plugins load their catalogs asynchronously).
 	const { _: translateDynamic, i18n } = useLinguiContext();
-	const [open, setOpen] = React.useState(false);
+	const [internalOpen, setInternalOpen] = React.useState(false);
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
 	const [query, setQuery] = React.useState("");
 	const navigate = useNavigate();
 

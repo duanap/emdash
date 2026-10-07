@@ -54,6 +54,7 @@ export interface ShellProps {
  */
 export function Shell({ children, manifest }: ShellProps) {
 	const [welcomeModalOpen, setWelcomeModalOpen] = React.useState(false);
+	const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false);
 	const { t } = useLingui();
 
 	const { data: user } = useCurrentUser();
@@ -101,7 +102,7 @@ export function Shell({ children, manifest }: ShellProps) {
 			side={sidebarSide}
 			style={
 				{
-					"--sidebar-bg": "var(--color-kumo-elevated)",
+					"--sidebar-bg": "var(--color-kumo-base)",
 					height: "100svh",
 					minHeight: "0",
 					overflow: "hidden",
@@ -113,7 +114,7 @@ export function Shell({ children, manifest }: ShellProps) {
 
 			{/* Main content area — scrolls independently so sidebar stays full height */}
 			<div className="flex flex-1 flex-col overflow-hidden">
-				<Header />
+				<Header onSearch={() => setCommandPaletteOpen(true)} />
 				{manifest.registryConfigurationError && (
 					<div className="space-y-3 px-6 pt-6">
 						<RegistryConfigurationBanner error={manifest.registryConfigurationError} />
@@ -123,7 +124,7 @@ export function Shell({ children, manifest }: ShellProps) {
 					className={
 						fullBleed
 							? "flex-1 overflow-hidden bg-kumo-elevated"
-							: "flex-1 overflow-y-auto bg-kumo-elevated p-6"
+							: "emdash-workspace flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8"
 					}
 				>
 					{children}
@@ -141,7 +142,11 @@ export function Shell({ children, manifest }: ShellProps) {
 			)}
 
 			{/* Command palette for quick navigation */}
-			<AdminCommandPalette manifest={manifest} />
+			<AdminCommandPalette
+				manifest={manifest}
+				open={commandPaletteOpen}
+				onOpenChange={setCommandPaletteOpen}
+			/>
 		</Sidebar.Provider>
 	);
 }

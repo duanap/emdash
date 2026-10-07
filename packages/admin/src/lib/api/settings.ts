@@ -13,6 +13,29 @@ export interface SiteSettings {
 	tagline?: string;
 	logo?: { mediaId: string; alt?: string; url?: string };
 	favicon?: { mediaId: string; url?: string };
+	footerLinks?: Array<{ label: string; url: string; iconUrl?: string }>;
+	heroSlides?: Array<{ title: string; imageUrl: string; url: string; excerpt?: string }>;
+	heroCarousel?: {
+		intervalSeconds?: number;
+		blurPx?: number;
+		overlayOpacity?: number;
+		textPosition?:
+			| "top-start"
+			| "top-center"
+			| "top-end"
+			| "center-start"
+			| "center"
+			| "center-end"
+			| "bottom-start"
+			| "bottom-center"
+			| "bottom-end";
+		titleSize?: number;
+		mobileTitleSize?: number;
+		descriptionSize?: number;
+		height?: number;
+		mobileHeight?: number;
+	};
+	sitemapUpdatedAt?: string;
 
 	// URLs
 	url?: string;
@@ -58,6 +81,15 @@ export interface SiteSettingsUpdate extends Omit<
 export async function fetchSettings(): Promise<Partial<SiteSettings>> {
 	const response = await apiFetch(`${API_BASE}/settings`);
 	return parseApiResponse<Partial<SiteSettings>>(response, i18n._(msg`Failed to fetch settings`));
+}
+
+export async function generateSitemap(): Promise<{
+	generatedAt: string;
+	collections: number;
+	urls: number;
+}> {
+	const response = await apiFetch(`${API_BASE}/settings/sitemap`, { method: "POST" });
+	return parseApiResponse(response, i18n._(msg`Failed to generate sitemap`));
 }
 
 /**

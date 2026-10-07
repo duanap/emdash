@@ -1,4 +1,5 @@
 ---
+import { htmlPageUrl } from "../utils/public-page-url.js";
 /**
  * 未找到提示块。404 页面与各详情页的"条目不存在"分支共用，
  * 后者会同时把响应状态置为 404（软 302 跳转对 SEO 不友好）。
@@ -12,7 +13,7 @@ const { message = "你访问的页面不存在或已被移除。" } = Astro.prop
 <div class="not-found">
 	<h1>404</h1>
 	<p>{message}</p>
-	<a href="/">返回首页</a>
+	<a href={htmlPageUrl("/")}>返回首页</a>
 </div>
 
 <style>

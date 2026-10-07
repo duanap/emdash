@@ -11,25 +11,6 @@ import {
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import {
-	Upload,
-	Check,
-	X,
-	Warning,
-	WarningCircle,
-	Plus,
-	Database,
-	FileText,
-	CaretDown,
-	Image,
-	DownloadSimple,
-	Globe,
-	ArrowSquareOut,
-	List,
-	Gear,
-	Sparkle,
-	User,
-} from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -58,6 +39,25 @@ import {
 	type AuthorMapping,
 	type UserListItem,
 } from "../lib/api";
+import {
+	Upload,
+	Check,
+	X,
+	Warning,
+	WarningCircle,
+	Plus,
+	Database,
+	FileText,
+	CaretDown,
+	Image,
+	DownloadSimple,
+	Globe,
+	ArrowSquareOut,
+	List,
+	Gear,
+	Sparkle,
+	User,
+} from "../lib/icons.js";
 import { cn } from "../lib/utils";
 import { CaretNext } from "./ArrowIcons.js";
 import { MediaImportSummary } from "./MediaImportSummary.js";

@@ -8,14 +8,6 @@
 import { Badge, Button, Checkbox, Select } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	Check,
-	CheckCircle,
-	ClockCountdown,
-	ShieldWarning,
-	Trash,
-	Warning,
-} from "@phosphor-icons/react";
 import * as React from "react";
 
 import type {
@@ -24,6 +16,15 @@ import type {
 	CommentStatus,
 	BulkAction,
 } from "../../lib/api/comments.js";
+import {
+	Check,
+	Pencil,
+	CheckCircle,
+	ClockCountdown,
+	ShieldWarning,
+	Trash,
+	Warning,
+} from "../../lib/icons.js";
 import { cn } from "../../lib/utils.js";
 import { ADMIN_NAV_ICONS } from "../admin-navigation-icons.js";
 import { CaretNext, CaretPrev } from "../ArrowIcons.js";
@@ -56,6 +57,11 @@ export interface CommentInboxProps {
 	isStatusPending: boolean;
 	deleteError: unknown;
 	onDeleteErrorReset: () => void;
+	title?: string;
+	description?: string;
+	onCreate?: () => void;
+	onEdit?: (comment: AdminComment) => void;
+	bulkError?: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,6 +99,11 @@ export function CommentInbox({
 	isStatusPending,
 	deleteError,
 	onDeleteErrorReset,
+	title,
+	description,
+	onCreate,
+	onEdit,
+	bulkError,
 }: CommentInboxProps) {
 	const { t } = useLingui();
 
@@ -100,6 +111,16 @@ export function CommentInbox({
 	const [selected, setSelected] = React.useState<Set<string>>(new Set());
 	const [detailComment, setDetailComment] = React.useState<AdminComment | null>(null);
 	const [deleteId, setDeleteId] = React.useState<string | null>(null);
+	const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
+	React.useEffect(() => {
+		setSelected((previous) => {
+			if (previous.size === 0) return previous;
+			const next = new Set(
+				[...previous].filter((id) => comments.some((comment) => comment.id === id)),
+			);
+			return next.size === previous.size ? previous : next;
+		});
+	}, [comments]);
 
 	// Pagination (client-side within loaded data)
 	const [page, setPage] = React.useState(0);
@@ -145,7 +166,15 @@ export function CommentInbox({
 
 	const handleBulk = (action: BulkAction) => {
 		if (selected.size === 0) return;
-		void onBulkAction([...selected], action).then(clearSelection);
+		void (async () => {
+			try {
+				await onBulkAction([...selected], action);
+				clearSelection();
+				setBulkDeleteOpen(false);
+			} catch {
+				// The mutation displays the error and refreshes completed batches.
+			}
+		})();
 	};
 
 	// Collection filter items
@@ -159,8 +188,9 @@ export function CommentInbox({
 	return (
 		<div className="space-y-6">
 			<PageHeader
-				title={t`Comments`}
-				description={t`Review and moderate comments across your content.`}
+				title={title ?? t`Comments`}
+				description={description ?? t`Review and moderate comments across your content.`}
+				actions={onCreate ? <Button onClick={onCreate}>{t`Add message`}</Button> : undefined}
 				value={activeStatus}
 				onValueChange={(v) => {
 					if (v === "pending" || v === "approved" || v === "spam" || v === "trash") {
@@ -255,27 +285,44 @@ export function CommentInbox({
 			/>
 
 			{/* Bulk action bar */}
+			{comments.length > 0 && (
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={isStatusPending}
+					onClick={() => setSelected(new Set(comments.map((comment) => comment.id)))}
+				>{t`Select all loaded items`}</Button>
+			)}
 			{selected.size > 0 && (
 				<div className="flex items-center gap-3 rounded-lg border bg-kumo-tint/50 px-4 py-2">
 					<span className="text-sm font-medium">
 						{plural(selected.size, { one: "# selected", other: "# selected" })}
 					</span>
 					<div className="flex gap-2 ms-auto">
-						{activeStatus !== "approved" && (
+						{activeStatus === "trash" && (
+							<Button
+								size="sm"
+								disabled={isStatusPending}
+								onClick={() => handleBulk("restore")}
+							>{t`Restore selected`}</Button>
+						)}
+						{activeStatus !== "approved" && activeStatus !== "trash" && (
 							<Button
 								size="sm"
 								icon={<Check className="h-3.5 w-3.5" />}
 								onClick={() => handleBulk("approve")}
+								disabled={isStatusPending}
 							>
 								{t`Approve`}
 							</Button>
 						)}
-						{activeStatus !== "spam" && (
+						{activeStatus !== "spam" && activeStatus !== "trash" && (
 							<Button
 								size="sm"
 								variant="outline"
 								icon={<Warning className="h-3.5 w-3.5" />}
 								onClick={() => handleBulk("spam")}
+								disabled={isStatusPending}
 							>
 								{t`Spam`}
 							</Button>
@@ -286,6 +333,7 @@ export function CommentInbox({
 								variant="outline"
 								icon={<Trash className="h-3.5 w-3.5" />}
 								onClick={() => handleBulk("trash")}
+								disabled={isStatusPending}
 							>
 								{t`Trash`}
 							</Button>
@@ -295,7 +343,8 @@ export function CommentInbox({
 								size="sm"
 								variant="destructive"
 								icon={<Trash className="h-3.5 w-3.5" />}
-								onClick={() => handleBulk("delete")}
+								onClick={() => setBulkDeleteOpen(true)}
+								disabled={isStatusPending}
 							>
 								{t`Delete`}
 							</Button>
@@ -305,6 +354,17 @@ export function CommentInbox({
 			)}
 
 			{/* Table */}
+			<ConfirmDialog
+				open={bulkDeleteOpen}
+				onClose={() => setBulkDeleteOpen(false)}
+				title={t`Delete Permanently?`}
+				description={t`Permanently delete ${selected.size} selected comments? This cannot be undone.`}
+				confirmLabel={t`Delete Permanently`}
+				pendingLabel={t`Deleting...`}
+				isPending={isStatusPending}
+				error={bulkError ?? null}
+				onConfirm={() => handleBulk("delete")}
+			/>
 			{isLoading && comments.length === 0 ? (
 				<div className="py-12 text-center text-kumo-subtle">{t`Loading comments...`}</div>
 			) : paginatedComments.length === 0 ? (
@@ -318,6 +378,7 @@ export function CommentInbox({
 									<Checkbox
 										checked={allOnPageSelected}
 										onCheckedChange={toggleAll}
+										disabled={isStatusPending}
 										aria-label={t`Select all`}
 									/>
 								</th>
@@ -355,6 +416,7 @@ export function CommentInbox({
 									}}
 									isAdmin={isAdmin}
 									isStatusPending={isStatusPending}
+									onEdit={onEdit ? () => onEdit(comment) : undefined}
 								/>
 							))}
 						</tbody>
@@ -456,6 +518,7 @@ interface CommentRowProps {
 	onDelete: (id: string) => void;
 	isAdmin: boolean;
 	isStatusPending: boolean;
+	onEdit?: () => void;
 }
 
 function CommentRow({
@@ -467,6 +530,7 @@ function CommentRow({
 	onDelete,
 	isAdmin,
 	isStatusPending,
+	onEdit,
 }: CommentRowProps) {
 	const { t } = useLingui();
 	const date = new Date(comment.createdAt);
@@ -478,6 +542,7 @@ function CommentRow({
 				<Checkbox
 					checked={isSelected}
 					onCheckedChange={onToggle}
+					disabled={isStatusPending}
 					aria-label={t`Select comment by ${comment.authorName}`}
 				/>
 			</td>
@@ -506,6 +571,18 @@ function CommentRow({
 			</td>
 			<td className="px-4 py-3 text-end">
 				<div className="flex items-center justify-end gap-1">
+					{onEdit && (
+						<Button
+							variant="ghost"
+							shape="square"
+							size="sm"
+							aria-label={t`Edit`}
+							onClick={onEdit}
+							disabled={isStatusPending}
+						>
+							<Pencil className="h-4 w-4" />
+						</Button>
+					)}
 					{comment.status !== "approved" && (
 						<Button
 							variant="ghost"

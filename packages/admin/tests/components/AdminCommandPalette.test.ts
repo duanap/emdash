@@ -1,7 +1,7 @@
-import { Browser, ClockCounterClockwise, Download, Files, Newspaper } from "@phosphor-icons/react";
 import { describe, expect, it } from "vitest";
 
 import { buildNavItems } from "../../src/components/AdminCommandPalette";
+import { Browser, ClockCounterClockwise, Download, Files, Newspaper } from "../../src/lib/icons.js";
 
 describe("buildNavItems", () => {
 	it("uses collection overrides and the default collection icon", () => {

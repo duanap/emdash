@@ -6,6 +6,7 @@
  * 不为未登录访客付费）；计数由客户端调用 `activity/state` 拉取一次，切换时用
  * 服务端返回的计数校正。
  */
+import LucideIcon from "./LucideIcon.astro";
 import { getViewerActivity } from "../../member-plugin/index.js";
 
 interface Props {
@@ -32,7 +33,7 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		data-kind="like"
 		aria-pressed={viewer?.liked ? "true" : "false"}
 	>
-		<span class="activity-icon" aria-hidden="true">♥</span>
+		<LucideIcon name="heart" class="activity-icon" />
 		<span class="activity-label">点赞</span>
 		<span class="activity-count" data-count="like" aria-live="polite">·</span>
 	</button>
@@ -42,9 +43,11 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		data-kind="favorite"
 		aria-pressed={viewer?.favorited ? "true" : "false"}
 	>
-		<span class="activity-icon" aria-hidden="true">★</span>
+		<LucideIcon name="star" class="activity-icon" />
 		<span class="activity-label">收藏</span>
-		<span class="activity-count" data-count="favorite" aria-live="polite">·</span>
+		<span class="activity-count" data-count="favorite" aria-live="polite"
+			>·</span
+		>
 	</button>
 	<p class="activity-status" role="status" aria-live="polite" hidden></p>
 </div>
@@ -55,11 +58,16 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 	/** 宿主信封 { success, data } 会再包一层 handler 返回值 */
 	function payloadOf(json: unknown): Record<string, unknown> | null {
 		const outer = json as { data?: { data?: unknown } | unknown } | null;
-		const data = (outer?.data as { data?: unknown } | undefined)?.data ?? outer?.data;
-		return typeof data === "object" && data !== null ? (data as Record<string, unknown>) : null;
+		const data =
+			(outer?.data as { data?: unknown } | undefined)?.data ?? outer?.data;
+		return typeof data === "object" && data !== null
+			? (data as Record<string, unknown>)
+			: null;
 	}
 
-	const roots = document.querySelectorAll<HTMLElement>("[data-member-activity]");
+	const roots = document.querySelectorAll<HTMLElement>(
+		"[data-member-activity]",
+	);
 
 	for (const root of roots) {
 		const base = root.dataset.endpointBase;
@@ -69,11 +77,14 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 
 		const status = root.querySelector<HTMLElement>(".activity-status");
 		const buttons = new Map<Kind, HTMLButtonElement>();
-		for (const button of root.querySelectorAll<HTMLButtonElement>("[data-kind]")) {
+		for (const button of root.querySelectorAll<HTMLButtonElement>(
+			"[data-kind]",
+		)) {
 			buttons.set(button.dataset.kind as Kind, button);
 		}
 
-		const countEl = (kind: Kind) => root.querySelector<HTMLElement>(`[data-count="${kind}"]`);
+		const countEl = (kind: Kind) =>
+			root.querySelector<HTMLElement>(`[data-count="${kind}"]`);
 
 		function setCount(kind: Kind, count: number) {
 			const el = countEl(kind);
@@ -81,7 +92,9 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 		}
 
 		function setPressed(kind: Kind, active: boolean) {
-			buttons.get(kind)?.setAttribute("aria-pressed", active ? "true" : "false");
+			buttons
+				.get(kind)
+				?.setAttribute("aria-pressed", active ? "true" : "false");
 		}
 
 		function showStatus(message: string) {
@@ -136,7 +149,11 @@ const endpointBase = "/_emdash/api/plugins/duanap-members";
 						location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
 						return;
 					}
-					showStatus(payload?.reason === "not_found" ? "内容不存在或未发布。" : "操作失败，请稍后重试。");
+					showStatus(
+						payload?.reason === "not_found"
+							? "内容不存在或未发布。"
+							: "操作失败，请稍后重试。",
+					);
 				} catch {
 					showStatus("网络异常，请稍后重试。");
 				} finally {

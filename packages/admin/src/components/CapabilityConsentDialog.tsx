@@ -9,19 +9,12 @@
 import { Button, Collapsible } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	ArrowDown,
-	CaretDown,
-	Info,
-	ShieldCheck,
-	ShieldWarning,
-	Warning,
-} from "@phosphor-icons/react";
 import * as React from "react";
 
 import { describeCapability } from "../lib/api/marketplace.js";
 import type { PluginMcpConsentTool } from "../lib/api/marketplace.js";
 import type { RegistryRecordVerificationSummary } from "../lib/api/registry.js";
+import { ArrowDown, CaretDown, Info, ShieldCheck, ShieldWarning, Warning } from "../lib/icons.js";
 import { cn } from "../lib/utils.js";
 import { DialogError } from "./DialogError.js";
 

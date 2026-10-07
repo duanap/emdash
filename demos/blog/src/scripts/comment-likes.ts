@@ -1,3 +1,4 @@
+import { createElement, Heart } from "lucide";
 /**
  * 评论/留言的会员点赞按钮。
  *
@@ -20,10 +21,13 @@ interface Options {
 	targets: () => CommentLikeTarget[];
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function payloadOf(json: unknown): Record<string, unknown> | null {
-	const outer = json as { data?: { data?: unknown } | unknown } | null;
-	const data = (outer?.data as { data?: unknown } | undefined)?.data ?? outer?.data;
-	return typeof data === "object" && data !== null ? (data as Record<string, unknown>) : null;
+	if (!isRecord(json) || !isRecord(json.data)) return null;
+	return isRecord(json.data.data) ? json.data.data : json.data;
 }
 
 function setButtonState(button: HTMLButtonElement, liked: boolean, count: number) {
@@ -50,7 +54,15 @@ export function installCommentLikes(options: Options): void {
 		button.dataset.commentId = target.id;
 		button.setAttribute("aria-pressed", "false");
 		button.setAttribute("aria-label", "点赞这条留言");
-		button.append(document.createTextNode("♥ "));
+		button.append(
+			createElement(Heart, {
+				width: 16,
+				height: 16,
+				"aria-hidden": "true",
+				class: "lucide lucide-heart",
+			}),
+			document.createTextNode(" "),
+		);
 		const counter = document.createElement("span");
 		counter.dataset.ecMemberLikeCount = "true";
 		counter.textContent = "0";
@@ -97,23 +109,26 @@ export function installCommentLikes(options: Options): void {
 		else buttons.set(target.id, [button]);
 	}
 
-	// 一次批量拿回所有按钮的初始状态
 	void (async () => {
-		try {
-			const res = await fetch(
-				`${endpointBase}/activity/state?targetType=comment&targetIds=${encodeURIComponent(ids.join(","))}`,
-			);
-			const payload = payloadOf(await res.json());
-			if (!payload?.ok || !Array.isArray(payload.items)) return;
-			for (const item of payload.items as Array<Record<string, unknown>>) {
-				const group = buttons.get(String(item.targetId));
-				if (!group) continue;
-				for (const button of group) {
-					setButtonState(button, item.liked === true, Number(item.likeCount ?? 0));
+		for (let offset = 0; offset < ids.length; offset += 50) {
+			try {
+				const batch = ids.slice(offset, offset + 50);
+				const res = await fetch(
+					`${endpointBase}/activity/state?targetType=comment&targetIds=${encodeURIComponent(batch.join(","))}`,
+				);
+				const payload = payloadOf(await res.json());
+				if (!payload?.ok || !Array.isArray(payload.items)) continue;
+				for (const item of payload.items) {
+					if (!isRecord(item)) continue;
+					const group = buttons.get(String(item.targetId));
+					if (!group) continue;
+					for (const button of group) {
+						setButtonState(button, item.liked === true, Number(item.likeCount ?? 0));
+					}
 				}
+			} catch {
+				// A failed batch must not prevent later buttons from loading.
 			}
-		} catch {
-			// 状态拿不到就保持 0，不影响阅读
 		}
 	})();
 }

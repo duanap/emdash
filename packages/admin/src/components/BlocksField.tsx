@@ -16,7 +16,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useLingui } from "@lingui/react/macro";
-import { CaretDown, CaretRight, Copy, DotsSixVertical, Plus, Trash } from "@phosphor-icons/react";
 import * as React from "react";
 
 import type { BlockFieldDefinition, BlockType } from "../lib/api/schema.js";
@@ -29,6 +28,7 @@ import {
 	type StoredBlockValue,
 	updateBlockFieldValue,
 } from "../lib/block-field-state.js";
+import { CaretDown, CaretRight, Copy, DotsSixVertical, Plus, Trash } from "../lib/icons.js";
 import { cn } from "../lib/utils.js";
 
 interface NestedFieldDescriptor {

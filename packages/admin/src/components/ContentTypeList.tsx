@@ -17,6 +17,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import * as React from "react";
+
+import { fetchRelations } from "../lib/api";
+import type { SchemaCollection, OrphanedTable } from "../lib/api";
 import {
 	Plus,
 	Pencil,
@@ -27,13 +33,7 @@ import {
 	Check,
 	DotsSixVertical,
 	LinkSimple,
-} from "@phosphor-icons/react";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import * as React from "react";
-
-import { fetchRelations } from "../lib/api";
-import type { SchemaCollection, OrphanedTable } from "../lib/api";
+} from "../lib/icons.js";
 import { cn } from "../lib/utils";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { RelationImpact } from "./RelationImpact.js";

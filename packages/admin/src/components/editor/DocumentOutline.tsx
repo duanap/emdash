@@ -9,10 +9,10 @@
 
 import { Button, Collapsible, Text } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { CaretDown } from "@phosphor-icons/react";
 import type { Editor } from "@tiptap/react";
 import * as React from "react";
 
+import { CaretDown } from "../../lib/icons.js";
 import { cn } from "../../lib/utils";
 
 function getIndentClass(level: number) {

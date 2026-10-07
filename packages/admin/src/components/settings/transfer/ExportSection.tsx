@@ -1,7 +1,6 @@
 import { Badge, Banner, Button, LinkButton, Loader, Meter, Switch } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { DownloadSimple } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -16,6 +15,7 @@ import {
 	type TransferOperation,
 	type TransferPage,
 } from "../../../lib/api/transfer.js";
+import { DownloadSimple } from "../../../lib/icons.js";
 import { formatFileSize } from "../../../lib/media-utils.js";
 import { canStreamToDisk } from "../../../lib/save-file.js";
 import { getMutationError } from "../../DialogError.js";

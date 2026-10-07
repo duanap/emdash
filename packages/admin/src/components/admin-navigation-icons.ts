@@ -1,3 +1,5 @@
+import * as React from "react";
+
 import {
 	Bell,
 	BookOpen,
@@ -38,9 +40,8 @@ import {
 	Trophy,
 	Upload,
 	Users,
-} from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
-import * as React from "react";
+} from "../lib/icons.js";
+import type { Icon } from "../lib/icons.js";
 
 /** Shared icon vocabulary for first-party admin entities and navigation surfaces. */
 export const ADMIN_NAV_ICONS = {
@@ -120,7 +121,7 @@ const PLUGIN_NAV_ICON_MAP: Record<string, React.ElementType> = {
 
 const ICON_NAME_SEPARATOR = /[-_\s]+/;
 
-/** Convert kebab, snake, or space-separated names to Phosphor's PascalCase exports. */
+/** Convert declared names to PascalCase icon exports. */
 export function toPhosphorIconName(name: string): string {
 	return name
 		.split(ICON_NAME_SEPARATOR)
@@ -139,7 +140,7 @@ function isIconComponent(value: unknown): value is React.ComponentType<{ classNa
 }
 
 /**
- * Resolve a declared icon name while keeping uncommon Phosphor icons
+ * Resolve a declared icon name while keeping uncommon icons
  * code-split. Missing or unknown names render `fallback`.
  */
 export function resolveNavIcon(
@@ -161,8 +162,13 @@ export function resolveNavIcon(
 	let icon = perFallback.get(componentName);
 	if (!icon) {
 		icon = React.lazy(async () => {
-			const mod = await import("@phosphor-icons/react");
-			const candidate: unknown = (mod as Record<string, unknown>)[componentName];
+			const [legacy, lucide] = await Promise.all([
+				import("../lib/icons.js"),
+				import("lucide-react"),
+			]);
+			const candidate: unknown =
+				Object.getOwnPropertyDescriptor(legacy, componentName)?.value ??
+				Object.getOwnPropertyDescriptor(lucide.icons, componentName)?.value;
 			return { default: isIconComponent(candidate) ? candidate : fallback };
 		});
 		perFallback.set(componentName, icon);

@@ -51,12 +51,37 @@ export interface SeoSettings {
 }
 
 /** Site settings schema */
+export interface HeroCarouselSettings {
+	intervalSeconds?: number;
+	blurPx?: number;
+	overlayOpacity?: number;
+	textPosition?:
+		| "top-start"
+		| "top-center"
+		| "top-end"
+		| "center-start"
+		| "center"
+		| "center-end"
+		| "bottom-start"
+		| "bottom-center"
+		| "bottom-end";
+	titleSize?: number;
+	mobileTitleSize?: number;
+	descriptionSize?: number;
+	height?: number;
+	mobileHeight?: number;
+}
+
 export interface SiteSettings {
 	// Identity
 	title: string;
 	tagline?: string;
 	logo?: MediaReference;
 	favicon?: MediaReference;
+	footerLinks?: Array<{ label: string; url: string; iconUrl?: string }>;
+	heroSlides?: Array<{ title: string; imageUrl: string; url: string; excerpt?: string }>;
+	heroCarousel?: HeroCarouselSettings;
+	sitemapUpdatedAt?: string;
 
 	// URLs
 	url?: string;

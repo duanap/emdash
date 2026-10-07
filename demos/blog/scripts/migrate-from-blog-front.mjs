@@ -33,10 +33,11 @@
  *   409 即视为已导入并跳过，可安全重跑。
  */
 
-import { DatabaseSync } from "node:sqlite";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
+
 import { markdownToPortableText } from "emdash/client";
 
 const FILENAME_SEPARATOR_PATTERN = /[\\/]/;
@@ -156,9 +157,7 @@ async function resolveBylineId() {
 	if (dryRun) return "byline-duanap"; // dry-run 不触网，仅占位
 	const res = await api("GET", "/_emdash/api/admin/bylines");
 	const items = res.json?.data?.items ?? res.json?.data ?? [];
-	const found = Array.isArray(items)
-		? items.find((b) => b.slug === "duanap")
-		: null;
+	const found = Array.isArray(items) ? items.find((b) => b.slug === "duanap") : null;
 	if (!found) throw new Error("找不到 slug 为 duanap 的 byline（先应用 seed）");
 	cachedBylineId = found.id;
 	return cachedBylineId;
@@ -212,7 +211,11 @@ async function uploadMedia(filePath, alt) {
 	const form = new FormData();
 	const bytes = readFileSync(filePath);
 	const ext = filePath.split(".").pop()?.toLowerCase() ?? "webp";
-	form.append("file", new Blob([bytes], { type: `image/${ext === "jpg" ? "jpeg" : ext}` }), filePath.split(FILENAME_SEPARATOR_PATTERN).pop());
+	form.append(
+		"file",
+		new Blob([bytes], { type: `image/${ext === "jpg" ? "jpeg" : ext}` }),
+		filePath.split(FILENAME_SEPARATOR_PATTERN).pop(),
+	);
 	if (alt) form.append("alt", alt);
 	const res = await api("POST", "/_emdash/api/media", form, true);
 	if (!res.ok) {
@@ -224,27 +227,17 @@ async function uploadMedia(filePath, alt) {
 }
 
 async function createEntry(collection, payload) {
-	const created = await api(
-		"POST",
-		`/_emdash/api/content/${collection}`,
-		payload,
-	);
+	const created = await api("POST", `/_emdash/api/content/${collection}`, payload);
 	if (created.status === 409) return { skipped: true };
 	if (!created.ok) {
-		throw new Error(
-			`创建 ${collection} 失败 ${created.status}: ${JSON.stringify(created.json)}`,
-		);
+		throw new Error(`创建 ${collection} 失败 ${created.status}: ${JSON.stringify(created.json)}`);
 	}
 	const entry = created.json?.data?.item;
 	const id = entry?.id;
 	if (!id) throw new Error(`创建成功但未返回 id: ${JSON.stringify(created.json)}`);
 	// 创建接口只接受 draft；发布走独立端点
 	if (payload.__publish) {
-		const published = await api(
-			"POST",
-			`/_emdash/api/content/${collection}/${id}/publish`,
-			{},
-		);
+		const published = await api("POST", `/_emdash/api/content/${collection}/${id}/publish`, {});
 		if (!published.ok) {
 			throw new Error(
 				`发布 ${collection}/${id} 失败 ${published.status}: ${JSON.stringify(published.json)}`,
@@ -283,7 +276,9 @@ async function lifeToEntry(row) {
 			title: row.title,
 			excerpt: row.summary || undefined,
 			content: markdownToPortableText(row.content ?? ""),
-			record_date: row.recordDate ? new Date(`${row.recordDate}T09:00:00Z`).toISOString() : undefined,
+			record_date: row.recordDate
+				? new Date(`${row.recordDate}T09:00:00Z`).toISOString()
+				: undefined,
 			pinned: !!row.pinned,
 		},
 		publishedAt: row.publishedAt ?? undefined,
@@ -291,7 +286,9 @@ async function lifeToEntry(row) {
 		status: row.status,
 		bylines: [{ bylineId: await resolveBylineId() }],
 		taxonomies: {
-			life_category: [mapTerm(LIFE_CATEGORY_MAP, row.category, warnings, `生活 ${row.id}`)].filter(Boolean),
+			life_category: [mapTerm(LIFE_CATEGORY_MAP, row.category, warnings, `生活 ${row.id}`)].filter(
+				Boolean,
+			),
 			tag: await resolveTags(parseTags(row.tags)),
 		},
 	};
@@ -325,7 +322,9 @@ async function projectToEntry(row) {
 		status: row.status,
 		bylines: [{ bylineId: await resolveBylineId() }],
 		taxonomies: {
-			project_type: [mapTerm(PROJECT_TYPE_MAP, row.type, warnings, `作品 ${row.id}`)].filter(Boolean),
+			project_type: [mapTerm(PROJECT_TYPE_MAP, row.type, warnings, `作品 ${row.id}`)].filter(
+				Boolean,
+			),
 		},
 	};
 }
@@ -349,7 +348,9 @@ async function importComments(mapping) {
 		const newId = mapping[`${collection}_id`]?.[String(targetId)];
 		if (!collection || !newId) {
 			skipped++;
-			warnings.push(`评论 ${row.id}：目标 ${targetType}/${targetId} 未导入，跳过`);
+			warnings.push(
+				`评论 ${String(row.id)}：目标 ${String(targetType)}/${String(targetId)} 未导入，跳过`,
+			);
 			continue;
 		}
 		if (dryRun) {
@@ -359,20 +360,16 @@ async function importComments(mapping) {
 		const body = {
 			authorName: row.author || "访客",
 			// API 必填合法 email；旧评论没有邮箱，用可辨识的占位域
-			authorEmail: `old-${row.id}@migrated.duanap.cn`,
+			authorEmail: `old-${String(row.id)}@migrated.duanap.cn`,
 			body: row.content,
 		};
 		if (row.parent_id) {
 			const parentNew = mapping.comment_id?.[String(row.parent_id)];
 			if (parentNew) body.parentId = parentNew;
 		}
-		const res = await api(
-			"POST",
-			`/_emdash/api/comments/${collection}/${newId}`,
-			body,
-		);
+		const res = await api("POST", `/_emdash/api/comments/${collection}/${newId}`, body);
 		if (!res.ok) {
-			warnings.push(`评论 ${row.id} 导入失败 ${res.status}，跳过`);
+			warnings.push(`评论 ${String(row.id)} 导入失败 ${res.status}，跳过`);
 			skipped++;
 			continue;
 		}

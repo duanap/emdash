@@ -1,6 +1,10 @@
 import { Button, Input, Select } from "@cloudflare/kumo";
 import { Dialog } from "@cloudflare/kumo/primitives";
 import { useLingui } from "@lingui/react/macro";
+import * as React from "react";
+
+import type { UserDetail as UserDetailType, UpdateUserInput } from "../../lib/api";
+import { useStableCallback } from "../../lib/hooks";
 import {
 	X,
 	Key,
@@ -9,11 +13,7 @@ import {
 	ArrowSquareOut,
 	FloppyDisk,
 	Envelope,
-} from "@phosphor-icons/react";
-import * as React from "react";
-
-import type { UserDetail as UserDetailType, UpdateUserInput } from "../../lib/api";
-import { useStableCallback } from "../../lib/hooks";
+} from "../../lib/icons.js";
 import { cn } from "../../lib/utils";
 import { useRolesConfig } from "./useRolesConfig.js";
 

@@ -1,4 +1,5 @@
 ---
+import { htmlPageUrl } from "../../../utils/public-page-url.js";
 import Base from "../../../layouts/Base.astro";
 import ArchiveTimeline from "../../../components/ArchiveTimeline.astro";
 import { getArchiveItems } from "../../../utils/archive-items";
@@ -36,7 +37,7 @@ if (monthItems.length === 0) {
 		<header class="page-header">
 			<h1 class="page-title">{year} 年 {month} 月归档</h1>
 			<p class="page-description">
-				共 {monthItems.length} 条内容 · <a href={`/archives/${year}`}>返回 {year} 年</a>
+				共 {monthItems.length} 条内容 · <a href={htmlPageUrl(`/archives/${year}`)}>返回 {year} 年</a>
 			</p>
 		</header>
 

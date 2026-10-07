@@ -7,7 +7,6 @@
 
 import { Autocomplete, Banner, Button, Input, Loader, useKumoToastManager } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { WarningCircle, Upload, X } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, type Locale } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
@@ -20,9 +19,13 @@ import {
 	type SiteSettings,
 	type SiteSettingsUpdate,
 } from "../../lib/api";
+import { generalSettingsPayload, type GeneralSettingsSection } from "../../lib/general-settings.js";
+import { WarningCircle, Upload, X } from "../../lib/icons.js";
 import { MediaPickerModal } from "../MediaPickerModal";
 import { SaveButton } from "../SaveButton.js";
+import { FooterLinksEditor } from "./FooterLinksEditor.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";
+import { SitemapControls } from "./SitemapControls.js";
 
 const timezones = ["UTC", ...Intl.supportedValuesOf("timeZone")];
 const exampleDate = new Date(2026, 0, 23);
@@ -74,20 +77,22 @@ function isValidTimezone(timezone: string): boolean {
 	}
 }
 
-function generalSettingsSnapshot(settings: SiteSettingsUpdate) {
+function generalSettingsSnapshot(settings: SiteSettingsUpdate, section: GeneralSettingsSection) {
+	settings = generalSettingsPayload(settings, section);
 	return JSON.stringify({
 		title: settings.title ?? "",
 		tagline: settings.tagline ?? "",
 		url: settings.url ?? "",
 		logo: settings.logo ?? null,
 		favicon: settings.favicon ?? null,
+		footerLinks: settings.footerLinks ?? [],
 		postsPerPage: settings.postsPerPage ?? 10,
 		dateFormat: settings.dateFormat ?? "MMMM d, yyyy",
 		timezone: settings.timezone ?? "UTC",
 	});
 }
 
-export function GeneralSettings() {
+export function GeneralSettings({ section = "all" }: { section?: GeneralSettingsSection } = {}) {
 	const { t, i18n } = useLingui();
 	const queryClient = useQueryClient();
 	const toastManager = useKumoToastManager();
@@ -141,8 +146,10 @@ export function GeneralSettings() {
 	}, [settings]);
 
 	const isDirty = React.useMemo(
-		() => generalSettingsSnapshot(formData) !== generalSettingsSnapshot(savedFormData),
-		[formData, savedFormData],
+		() =>
+			generalSettingsSnapshot(formData, section) !==
+			generalSettingsSnapshot(savedFormData, section),
+		[formData, savedFormData, section],
 	);
 
 	const saveMutation = useMutation({
@@ -179,8 +186,8 @@ export function GeneralSettings() {
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		setShowTimezoneError(true);
-		if (!canSaveTimezone) return;
-		saveMutation.mutate(formData);
+		if (section !== "identity" && !canSaveTimezone) return;
+		saveMutation.mutate(generalSettingsPayload(formData, section));
 	};
 
 	const handleChange = (key: keyof SiteSettings, value: unknown) => {
@@ -211,8 +218,18 @@ export function GeneralSettings() {
 		setFormData((prev) => ({ ...prev, favicon: null }));
 	};
 
-	const title = t`General Settings`;
-	const description = t`Site identity, logo, favicon, and reading preferences`;
+	const title =
+		section === "identity"
+			? t`Site Identity`
+			: section === "reading"
+				? t`Reading`
+				: t`General Settings`;
+	const description =
+		section === "identity"
+			? t`Site title, description, address, logo, and favicon`
+			: section === "reading"
+				? t`Pagination, date format, and timezone`
+				: t`Site identity, logo, favicon, and reading preferences`;
 
 	if (isLoading) {
 		return (
@@ -255,213 +272,231 @@ export function GeneralSettings() {
 			}
 		>
 			<form id="general-settings-form" onSubmit={handleSubmit} className="grid gap-8">
-				<SettingsSection title={t`Site Identity`}>
-					<SettingRow>
-						<Input
-							label={t`Site Title`}
-							value={formData.title ?? ""}
-							onChange={(e) => handleChange("title", e.target.value)}
-							description={t`The name of your site, used in the header and metadata`}
-						/>
-					</SettingRow>
-					<SettingRow>
-						<Input
-							label={t`Tagline`}
-							value={formData.tagline ?? ""}
-							onChange={(e) => handleChange("tagline", e.target.value)}
-							description={t`A short description of your site`}
-						/>
-					</SettingRow>
-					<SettingRow>
-						<Input
-							label={t`Site URL`}
-							type="url"
-							value={formData.url ?? ""}
-							onChange={(e) => handleChange("url", e.target.value)}
-							description={t`The public URL of your site (used for canonical links and sitemaps)`}
-						/>
-					</SettingRow>
+				{section !== "reading" && (
+					<SettingsSection title={t`Site Identity`}>
+						<SettingRow>
+							<Input
+								label={t`Site Title`}
+								value={formData.title ?? ""}
+								onChange={(e) => handleChange("title", e.target.value)}
+								description={t`The name of your site, used in the header and metadata`}
+							/>
+						</SettingRow>
+						<SettingRow>
+							<Input
+								label={t`Tagline`}
+								value={formData.tagline ?? ""}
+								onChange={(e) => handleChange("tagline", e.target.value)}
+								description={t`A short description of your site`}
+							/>
+						</SettingRow>
+						<SettingRow>
+							<Input
+								label={t`Site URL`}
+								type="url"
+								value={formData.url ?? ""}
+								onChange={(e) => handleChange("url", e.target.value)}
+								description={t`The public URL of your site (used for canonical links and sitemaps)`}
+							/>
+						</SettingRow>
 
-					<SettingRow>
-						<div className="grid gap-4 sm:grid-cols-2 sm:items-center">
-							<div className="text-base font-medium">{t`Logo`}</div>
-							<div className="min-w-0">
-								{formData.logo?.mediaId ? (
-									<div className="grid gap-3">
-										{formData.logo.url ? (
-											<img
-												src={formData.logo.url}
-												alt={formData.logo.alt || t`Logo`}
-												className="emdash-media-transparency-grid h-16 max-w-full rounded border border-kumo-line object-contain p-2 sm:ms-auto"
-											/>
-										) : (
-											<div
-												className="flex min-h-16 items-start gap-2 rounded border border-dashed border-kumo-line bg-kumo-tint px-3 py-2 text-sm leading-5 text-kumo-subtle"
-												role="status"
-											>
-												<span className="flex h-5 shrink-0 items-center" aria-hidden="true">
-													<WarningCircle className="h-4 w-4" />
-												</span>
-												<span>{t`The referenced logo is no longer available. Pick a new one or remove the reference.`}</span>
+						<SettingRow>
+							<div className="grid gap-4 sm:grid-cols-2 sm:items-center">
+								<div className="text-base font-medium">{t`Logo`}</div>
+								<div className="min-w-0">
+									{formData.logo?.mediaId ? (
+										<div className="grid gap-3">
+											{formData.logo.url ? (
+												<img
+													src={formData.logo.url}
+													alt={formData.logo.alt || t`Logo`}
+													className="emdash-media-transparency-grid h-16 max-w-full rounded border border-kumo-line object-contain p-2 sm:ms-auto"
+												/>
+											) : (
+												<div
+													className="flex min-h-16 items-start gap-2 rounded border border-dashed border-kumo-line bg-kumo-tint px-3 py-2 text-sm leading-5 text-kumo-subtle"
+													role="status"
+												>
+													<span className="flex h-5 shrink-0 items-center" aria-hidden="true">
+														<WarningCircle className="h-4 w-4" />
+													</span>
+													<span>{t`The referenced logo is no longer available. Pick a new one or remove the reference.`}</span>
+												</div>
+											)}
+											<div className="flex flex-wrap gap-3 sm:justify-end">
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													icon={<Upload />}
+													onClick={() => setLogoPickerOpen(true)}
+												>
+													{t`Change Logo`}
+												</Button>
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													icon={<X />}
+													onClick={handleLogoRemove}
+												>
+													{t`Remove`}
+												</Button>
 											</div>
-										)}
-										<div className="flex flex-wrap gap-3 sm:justify-end">
+										</div>
+									) : (
+										<div className="flex justify-end">
 											<Button
 												type="button"
 												variant="outline"
-												size="sm"
 												icon={<Upload />}
 												onClick={() => setLogoPickerOpen(true)}
 											>
-												{t`Change Logo`}
-											</Button>
-											<Button
-												type="button"
-												variant="outline"
-												size="sm"
-												icon={<X />}
-												onClick={handleLogoRemove}
-											>
-												{t`Remove`}
+												{t`Select Logo`}
 											</Button>
 										</div>
-									</div>
-								) : (
-									<div className="flex justify-end">
-										<Button
-											type="button"
-											variant="outline"
-											icon={<Upload />}
-											onClick={() => setLogoPickerOpen(true)}
-										>
-											{t`Select Logo`}
-										</Button>
-									</div>
-								)}
+									)}
+								</div>
 							</div>
-						</div>
-					</SettingRow>
+						</SettingRow>
 
-					<SettingRow>
-						<div className="grid gap-4 sm:grid-cols-2 sm:items-center">
-							<div className="text-base font-medium">{t`Favicon`}</div>
-							<div className="min-w-0">
-								{formData.favicon?.mediaId ? (
-									<div className="grid gap-3">
-										{formData.favicon.url ? (
-											<img
-												src={formData.favicon.url}
-												alt={t`Favicon`}
-												className="emdash-media-transparency-grid h-8 w-8 rounded border border-kumo-line object-contain p-1 sm:ms-auto"
-											/>
-										) : (
-											<div
-												className="flex min-h-8 items-start gap-2 rounded border border-dashed border-kumo-line bg-kumo-tint px-3 py-2 text-sm leading-5 text-kumo-subtle"
-												role="status"
-											>
-												<span className="flex h-5 shrink-0 items-center" aria-hidden="true">
-													<WarningCircle className="h-4 w-4" />
-												</span>
-												<span>{t`Referenced favicon unavailable.`}</span>
+						<SettingRow>
+							<div className="grid gap-4 sm:grid-cols-2 sm:items-center">
+								<div className="text-base font-medium">{t`Favicon`}</div>
+								<div className="min-w-0">
+									{formData.favicon?.mediaId ? (
+										<div className="grid gap-3">
+											{formData.favicon.url ? (
+												<img
+													src={formData.favicon.url}
+													alt={t`Favicon`}
+													className="emdash-media-transparency-grid h-8 w-8 rounded border border-kumo-line object-contain p-1 sm:ms-auto"
+												/>
+											) : (
+												<div
+													className="flex min-h-8 items-start gap-2 rounded border border-dashed border-kumo-line bg-kumo-tint px-3 py-2 text-sm leading-5 text-kumo-subtle"
+													role="status"
+												>
+													<span className="flex h-5 shrink-0 items-center" aria-hidden="true">
+														<WarningCircle className="h-4 w-4" />
+													</span>
+													<span>{t`Referenced favicon unavailable.`}</span>
+												</div>
+											)}
+											<div className="flex flex-wrap gap-3 sm:justify-end">
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													icon={<Upload />}
+													onClick={() => setFaviconPickerOpen(true)}
+												>
+													{t`Change Favicon`}
+												</Button>
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													icon={<X />}
+													onClick={handleFaviconRemove}
+												>
+													{t`Remove`}
+												</Button>
 											</div>
-										)}
-										<div className="flex flex-wrap gap-3 sm:justify-end">
+										</div>
+									) : (
+										<div className="flex justify-end">
 											<Button
 												type="button"
 												variant="outline"
-												size="sm"
 												icon={<Upload />}
 												onClick={() => setFaviconPickerOpen(true)}
 											>
-												{t`Change Favicon`}
-											</Button>
-											<Button
-												type="button"
-												variant="outline"
-												size="sm"
-												icon={<X />}
-												onClick={handleFaviconRemove}
-											>
-												{t`Remove`}
+												{t`Select Favicon`}
 											</Button>
 										</div>
-									</div>
-								) : (
-									<div className="flex justify-end">
-										<Button
-											type="button"
-											variant="outline"
-											icon={<Upload />}
-											onClick={() => setFaviconPickerOpen(true)}
-										>
-											{t`Select Favicon`}
-										</Button>
-									</div>
-								)}
-							</div>
-						</div>
-					</SettingRow>
-				</SettingsSection>
-
-				<SettingsSection title={t`Reading`}>
-					<SettingRow>
-						<Input
-							label={t`Posts Per Page`}
-							type="number"
-							value={formData.postsPerPage ?? 10}
-							onChange={(e) => handleChange("postsPerPage", parseInt(e.target.value, 10))}
-							min={1}
-							max={100}
-							description={t`Number of posts to show per page on list views`}
-						/>
-					</SettingRow>
-					<SettingRow>
-						<Input
-							label={t`Date Format`}
-							value={pattern}
-							onChange={(e) => handleChange("dateFormat", e.target.value)}
-							description={
-								previewLoading
-									? t`Loading preview…`
-									: preview === null
-										? t`Preview unavailable for this format`
-										: t`Example: ${pattern} → ${preview}`
-							}
-						/>
-					</SettingRow>
-					<SettingRow>
-						<Autocomplete
-							label={t`Timezone`}
-							items={timezones}
-							value={timezone}
-							onValueChange={(value: string) => handleChange("timezone", value)}
-							description={
-								recognizedTimezone
-									? t`Search for an IANA timezone (e.g., Europe/London)`
-									: savedTimezoneUnchanged
-										? t`This saved timezone isn't recognized. Choose a suggestion for reliable date display.`
-										: t`Choose a recognized timezone for reliable date display.`
-							}
-							error={
-								showTimezoneError && !canSaveTimezone
-									? t`Enter a recognized timezone to save`
-									: undefined
-							}
-						>
-							<Autocomplete.InputGroup placeholder={t`Search timezones…`} />
-							<Autocomplete.Content>
-								<Autocomplete.List className="max-h-64 overflow-y-auto">
-									{(item: string) => (
-										<Autocomplete.Item key={item} value={item}>
-											{item}
-										</Autocomplete.Item>
 									)}
-								</Autocomplete.List>
-								<Autocomplete.Empty>{t`No matching timezones`}</Autocomplete.Empty>
-							</Autocomplete.Content>
-						</Autocomplete>
-					</SettingRow>
-				</SettingsSection>
+								</div>
+							</div>
+						</SettingRow>
+					</SettingsSection>
+				)}
+
+				{section !== "identity" && (
+					<SettingsSection title={t`Reading`}>
+						<SettingRow>
+							<Input
+								label={t`Posts Per Page`}
+								type="number"
+								value={formData.postsPerPage ?? 10}
+								onChange={(e) => handleChange("postsPerPage", parseInt(e.target.value, 10))}
+								min={1}
+								max={100}
+								description={t`Number of posts to show per page on list views`}
+							/>
+						</SettingRow>
+						<SettingRow>
+							<Input
+								label={t`Date Format`}
+								value={pattern}
+								onChange={(e) => handleChange("dateFormat", e.target.value)}
+								description={
+									previewLoading
+										? t`Loading preview…`
+										: preview === null
+											? t`Preview unavailable for this format`
+											: t`Example: ${pattern} → ${preview}`
+								}
+							/>
+						</SettingRow>
+						<SettingRow>
+							<Autocomplete
+								label={t`Timezone`}
+								items={timezones}
+								value={timezone}
+								onValueChange={(value: string) => handleChange("timezone", value)}
+								description={
+									recognizedTimezone
+										? t`Search for an IANA timezone (e.g., Europe/London)`
+										: savedTimezoneUnchanged
+											? t`This saved timezone isn't recognized. Choose a suggestion for reliable date display.`
+											: t`Choose a recognized timezone for reliable date display.`
+								}
+								error={
+									showTimezoneError && !canSaveTimezone
+										? t`Enter a recognized timezone to save`
+										: undefined
+								}
+							>
+								<Autocomplete.InputGroup placeholder={t`Search timezones…`} />
+								<Autocomplete.Content>
+									<Autocomplete.List className="max-h-64 overflow-y-auto">
+										{(item: string) => (
+											<Autocomplete.Item key={item} value={item}>
+												{item}
+											</Autocomplete.Item>
+										)}
+									</Autocomplete.List>
+									<Autocomplete.Empty>{t`No matching timezones`}</Autocomplete.Empty>
+								</Autocomplete.Content>
+							</Autocomplete>
+						</SettingRow>
+					</SettingsSection>
+				)}
+
+				{section === "all" && (
+					<>
+						<SettingsSection title={t`Sitemap`}>
+							<SitemapControls updatedAt={formData.sitemapUpdatedAt} />
+						</SettingsSection>
+						<SettingsSection title={t`Footer Links`}>
+							<FooterLinksEditor
+								links={formData.footerLinks ?? []}
+								onChange={(links) => handleChange("footerLinks", links)}
+							/>
+						</SettingsSection>
+					</>
+				)}
 
 				<div className="flex justify-end">
 					<SaveButton

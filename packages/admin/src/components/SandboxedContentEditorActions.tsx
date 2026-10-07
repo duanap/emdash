@@ -1,10 +1,10 @@
 import { Button, DropdownMenu, Toast } from "@cloudflare/kumo";
 import type { ContentEditorActionResponse } from "@emdash-cms/blocks";
 import { useLingui } from "@lingui/react/macro";
-import { DotsThree } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { apiFetch } from "../lib/api/client.js";
+import { DotsThree } from "../lib/icons.js";
 import { resolvePluginLinkTarget } from "../lib/plugin-links.js";
 import {
 	editorExtensionUrl,

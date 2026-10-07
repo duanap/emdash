@@ -28,19 +28,6 @@ import {
 } from "@dnd-kit/core";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	ArrowLeft,
-	File as FileIcon,
-	Folder,
-	Images,
-	List,
-	MagnifyingGlass,
-	PencilSimple,
-	Plus,
-	SquaresFour,
-	Upload,
-} from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -64,6 +51,19 @@ import {
 	fetchMediaUsageProgress,
 } from "../lib/api/media-usage-activation.js";
 import { useDebouncedValue } from "../lib/hooks.js";
+import {
+	ArrowLeft,
+	File as FileIcon,
+	Folder,
+	Images,
+	List,
+	MagnifyingGlass,
+	PencilSimple,
+	Plus,
+	SquaresFour,
+	Upload,
+} from "../lib/icons.js";
+import type { Icon } from "../lib/icons.js";
 import {
 	providerItemToMediaItem,
 	getFileIcon,

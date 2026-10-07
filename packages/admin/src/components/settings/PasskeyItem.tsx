@@ -4,10 +4,10 @@
 
 import { Button, Input } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Pencil, Trash, Check, X, DeviceMobile, Cloud } from "@phosphor-icons/react";
 import * as React from "react";
 
 import type { PasskeyInfo } from "../../lib/api";
+import { Pencil, Trash, Check, X, DeviceMobile, Cloud } from "../../lib/icons.js";
 import { formatRelativeTime } from "../../lib/utils";
 import { ConfirmDialog } from "../ConfirmDialog.js";
 

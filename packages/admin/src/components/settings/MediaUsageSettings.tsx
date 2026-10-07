@@ -1,6 +1,5 @@
 import { Badge, Banner, Button, Checkbox, Loader } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { CheckCircle } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -17,6 +16,7 @@ import {
 	type MediaUsageProgress,
 	type MediaUsageProgressAdvanceResponse,
 } from "../../lib/api/media-usage-activation.js";
+import { CheckCircle } from "../../lib/icons.js";
 import { ConfirmDialog } from "../ConfirmDialog.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";
 

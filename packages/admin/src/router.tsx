@@ -30,6 +30,7 @@ import * as React from "react";
 import { BlockTypeList } from "./components/BlockTypeList.js";
 import { EMPTY_BYLINE_FILTER, type BylineFilterState } from "./components/BylineFilter";
 import { CommentInbox } from "./components/comments/CommentInbox";
+import { MessageDialog } from "./components/comments/MessageDialog";
 import { ContentEditor, type ReferenceEntryRow } from "./components/ContentEditor";
 import {
 	ContentList,
@@ -62,11 +63,14 @@ import { Settings } from "./components/Settings";
 import { AllowedDomainsSettings } from "./components/settings/AllowedDomainsSettings";
 import { ApiTokenSettings } from "./components/settings/ApiTokenSettings";
 import { BackupSettings } from "./components/settings/BackupSettings";
+import { CarouselSettings } from "./components/settings/CarouselSettings.js";
 import { EmailSettings } from "./components/settings/EmailSettings";
+import { FooterSettings } from "./components/settings/FooterSettings.js";
 import { GeneralSettings } from "./components/settings/GeneralSettings";
 import { MediaUsageSettings } from "./components/settings/MediaUsageSettings";
 import { SecuritySettings } from "./components/settings/SecuritySettings";
 import { SeoSettings } from "./components/settings/SeoSettings";
+import { SitemapSettings } from "./components/settings/SitemapSettings.js";
 import { SocialSettings } from "./components/settings/SocialSettings";
 import { TransferSettings } from "./components/settings/TransferSettings";
 import { SetupWizard } from "./components/SetupWizard";
@@ -142,13 +146,17 @@ import {
 	type Revision,
 } from "./lib/api";
 import {
+	createAdminComment,
 	fetchComments,
 	fetchCommentCounts,
+	updateAdminComment,
 	updateCommentStatus,
 	deleteComment,
 	bulkCommentAction,
+	type AdminComment,
 	type CommentStatus,
 } from "./lib/api/comments";
+import { fetchMessageBoardContainer } from "./lib/api/comments.js";
 import { runBulkAction } from "./lib/bulk";
 import { describeContentValidationError } from "./lib/content-validation-errors";
 import { usePluginPage } from "./lib/plugin-context";
@@ -519,9 +527,17 @@ function ContentListPage() {
 		});
 
 	// Fetch trashed items
-	const { data: trashedData, isLoading: isTrashedLoading } = useQuery({
+	const {
+		data: trashedData,
+		isLoading: isTrashedLoading,
+		fetchNextPage: fetchNextTrashPage,
+		hasNextPage: hasMoreTrash,
+	} = useInfiniteQuery({
 		queryKey: ["content", collection, "trash", { locale: activeLocale }],
-		queryFn: () => fetchTrashedContent(collection, { locale: activeLocale }),
+		queryFn: ({ pageParam }) =>
+			fetchTrashedContent(collection, { locale: activeLocale, cursor: pageParam, limit: 100 }),
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
 	});
 
 	const deleteMutation = useMutation({
@@ -579,6 +595,20 @@ function ContentListPage() {
 				description: mutationError instanceof Error ? mutationError.message : t`An error occurred`,
 				type: "error",
 			});
+		},
+	});
+
+	const trashBulkMutation = useMutation({
+		mutationFn: async ({ ids, permanent }: { ids: string[]; permanent: boolean }) =>
+			runBulkAction(ids, (id) =>
+				permanent ? permanentDeleteContent(collection, id) : restoreContent(collection, id),
+			),
+		onSuccess: ({ failedIds }) => {
+			if (failedIds.length)
+				toastManager.add({ title: t`Some selected items could not be processed`, type: "error" });
+		},
+		onSettled: () => {
+			void queryClient.invalidateQueries({ queryKey: ["content", collection] });
 		},
 	});
 
@@ -712,12 +742,18 @@ function ContentListPage() {
 			collectionLabel={collectionConfig.label}
 			items={items}
 			listColumns={listColumns}
-			trashedItems={trashedData?.items || []}
+			trashedItems={trashedData?.pages.flatMap((page) => page.items) ?? []}
 			isLoading={isLoading || isFetchingNextPage}
 			isTrashedLoading={isTrashedLoading}
 			hasMore={!!hasNextPage}
 			onLoadMore={handleLoadMore}
-			trashedCount={trashedData?.items?.length || 0}
+			trashedCount={
+				trashedData?.pages.reduce((loadedCount, page) => loadedCount + page.items.length, 0) ?? 0
+			}
+			hasMoreTrashed={hasMoreTrash}
+			onLoadMoreTrashed={() => {
+				void fetchNextTrashPage();
+			}}
 			onDelete={(id) => deleteMutation.mutate(id)}
 			onRestore={(id) => restoreMutation.mutate(id)}
 			onPermanentDelete={(id) => permanentDeleteMutation.mutate(id)}
@@ -744,6 +780,22 @@ function ContentListPage() {
 			onBulkPublish={(ids) => bulkPublishMutation.mutateAsync(ids).then((r) => r.failedIds)}
 			onBulkUnpublish={(ids) => bulkUnpublishMutation.mutateAsync(ids).then((r) => r.failedIds)}
 			onBulkDelete={(ids) => bulkDeleteMutation.mutateAsync(ids).then((r) => r.failedIds)}
+			onBulkRestore={
+				(currentUser?.role ?? 0) >= 30
+					? (ids) =>
+							trashBulkMutation
+								.mutateAsync({ ids, permanent: false })
+								.then((result) => result.failedIds)
+					: undefined
+			}
+			onBulkPermanentDelete={
+				(currentUser?.role ?? 0) >= ROLE_ADMIN
+					? (ids) =>
+							trashBulkMutation
+								.mutateAsync({ ids, permanent: true })
+								.then((result) => result.failedIds)
+					: undefined
+			}
 			bulkTagTaxonomies={
 				(currentUser?.role ?? 0) >= ROLE_EDITOR
 					? manifest.taxonomies.filter((taxonomy) => taxonomy.collections.includes(collection))
@@ -2256,8 +2308,12 @@ function CommentsPage() {
 			action,
 		}: {
 			ids: string[];
-			action: "approve" | "spam" | "trash" | "delete";
+			action: "approve" | "spam" | "trash" | "delete" | "restore";
 		}) => bulkCommentAction(ids, action),
+		onSettled: () => {
+			void queryClient.invalidateQueries({ queryKey: ["comments"] });
+			void queryClient.invalidateQueries({ queryKey: ["commentCounts"] });
+		},
 		onSuccess: (result) => {
 			void queryClient.invalidateQueries({ queryKey: ["comments"] });
 			void queryClient.invalidateQueries({ queryKey: ["commentCounts"] });
@@ -2306,7 +2362,7 @@ function CommentsPage() {
 				statusMutation.mutateAsync({ id, status }).catch(() => {})
 			}
 			onCommentDelete={(id) => deleteMutation.mutateAsync(id).catch(() => {})}
-			onBulkAction={(ids, action) => bulkMutation.mutateAsync({ ids, action }).catch(() => {})}
+			onBulkAction={(ids, action) => bulkMutation.mutateAsync({ ids, action })}
 			onLoadMore={() => {
 				if (hasNextPage) void fetchNextPage();
 			}}
@@ -2320,11 +2376,231 @@ function CommentsPage() {
 	);
 }
 
+// Message board: single-entry moderation scoped to the wall collection.
+// The wall container entry (its slug/page content) is never edited here —
+// only the individual messages attached to it.
+function MessageBoardPage() {
+	const { data: manifest } = useQuery({ queryKey: ["manifest"], queryFn: fetchManifest });
+	const MESSAGE_BOARD_COLLECTION = manifest?.admin?.messageBoardCollection ?? "wall";
+	const boardLocale = manifest?.i18n?.defaultLocale ?? manifest?.contentLocale?.defaultLocale;
+	const { t } = useLingui();
+	const queryClient = useQueryClient();
+	const toastManager = Toast.useToastManager();
+
+	const [activeStatus, setActiveStatus] = React.useState<CommentStatus>("approved");
+	const [searchQuery, setSearchQuery] = React.useState("");
+	const [debouncedSearch, setDebouncedSearch] = React.useState("");
+	const [dialogOpen, setDialogOpen] = React.useState(false);
+	const [editing, setEditing] = React.useState<AdminComment | null>(null);
+
+	React.useEffect(() => {
+		const timer = setTimeout(setDebouncedSearch, 300, searchQuery);
+		return () => clearTimeout(timer);
+	}, [searchQuery]);
+
+	const { data: currentUser } = useQuery({
+		queryKey: ["currentUser"],
+		queryFn: async (): Promise<{ id: string; role: number }> => {
+			const response = await apiFetch("/_emdash/api/auth/me");
+			return parseApiResponse<{ id: string; role: number }>(response, t`Failed to fetch user`);
+		},
+		staleTime: 5 * 60 * 1000,
+	});
+
+	// The wall keeps exactly one container entry; comments attach to its id.
+	const { data: wallEntry } = useQuery({
+		queryKey: ["messageBoardContainer", MESSAGE_BOARD_COLLECTION, boardLocale],
+		queryFn: () => fetchMessageBoardContainer(MESSAGE_BOARD_COLLECTION, boardLocale),
+		enabled: !!manifest,
+	});
+
+	const {
+		data: commentsData,
+		isLoading,
+		fetchNextPage,
+		hasNextPage,
+	} = useInfiniteQuery({
+		queryKey: ["comments", activeStatus, MESSAGE_BOARD_COLLECTION, debouncedSearch],
+		queryFn: ({ pageParam }) =>
+			fetchComments({
+				status: activeStatus,
+				collection: MESSAGE_BOARD_COLLECTION,
+				search: debouncedSearch || undefined,
+				cursor: pageParam,
+				limit: 50,
+			}),
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) => lastPage.nextCursor,
+	});
+
+	const invalidate = () => {
+		void queryClient.invalidateQueries({ queryKey: ["comments"] });
+		void queryClient.invalidateQueries({ queryKey: ["commentCounts"] });
+	};
+
+	const statusMutation = useMutation({
+		mutationFn: ({ id, status }: { id: string; status: CommentStatus }) =>
+			updateCommentStatus(id, status),
+		onSuccess: invalidate,
+	});
+	const deleteMutation = useMutation({
+		mutationFn: (id: string) => deleteComment(id),
+		onSuccess: invalidate,
+	});
+	const bulkMutation = useMutation({
+		mutationFn: ({
+			ids,
+			action,
+		}: {
+			ids: string[];
+			action: "approve" | "spam" | "trash" | "delete" | "restore";
+		}) => bulkCommentAction(ids, action),
+		onSettled: invalidate,
+	});
+
+	const saveMutation = useMutation({
+		mutationFn: async (values: { authorName: string; body: string }) => {
+			if (editing) {
+				return updateAdminComment(editing.id, values);
+			}
+			if (!wallEntry) {
+				throw new Error(t`Message board is not initialized yet — create the wall page first.`);
+			}
+			return createAdminComment({
+				collection: MESSAGE_BOARD_COLLECTION,
+				contentId: wallEntry.id,
+				...values,
+			});
+		},
+		onSuccess: () => {
+			invalidate();
+			toastManager.add({ title: editing ? t`Message updated` : t`Message added` });
+		},
+		onError: (error) => {
+			toastManager.add({
+				title: t`Failed to save message`,
+				description: error instanceof Error ? error.message : t`An error occurred`,
+				type: "error",
+			});
+		},
+	});
+
+	const allComments = commentsData?.pages.flatMap((p) => p.items) ?? [];
+	const lastPage = commentsData?.pages[commentsData.pages.length - 1];
+
+	if (currentUser && currentUser.role < ROLE_EDITOR) {
+		return (
+			<div className="flex items-center justify-center min-h-[50vh]">
+				<div className="text-center">
+					<h1 className="text-2xl font-semibold leading-tight">{t`Access Denied`}</h1>
+					<p className="mt-2 text-sm text-kumo-subtle">
+						{t`You need Editor permissions to moderate comments.`}
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<>
+			<CommentInbox
+				comments={allComments}
+				// Site-wide counts would be wrong for a single collection; keep the
+				// tab badges empty until counts support a collection filter.
+				counts={{ pending: 0, approved: 0, spam: 0, trash: 0 }}
+				isLoading={isLoading}
+				nextCursor={lastPage?.nextCursor}
+				collections={{ [MESSAGE_BOARD_COLLECTION]: { label: t`Message board` } }}
+				activeStatus={activeStatus}
+				onStatusChange={setActiveStatus}
+				collectionFilter={MESSAGE_BOARD_COLLECTION}
+				onCollectionFilterChange={() => {}}
+				searchQuery={searchQuery}
+				onSearchChange={setSearchQuery}
+				onCommentStatusChange={(id, status) =>
+					statusMutation.mutateAsync({ id, status }).catch(() => {})
+				}
+				onCommentDelete={(id) => deleteMutation.mutateAsync(id).catch(() => {})}
+				onBulkAction={(ids, action) => bulkMutation.mutateAsync({ ids, action })}
+				onLoadMore={() => {
+					if (hasNextPage) void fetchNextPage();
+				}}
+				isAdmin={(currentUser?.role ?? 0) >= ROLE_ADMIN}
+				isStatusPending={
+					statusMutation.isPending || deleteMutation.isPending || bulkMutation.isPending
+				}
+				deleteError={deleteMutation.error}
+				onDeleteErrorReset={() => deleteMutation.reset()}
+				title={t`Message board`}
+				description={t`Messages visitors submitted on the wall. Add entries here without touching the wall page itself.`}
+				onCreate={() => {
+					setEditing(null);
+					setDialogOpen(true);
+				}}
+				onEdit={(comment) => {
+					setEditing(comment);
+					setDialogOpen(true);
+				}}
+				bulkError={bulkMutation.error}
+			/>
+			<MessageDialog
+				open={dialogOpen}
+				onClose={() => setDialogOpen(false)}
+				onSubmit={(values) => saveMutation.mutateAsync(values)}
+				title={editing ? t`Edit message` : t`Add message`}
+				initial={editing ? { authorName: editing.authorName, body: editing.body } : undefined}
+			/>
+		</>
+	);
+}
+
+const messageBoardRoute = createRoute({
+	getParentRoute: () => adminLayoutRoute,
+	path: "/messages",
+	component: MessageBoardPage,
+});
+
 // Settings route
 const settingsRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/settings",
 	component: Settings,
+});
+
+const siteSettingsRoute = createRoute({
+	getParentRoute: () => adminLayoutRoute,
+	path: "/settings/site",
+	component: () => <Settings section="site" />,
+});
+const systemSettingsRoute = createRoute({
+	getParentRoute: () => adminLayoutRoute,
+	path: "/settings/system",
+	component: () => <Settings section="system" />,
+});
+const personalSettingsRoute = createRoute({
+	getParentRoute: () => adminLayoutRoute,
+	path: "/settings/personal",
+	component: () => <Settings section="personal" />,
+});
+const identitySettingsRoute = createRoute({
+	getParentRoute: () => adminLayoutRoute,
+	path: "/settings/identity",
+	component: () => <GeneralSettings section="identity" />,
+});
+const readingSettingsRoute = createRoute({
+	getParentRoute: () => adminLayoutRoute,
+	path: "/settings/reading",
+	component: () => <GeneralSettings section="reading" />,
+});
+const footerSettingsRoute = createRoute({
+	getParentRoute: () => adminLayoutRoute,
+	path: "/settings/footer",
+	component: FooterSettings,
+});
+const sitemapSettingsRoute = createRoute({
+	getParentRoute: () => adminLayoutRoute,
+	path: "/settings/sitemap",
+	component: SitemapSettings,
 });
 
 const mediaUsageSettingsRoute = createRoute({
@@ -2386,6 +2662,12 @@ const generalSettingsRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/settings/general",
 	component: GeneralSettings,
+});
+
+const carouselSettingsRoute = createRoute({
+	getParentRoute: () => adminLayoutRoute,
+	path: "/settings/carousel",
+	component: CarouselSettings,
 });
 
 // Social settings route
@@ -3039,6 +3321,7 @@ const adminRoutes = adminLayoutRoute.addChildren([
 	contentTypesEditRoute,
 	mediaRoute,
 	commentsRoute,
+	messageBoardRoute,
 	menuListRoute,
 	menuEditorRoute,
 	pluginManagerRoute,
@@ -3059,8 +3342,16 @@ const adminRoutes = adminLayoutRoute.addChildren([
 	bylineSchemaRoute,
 	widgetsRoute,
 	settingsRoute,
+	siteSettingsRoute,
+	systemSettingsRoute,
+	personalSettingsRoute,
+	identitySettingsRoute,
+	readingSettingsRoute,
+	footerSettingsRoute,
+	sitemapSettingsRoute,
 	mediaUsageSettingsRoute,
 	generalSettingsRoute,
+	carouselSettingsRoute,
 	socialSettingsRoute,
 	seoSettingsRoute,
 	securitySettingsRoute,

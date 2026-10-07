@@ -178,6 +178,7 @@ export function buildSerializableConfig(resolvedConfig: EmDashConfig): Record<st
 		siteUrl: resolvedConfig.siteUrl,
 		trustedProxyHeaders: resolvedConfig.trustedProxyHeaders,
 		maxUploadSize: resolvedConfig.maxUploadSize,
+		publicPageSuffix: resolvedConfig.publicPageSuffix,
 		admin: resolvedConfig.admin,
 		toolbar: resolvedConfig.toolbar,
 		updateCheck: resolvedConfig.updateCheck,

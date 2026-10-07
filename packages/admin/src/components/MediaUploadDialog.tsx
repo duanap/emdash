@@ -1,6 +1,8 @@
 import { Button, Dialog, Loader } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
+import * as React from "react";
+
 import {
 	ArrowClockwise,
 	CheckCircle,
@@ -13,9 +15,7 @@ import {
 	UploadSimple,
 	WarningCircle,
 	X,
-} from "@phosphor-icons/react";
-import * as React from "react";
-
+} from "../lib/icons.js";
 import { createUploadPreviewUrl, formatFileSize } from "../lib/media-utils.js";
 import {
 	useMediaUploadQueue,

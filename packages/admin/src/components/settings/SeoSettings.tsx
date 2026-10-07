@@ -14,7 +14,6 @@ import {
 	useKumoToastManager,
 } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Upload, WarningCircle, X } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -24,6 +23,7 @@ import {
 	type MediaItem,
 	type SiteSettingsUpdate,
 } from "../../lib/api";
+import { Upload, WarningCircle, X } from "../../lib/icons.js";
 import { MediaPickerModal } from "../MediaPickerModal";
 import { SaveButton } from "../SaveButton.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";

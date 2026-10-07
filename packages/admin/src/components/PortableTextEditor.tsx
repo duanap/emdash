@@ -44,6 +44,27 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { useLingui as useLinguiContext } from "@lingui/react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { useQueryClient } from "@tanstack/react-query";
+import { Extension, Mark, type Range } from "@tiptap/core";
+import CharacterCount from "@tiptap/extension-character-count";
+import Focus from "@tiptap/extension-focus";
+import Placeholder from "@tiptap/extension-placeholder";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
+import TextAlign from "@tiptap/extension-text-align";
+import Typography from "@tiptap/extension-typography";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { AllSelection, NodeSelection, Plugin, TextSelection } from "@tiptap/pm/state";
+import { CellSelection } from "@tiptap/pm/tables";
+import { useEditor, EditorContent, useEditorState, type Editor } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import StarterKit from "@tiptap/starter-kit";
+import Suggestion, { exitSuggestion } from "@tiptap/suggestion";
+import * as React from "react";
+
+import type { MediaItem } from "../lib/api";
+import type { Section } from "../lib/api";
+import { uploadMedia } from "../lib/api/media.js";
 import {
 	TextB,
 	TextItalic,
@@ -83,29 +104,8 @@ import {
 	DotsSixVertical,
 	CaretDown,
 	type Icon,
-} from "@phosphor-icons/react";
-import { X } from "@phosphor-icons/react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Extension, Mark, type Range } from "@tiptap/core";
-import CharacterCount from "@tiptap/extension-character-count";
-import Focus from "@tiptap/extension-focus";
-import Placeholder from "@tiptap/extension-placeholder";
-import Subscript from "@tiptap/extension-subscript";
-import Superscript from "@tiptap/extension-superscript";
-import TextAlign from "@tiptap/extension-text-align";
-import Typography from "@tiptap/extension-typography";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { AllSelection, NodeSelection, Plugin, TextSelection } from "@tiptap/pm/state";
-import { CellSelection } from "@tiptap/pm/tables";
-import { useEditor, EditorContent, useEditorState, type Editor } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
-import StarterKit from "@tiptap/starter-kit";
-import Suggestion, { exitSuggestion } from "@tiptap/suggestion";
-import * as React from "react";
-
-import type { MediaItem } from "../lib/api";
-import type { Section } from "../lib/api";
-import { uploadMedia } from "../lib/api/media.js";
+} from "../lib/icons.js";
+import { X } from "../lib/icons.js";
 import { canonicalMediaProviderId, localMediaFileUrl } from "../lib/media-utils.js";
 import {
 	UnsupportedPortableTextMarksError,

@@ -7,7 +7,6 @@
 
 import { Banner, Button, Input, Loader, useKumoToastManager } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { CheckCircle, PaperPlaneTilt, PlugsConnected, WarningCircle } from "@phosphor-icons/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -16,6 +15,7 @@ import {
 	sendTestEmail,
 	type EmailSettings as EmailSettingsData,
 } from "../../lib/api/email-settings.js";
+import { CheckCircle, PaperPlaneTilt, PlugsConnected, WarningCircle } from "../../lib/icons.js";
 import { getMutationError } from "../DialogError.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";
 

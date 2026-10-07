@@ -1,10 +1,10 @@
 import { Badge } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { CheckCircle, WarningCircle } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { resolveDidToHandle } from "../lib/api/registry.js";
+import { CheckCircle, WarningCircle } from "../lib/icons.js";
 import {
 	registryIdentity,
 	registryIdentityPublisherParam,

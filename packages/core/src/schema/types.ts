@@ -204,6 +204,8 @@ export interface FieldValidation {
 	maxLength?: number;
 	pattern?: string;
 	options?: string[]; // For select/multiSelect
+	/** Multi-select fields: keep `options` as suggestions but accept any string. */
+	allowCustom?: boolean;
 	subFields?: RepeaterSubField[]; // For repeater fields
 	minItems?: number; // For repeater fields
 	maxItems?: number; // For repeater fields

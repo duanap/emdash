@@ -5,6 +5,7 @@
 import { i18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 
+import { prepareWebpUpload } from "../webp-upload.js";
 import {
 	API_BASE,
 	apiFetch,
@@ -478,6 +479,7 @@ async function uploadMediaDirect(file: File, opts?: UploadMediaOptions): Promise
  */
 export async function uploadMedia(file: File, opts?: UploadMediaOptions): Promise<LocalMediaItem> {
 	opts?.signal?.throwIfAborted();
+	file = await prepareWebpUpload(file, opts?.signal);
 	// Try to get a signed upload URL
 	const uploadInfo = await getUploadUrl(file, opts);
 
@@ -653,6 +655,7 @@ export async function uploadToProvider(
 	options?: MediaUploadOptions,
 ): Promise<MediaProviderItem> {
 	options?.signal?.throwIfAborted();
+	file = await prepareWebpUpload(file, options?.signal);
 	const formData = new FormData();
 	formData.append("file", file);
 	if (alt) formData.append("alt", alt);

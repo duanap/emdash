@@ -34,11 +34,7 @@ export async function getArchiveItems() {
 		...lifeResult.entries.map((r) => ({
 			title: r.data.title ?? "未命名",
 			href: `/life/${r.id}`,
-			date: new Date(
-				(r.data.record_date ?? r.data.publishedAt ?? r.data.updatedAt) as
-					| string
-					| Date,
-			),
+			date: new Date(r.data.record_date ?? r.data.publishedAt ?? r.data.updatedAt),
 			kind: "life" as const,
 		})),
 	]

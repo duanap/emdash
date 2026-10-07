@@ -1,9 +1,9 @@
 import { Badge, Button, LayerCard, Loader } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { ArrowDown, ArrowUp, Check, FolderSimple, WarningCircle, X } from "@phosphor-icons/react";
 import * as React from "react";
 
 import type { MediaFolder, MediaItem } from "../../lib/api/media.js";
+import { ArrowDown, ArrowUp, Check, FolderSimple, WarningCircle, X } from "../../lib/icons.js";
 import {
 	fallbackToOriginalThumbnail,
 	formatFileSize,

@@ -1,17 +1,20 @@
 ---
+import { pageSlug } from "../../utils/page-slug.js";
+import { htmlPageUrl } from "../../utils/public-page-url.js";
 import {
 	getEmDashEntry,
 	getTermsForEntries,
 	getSeoMeta,
-	decodeSlug,
 	getSiteSettings,
 } from "emdash";
 import { Image, PortableText } from "emdash/ui";
 import Base from "../../layouts/Base.astro";
 import MemberActivity from "../../components/MemberActivity.astro";
+import LucideIcon from "../../components/LucideIcon.astro";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
+import { DEFAULT_PROJECT_ICON, resolveCover } from "../../utils/default-images";
 
-const slug = decodeSlug(Astro.params.slug);
+const slug = pageSlug(Astro.params.slug);
 
 if (!slug) {
 	return Astro.rewrite("/404");
@@ -38,11 +41,15 @@ function getImageUrl(img: unknown): string | undefined {
 	return undefined;
 }
 
+const cover = resolveCover(project.data.cover_image, "projects");
 const seo = getSeoMeta(project, {
 	siteTitle,
 	siteUrl: Astro.url.origin,
 	path: Astro.url.pathname.replace(/\/$/, ""),
-	defaultOgImage: getImageUrl(project.data.cover_image),
+	defaultOgImage:
+		typeof cover === "string"
+			? new URL(cover, Astro.url.origin).href
+			: getImageUrl(cover),
 });
 
 // Type + tech info for the meta column.
@@ -70,13 +77,15 @@ const screenshots = Array.isArray(project.data.screenshots)
 	content={{ collection: "projects", id: project.data.id, slug }}
 >
 	<article class="project-article">
-		{
-			project.data.cover_image && (
-				<div class="article-hero" {...project.edit.cover_image}>
-					<Image image={project.data.cover_image} />
-				</div>
-			)
-		}
+		<div
+			class:list={[
+				"article-hero",
+				{ "default-icon": cover === DEFAULT_PROJECT_ICON },
+			]}
+			{...project.edit.cover_image}
+		>
+			<Image image={cover} priority />
+		</div>
 
 		<div class="article-grid">
 			<aside class="article-meta-col">
@@ -87,7 +96,7 @@ const screenshots = Array.isArray(project.data.screenshots)
 								<span class="meta-label">类型</span>
 								{typeTerms.map((t) => (
 									<a
-										href={`/projects?type=${t.slug}`}
+										href={htmlPageUrl(`/projects?type=${t.slug}`)}
 										class="meta-value meta-link"
 									>
 										{t.label}
@@ -115,22 +124,22 @@ const screenshots = Array.isArray(project.data.screenshots)
 								<div class="link-list">
 									{project.data.preview_url && (
 										<a
-											href={project.data.preview_url}
+											href={htmlPageUrl(project.data.preview_url)}
 											target="_blank"
 											rel="noopener noreferrer"
 											class="meta-value meta-link"
 										>
-											在线预览 ↗
+											在线预览 <LucideIcon name="arrow-up-right" size={16} />
 										</a>
 									)}
 									{project.data.repo_url && (
 										<a
-											href={project.data.repo_url}
+											href={htmlPageUrl(project.data.repo_url)}
 											target="_blank"
 											rel="noopener noreferrer"
 											class="meta-value meta-link"
 										>
-											源码仓库 ↗
+											源码仓库 <LucideIcon name="arrow-up-right" size={16} />
 										</a>
 									)}
 								</div>
@@ -139,7 +148,7 @@ const screenshots = Array.isArray(project.data.screenshots)
 					}
 					<div class="meta-block">
 						<span class="meta-label">返回</span>
-						<a href="/projects" class="meta-value meta-link">← 全部作品</a>
+						<a href={htmlPageUrl("/projects")} class="meta-value meta-link">← 全部作品</a>
 					</div>
 				</div>
 			</aside>
@@ -181,7 +190,7 @@ const screenshots = Array.isArray(project.data.screenshots)
 
 			<MemberActivity targetType="projects" targetId={project.data.id} />
 
-			<aside class="article-sidebar" />
+			<aside class="article-sidebar"></aside>
 		</div>
 	</article>
 </Base>
@@ -204,6 +213,18 @@ const screenshots = Array.isArray(project.data.screenshots)
 		height: auto;
 		max-height: 500px;
 		object-fit: cover;
+	}
+
+	.default-icon {
+		display: flex;
+		justify-content: center;
+	}
+
+	.default-icon img {
+		width: min(100%, 22rem);
+		max-height: none;
+		object-fit: contain;
+		padding: var(--spacing-6);
 	}
 
 	.article-grid {

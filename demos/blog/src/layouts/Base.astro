@@ -1,13 +1,11 @@
 ---
+import { htmlPageUrl } from "../utils/public-page-url.js";
+import LucideIcon from "../components/LucideIcon.astro";
 import { getMenuWithCacheHint, getSiteSettingsWithCacheHint } from "emdash";
-import {
-	WidgetArea,
-	EmDashHead,
-	EmDashBodyStart,
-	EmDashBodyEnd,
-} from "emdash/ui";
+import { EmDashHead, EmDashBodyStart, EmDashBodyEnd } from "emdash/ui";
 import { createPublicPageContext } from "emdash/page";
 import LiveSearch from "emdash/ui/search";
+import { DEFAULT_AVATAR } from "../utils/default-images";
 import { resolveBlogSiteIdentity } from "../utils/site-identity";
 import "../styles/tokens.css";
 import "../styles/theme.css";
@@ -69,7 +67,7 @@ const pageCtx = createPublicPageContext({
 	title: fullTitle,
 	pageTitle: pageTitle ?? title,
 	description,
-	canonical,
+	canonical: htmlPageUrl(canonical, Astro.url.origin),
 	image,
 	content,
 	seo: { ogImage: image, robots },
@@ -104,35 +102,60 @@ const isLoggedIn = !!Astro.locals.user;
 	</head>
 	<body>
 		<EmDashBodyStart page={pageCtx} />
-		<header class="site-header">
+		<header
+			class="site-header"
+			data-immersive={Astro.url.pathname === "/" || undefined}
+		>
 			<nav class="nav">
-				<a href="/" class="site-title">
-					{
-						siteLogo ? (
-							<img
-								src={siteLogo.url}
-								alt={siteLogo.alt || siteTitle}
-								class="site-logo-img"
-							/>
-						) : (
-							siteTitle
-						)
-					}
+				<a href={htmlPageUrl("/")} class="site-title">
+					<img
+						src={siteLogo?.url ?? DEFAULT_AVATAR}
+						alt=""
+						class:list={["site-logo-img", { "site-logo-fallback": !siteLogo }]}
+						width="40"
+						height="40"
+					/>
+					<span class:list={["site-name", { "has-logo": !!siteLogo }]}
+						>{siteTitle}</span
+					>
 				</a>
 				<div class="nav-right">
-					<LiveSearch
-						placeholder="搜索…"
-						class="site-search"
-						inputClass="site-search-input"
-						resultsClass="site-search-results"
-						resultClass="site-search-result"
-						collections={["posts", "life", "projects", "pages"]}
-					/>
-					<div class="nav-links">
+					<div class="mobile-actions">
+						<button
+							type="button"
+							class="header-icon"
+							data-mobile-search
+							aria-label="搜索"
+							aria-expanded="false"
+							aria-controls="mobile-search-panel"
+							><LucideIcon name="search" /></button
+						>
+						<button
+							type="button"
+							class="header-icon"
+							data-theme-toggle
+							aria-label="切换到夜间模式"
+							aria-pressed="false"><LucideIcon name="moon" /></button
+						>
+					</div>
+					<div class="desktop-search">
+						<LiveSearch
+							placeholder="搜索…"
+							class="site-search"
+							inputClass="site-search-input"
+							resultsClass="site-search-results"
+							resultClass="site-search-result"
+							collections={["posts", "life", "projects", "pages"]}
+						/>
+					</div>
+					<div class="nav-links" aria-label="主要导航">
 						{
 							menu?.items.map((item) => (
 								<a
-									href={item.url}
+									href={htmlPageUrl(item.url)}
+									aria-current={
+										Astro.url.pathname === item.url ? "page" : undefined
+									}
 									target={item.target}
 									rel={
 										item.target === "_blank" ? "noopener noreferrer" : undefined
@@ -149,17 +172,27 @@ const isLoggedIn = !!Astro.locals.user;
 						data-plugin-base="/_emdash/api/plugins/duanap-members"
 						aria-label="会员状态"
 					>
-						<a href="/login" class="nav-member-login">登录</a>
+						<a href={htmlPageUrl("/login")} class="nav-member-login">登录</a>
 					</div>
 				</div>
-					{
-						isLoggedIn && (
-							<a href="/_emdash/admin" class="nav-admin">
-								管理
-							</a>
-						)
-					}
+				{
+					isLoggedIn && (
+						<a href={htmlPageUrl("/_emdash/admin")} class="nav-admin">
+							管理
+						</a>
+					)
+				}
 			</nav>
+			<div id="mobile-search-panel" class="mobile-search-panel" hidden>
+				<LiveSearch
+					placeholder="搜索文章、生活和作品…"
+					class="mobile-search"
+					inputClass="mobile-search-input"
+					resultsClass="site-search-results"
+					resultClass="site-search-result"
+					collections={["posts", "life", "projects", "pages"]}
+				/>
+			</div>
 		</header>
 
 		<main>
@@ -170,7 +203,7 @@ const isLoggedIn = !!Astro.locals.user;
 			<div class="footer-inner">
 				<div class="footer-grid">
 					<div class="footer-brand">
-						<a href="/" class="footer-logo">
+						<a href={htmlPageUrl("/")} class="footer-logo">
 							{
 								siteLogo ? (
 									<img
@@ -186,21 +219,26 @@ const isLoggedIn = !!Astro.locals.user;
 						<p class="footer-tagline">{siteTagline}</p>
 					</div>
 					<div class="footer-nav">
-						<h2 class="footer-heading">导航</h2>
-						<ul class="footer-links">
+						<h2 class="footer-heading">ICP备案、公安备案</h2>
+						<ul class="footer-links registration-links">
 							{
-								menu?.items.map((item) => (
+								settingsResult.data.footerLinks?.map((link) => (
 									<li>
 										<a
-											href={item.url}
-											target={item.target}
-											rel={
-												item.target === "_blank"
-													? "noopener noreferrer"
-													: undefined
-											}
+											href={htmlPageUrl(link.url)}
+											target="_blank"
+											rel="noopener noreferrer"
 										>
-											{item.label}
+											{link.iconUrl && (
+												<img
+													src={link.iconUrl}
+													alt=""
+													width="20"
+													height="20"
+													loading="lazy"
+												/>
+											)}
+											{link.label}
 										</a>
 									</li>
 								))
@@ -210,152 +248,32 @@ const isLoggedIn = !!Astro.locals.user;
 					<div class="footer-nav">
 						<h2 class="footer-heading">订阅</h2>
 						<ul class="footer-links">
-							<li><a href="/rss.xml">RSS 订阅</a></li>
+							<li><a href={htmlPageUrl("/rss.xml")}>RSS 订阅</a></li>
+							<li><a href={htmlPageUrl("/sitemap.xml")}>网站地图</a></li>
 						</ul>
-					</div>
-					<div class="footer-widgets-section">
-						<WidgetArea name="footer" />
-					</div>
-				</div>
-				<div class="footer-bottom">
-					<p class="footer-copyright">
-						由 <a href="https://emdashcms.com">EmDash</a> 驱动
-					</p>
-					<div class="theme-switcher">
-						<button
-							type="button"
-							class="theme-btn"
-							data-theme="light"
-							aria-label="浅色模式"
-						>
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								><circle cx="12" cy="12" r="5"></circle><line
-									x1="12"
-									y1="1"
-									x2="12"
-									y2="3"></line><line x1="12" y1="21" x2="12" y2="23"
-								></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"
-								></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"
-								></line><line x1="1" y1="12" x2="3" y2="12"></line><line
-									x1="21"
-									y1="12"
-									x2="23"
-									y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"
-								></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"
-								></line></svg
-							>
-						</button>
-						<button
-							type="button"
-							class="theme-btn"
-							data-theme="dark"
-							aria-label="深色模式"
-						>
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-								></path></svg
-							>
-						</button>
-						<button
-							type="button"
-							class="theme-btn"
-							data-theme="system"
-							aria-label="跟随系统主题"
-						>
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								><rect x="2" y="3" width="20" height="14" rx="2" ry="2"
-								></rect><line x1="8" y1="21" x2="16" y2="21"></line><line
-									x1="12"
-									y1="17"
-									x2="12"
-									y2="21"></line></svg
-							>
-						</button>
 					</div>
 				</div>
 			</div>
 		</footer>
 
 		<script>
-			// Theme switcher
-			const themeBtns =
-				document.querySelectorAll<HTMLButtonElement>(".theme-btn");
-			const root = document.documentElement;
-
-			function setCookie(
-				name: string,
-				value: string,
-				maxAge: number = 31536000,
-			) {
-				const secure = location.protocol === "https:" ? "; Secure" : "";
-				if (value === "") {
-					document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax${secure}`;
-				} else {
-					document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
-				}
-			}
-
-			function setTheme(theme: string) {
-				if (theme === "system") {
-					setCookie("theme", "");
-					root.classList.remove("light", "dark");
-				} else {
-					setCookie("theme", theme);
-					root.classList.remove("light", "dark");
-					root.classList.add(theme);
-				}
-				updateActiveBtn(theme);
-			}
-
-			function updateActiveBtn(theme: string) {
-				themeBtns.forEach((btn) => {
-					const active = btn.dataset.theme === theme;
-					btn.classList.toggle("active", active);
-					btn.setAttribute("aria-pressed", String(active));
-				});
-			}
-
-			function getStoredTheme(): string {
-				const row = document.cookie
-					.split("; ")
-					.find((item) => item.startsWith("theme="));
-				return row?.slice(6) || "system";
-			}
-
-			// Initialize
-			const storedTheme = getStoredTheme();
-			setTheme(storedTheme);
-
-			themeBtns.forEach((btn) => {
-				btn.addEventListener("click", () => {
-					setTheme(btn.dataset.theme || "system");
-				});
-			});
+			import { installSiteChrome } from "../scripts/site-chrome";
+			installSiteChrome();
 		</script>
+		<nav class="mobile-nav" aria-label="底部导航">
+			{
+				menu?.items.map((item) => (
+					<a
+						href={htmlPageUrl(item.url)}
+						target={item.target}
+						rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
+						aria-current={Astro.url.pathname === item.url ? "page" : undefined}
+					>
+						{item.label}
+					</a>
+				))
+			}
+		</nav>
 
 		<style is:global>
 			/*
@@ -476,6 +394,52 @@ const isLoggedIn = !!Astro.locals.user;
 				backdrop-filter: blur(12px);
 				-webkit-backdrop-filter: blur(12px);
 				border-bottom: 1px solid var(--color-border-subtle);
+				transition:
+					background-color 180ms ease,
+					border-color 180ms ease;
+			}
+
+			:global(body:has([data-hero-carousel])) .site-header[data-immersive] {
+				position: fixed;
+				inset-inline: 0;
+			}
+
+			:global(body:has([data-hero-carousel]))
+				.site-header[data-immersive]:not([data-scrolled="true"]) {
+				background: transparent;
+				backdrop-filter: none;
+				-webkit-backdrop-filter: none;
+				border-color: transparent;
+			}
+
+			:global(body:has([data-hero-carousel]))
+				.site-header[data-immersive]:not([data-scrolled="true"])
+				:is(
+					.site-title,
+					.nav-links > a,
+					.nav-member-login,
+					.nav-member-btn,
+					.nav-admin,
+					.header-icon
+				) {
+				color: #fffdf7;
+				text-shadow: 0 1px 6px rgb(0 0 0 / 25%);
+			}
+
+			:global(body:has([data-hero-carousel]))
+				.site-header[data-immersive]:not([data-scrolled="true"])
+				.desktop-search
+				:global(.site-search-input) {
+				background: rgb(255 255 255 / 12%);
+				border-color: rgb(255 255 255 / 28%);
+				color: #fffdf7;
+			}
+
+			:global(body:has([data-hero-carousel]))
+				.site-header[data-immersive]:not([data-scrolled="true"])
+				.desktop-search
+				:global(.site-search-input)::placeholder {
+				color: rgb(255 253 247 / 75%);
 			}
 
 			.nav {
@@ -530,101 +494,101 @@ const isLoggedIn = !!Astro.locals.user;
 				color: var(--color-brand);
 			}
 
-	.nav-admin {
-		font-size: var(--font-size-sm);
-		color: var(--color-text-secondary);
-		text-decoration: none;
-		transition: color var(--transition-fast);
-	}
+			.nav-admin {
+				font-size: var(--font-size-sm);
+				color: var(--color-text-secondary);
+				text-decoration: none;
+				transition: color var(--transition-fast);
+			}
 
-	.nav-admin:hover {
-		color: var(--color-text);
-	}
+			.nav-admin:hover {
+				color: var(--color-text);
+			}
 
-	/* 会员岛（页头） */
-	.nav-member {
-		position: relative;
-		font-size: var(--font-size-sm);
-	}
+			/* 会员岛（页头） */
+			.nav-member {
+				position: relative;
+				font-size: var(--font-size-sm);
+			}
 
-	.nav-member-login {
-		color: var(--color-text-secondary);
-		text-decoration: none;
-		white-space: nowrap;
-	}
+			.nav-member-login {
+				color: var(--color-text-secondary);
+				text-decoration: none;
+				white-space: nowrap;
+			}
 
-	.nav-member-login:hover {
-		color: var(--color-text);
-	}
+			.nav-member-login:hover {
+				color: var(--color-text);
+			}
 
-	.nav-member-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--spacing-2);
-		background: transparent;
-		border: none;
-		padding: var(--spacing-1) 0;
-		cursor: pointer;
-		color: var(--color-text);
-	}
+			.nav-member-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--spacing-2);
+				background: transparent;
+				border: none;
+				padding: var(--spacing-1) 0;
+				cursor: pointer;
+				color: var(--color-text);
+			}
 
-	.nav-member-avatar {
-		width: 22px;
-		height: 22px;
-		border-radius: 50%;
-		object-fit: cover;
-	}
+			.nav-member-avatar {
+				width: 22px;
+				height: 22px;
+				border-radius: 50%;
+				object-fit: cover;
+			}
 
-	.nav-member-name {
-		max-width: 8em;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
+			.nav-member-name {
+				max-width: 8em;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
 
-	.nav-member-menu {
-		position: absolute;
-		top: calc(100% + var(--spacing-2));
-		end: 0;
-		min-width: 140px;
-		background: var(--color-bg);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		box-shadow: var(--shadow-lg);
-		padding: var(--spacing-2);
-		z-index: 200;
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing-1);
-	}
+			.nav-member-menu {
+				position: absolute;
+				top: calc(100% + var(--spacing-2));
+				end: 0;
+				min-width: 140px;
+				background: var(--color-bg);
+				border: 1px solid var(--color-border);
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-lg);
+				padding: var(--spacing-2);
+				z-index: 200;
+				display: flex;
+				flex-direction: column;
+				gap: var(--spacing-1);
+			}
 
-	.nav-member-menu a {
-		padding: var(--spacing-2) var(--spacing-3);
-		color: var(--color-text);
-		text-decoration: none;
-		border-radius: var(--radius);
-		font-weight: 500;
-	}
+			.nav-member-menu a {
+				padding: var(--spacing-2) var(--spacing-3);
+				color: var(--color-text);
+				text-decoration: none;
+				border-radius: var(--radius);
+				font-weight: 500;
+			}
 
-	.nav-member-menu a:hover {
-		background: var(--color-surface);
-	}
+			.nav-member-menu a:hover {
+				background: var(--color-surface);
+			}
 
-	.nav-member-logout {
-		text-align: start;
-		padding: var(--spacing-2) var(--spacing-3);
-		background: transparent;
-		border: none;
-		color: var(--color-text-secondary);
-		border-radius: var(--radius);
-		cursor: pointer;
-		font-size: var(--font-size-sm);
-	}
+			.nav-member-logout {
+				text-align: start;
+				padding: var(--spacing-2) var(--spacing-3);
+				background: transparent;
+				border: none;
+				color: var(--color-text-secondary);
+				border-radius: var(--radius);
+				cursor: pointer;
+				font-size: var(--font-size-sm);
+			}
 
-	.nav-member-logout:hover {
-		background: var(--color-surface);
-		color: var(--color-text);
-	}
+			.nav-member-logout:hover {
+				background: var(--color-surface);
+				color: var(--color-text);
+			}
 
 			/* Search styling */
 			.site-search {
@@ -747,13 +711,14 @@ const isLoggedIn = !!Astro.locals.user;
 
 			.footer-grid {
 				display: grid;
-				grid-template-columns: 2fr 1fr 1fr 1fr;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
 				gap: var(--spacing-12);
-				margin-bottom: var(--spacing-12);
+				margin-bottom: 0;
 			}
 
 			.footer-brand {
-				max-width: 280px;
+				max-width: none;
+				min-width: 0;
 			}
 
 			.footer-logo {
@@ -798,6 +763,7 @@ const isLoggedIn = !!Astro.locals.user;
 			}
 
 			.footer-links a {
+				overflow-wrap: anywhere;
 				color: var(--color-text-secondary);
 				text-decoration: none;
 				font-size: var(--font-size-sm);
@@ -848,151 +814,190 @@ const isLoggedIn = !!Astro.locals.user;
 				color: var(--color-text-secondary);
 			}
 
-			/* Theme switcher */
-			.theme-switcher {
-				display: flex;
-				gap: var(--spacing-1);
-				padding: var(--spacing-1);
-				background: var(--color-surface);
-				border-radius: var(--radius);
-			}
-
-			.theme-btn {
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				width: 32px;
-				height: 28px;
-				background: transparent;
-				border: none;
-				color: var(--color-muted);
-				border-radius: var(--radius);
-				cursor: pointer;
-				transition: all var(--transition-fast);
-			}
-
-			.theme-btn:hover {
-				color: var(--color-text-secondary);
-			}
-
-			.theme-btn.active {
-				background: var(--color-bg);
-				color: var(--color-text);
-				box-shadow: var(--shadow-sm);
-			}
-
-			.theme-btn svg {
-				width: 16px;
-				height: 16px;
-			}
-
 			@media (max-width: 900px) {
 				.footer-grid {
-					grid-template-columns: 1fr 1fr;
+					grid-template-columns: repeat(3, minmax(0, 1fr));
 					gap: var(--spacing-8);
 				}
 
 				.footer-brand {
-					grid-column: span 2;
+					grid-column: span 1;
 					max-width: none;
 				}
 			}
 
+			.mobile-actions,
+			.mobile-nav,
+			.mobile-search-panel {
+				display: none;
+			}
+			.site-title {
+				display: flex;
+				align-items: center;
+				gap: var(--spacing-2);
+			}
+			.site-logo-fallback,
+			.site-name.has-logo {
+				display: none;
+			}
+			.registration-links a {
+				display: flex;
+				align-items: center;
+				gap: var(--spacing-2);
+			}
+			.registration-links img {
+				object-fit: contain;
+				flex-shrink: 0;
+			}
 			@media (max-width: 640px) {
+				:global(body) {
+					padding-bottom: calc(64px + env(safe-area-inset-bottom));
+				}
 				.site-header {
-					position: relative;
-					border-bottom: none;
+					position: sticky;
+					top: 0;
 				}
-
 				.nav {
-					display: grid;
-					grid-template-columns: minmax(0, 1fr) auto;
-					align-items: center;
-					height: auto;
-					column-gap: var(--spacing-3);
-					row-gap: var(--spacing-2);
-					padding: var(--spacing-3) var(--spacing-4);
-				}
-
-				.site-title {
-					grid-column: 1;
-					grid-row: 1;
-					font-size: var(--font-size-base);
-					min-width: 0;
-				}
-
-				.nav-right {
-					grid-column: 1 / -1;
-					grid-row: 2;
-					display: grid;
-					row-gap: var(--spacing-2);
-				}
-
-				.site-search {
-					grid-column: 1;
-					width: 100%;
-					max-width: none;
-				}
-
-				:global(.site-search-input) {
-					width: 100% !important;
-					padding: var(--spacing-1) var(--spacing-2) !important;
-					font-size: var(--font-size-sm) !important;
-				}
-
-				.nav-links {
-					grid-column: 1;
 					display: flex;
-					column-gap: var(--spacing-3);
-					row-gap: var(--spacing-1);
-					flex-wrap: wrap;
-					justify-content: flex-start;
+					height: 64px;
+					padding: 8px 12px;
+					gap: 8px;
 				}
-
-				.nav-admin {
-					grid-column: 2;
-					grid-row: 1;
-					justify-self: end;
-					font-size: var(--font-size-xs);
-					margin-inline-start: 0;
+				.site-title {
+					min-width: 0;
+					font-size: 14px;
+					flex: 1;
+					gap: 6px;
+				}
+				.site-logo-img {
+					display: block;
+					width: 32px;
+					height: 32px;
+					margin: 0;
+					object-fit: contain;
+					flex-shrink: 0;
+				}
+				.site-name,
+				.site-name.has-logo {
+					display: block;
+					overflow: hidden;
+					text-overflow: ellipsis;
 					white-space: nowrap;
 				}
-
-				.footer-grid {
-					grid-template-columns: 1fr;
+				.nav-right {
+					display: flex;
+					margin: 0;
+					gap: 4px;
+					flex-shrink: 0;
 				}
-
+				.nav-links,
+				.nav-admin,
+				.desktop-search {
+					display: none;
+				}
+				.mobile-actions {
+					display: flex;
+					gap: 2px;
+				}
+				.header-icon {
+					display: grid;
+					place-items: center;
+					width: 36px;
+					height: 40px;
+					border: 0;
+					border-radius: var(--radius);
+					color: var(--color-text);
+					background: transparent;
+					cursor: pointer;
+				}
+				.header-icon:hover,
+				.header-icon[aria-pressed="true"] {
+					color: var(--color-brand);
+					background: var(--color-surface);
+				}
+				.header-icon:focus-visible {
+					outline: 2px solid var(--color-brand-ring);
+				}
+				.nav-member {
+					flex-shrink: 0;
+				}
+				.nav-member-login {
+					display: inline-flex;
+					align-items: center;
+					min-height: 40px;
+					font-size: 13px;
+				}
+				.nav-member-name {
+					max-width: 40px;
+					font-size: 12px;
+				}
+				.mobile-search-panel:not([hidden]) {
+					display: block;
+					padding: 0 12px 12px;
+				}
+				:global(.mobile-search) {
+					width: 100%;
+				}
+				:global(.mobile-search-input) {
+					width: 100%;
+					padding: 10px 12px;
+					background: var(--color-bg);
+					color: var(--color-text);
+					border: 1px solid var(--color-border);
+					border-radius: var(--radius);
+				}
+				.mobile-nav {
+					position: fixed;
+					inset-inline: 0;
+					bottom: 0;
+					z-index: 110;
+					display: flex;
+					align-items: center;
+					gap: 4px;
+					overflow-x: auto;
+					padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+					min-height: 56px;
+					background: color-mix(in srgb, var(--color-bg) 94%, transparent);
+					backdrop-filter: blur(12px);
+					border-top: 1px solid var(--color-border-subtle);
+					scrollbar-width: none;
+				}
+				.mobile-nav a {
+					display: inline-flex;
+					align-items: center;
+					justify-content: center;
+					min-width: 44px;
+					min-height: 40px;
+					padding-inline: 8px;
+					flex-shrink: 0;
+					text-decoration: none;
+					font-size: 13px;
+					color: var(--color-muted);
+					border-radius: var(--radius);
+				}
+				.mobile-nav a[aria-current="page"] {
+					color: var(--color-brand);
+					background: var(--color-surface);
+					font-weight: 600;
+				}
+				.mobile-nav a:focus-visible {
+					outline: 2px solid var(--color-brand-ring);
+					outline-offset: -2px;
+				}
+				.footer-grid {
+					grid-template-columns: minmax(0, 1fr);
+					gap: var(--spacing-4);
+				}
 				.footer-brand {
 					grid-column: span 1;
 				}
-
 				.footer-bottom {
 					flex-direction: column;
 					gap: var(--spacing-4);
 					text-align: center;
 				}
-
-				.footer-controls {
-					flex-wrap: wrap;
-					justify-content: center;
-				}
 			}
 		</style>
-
-		<script>
-			// ⌘K / Ctrl+K to focus search
-			document.addEventListener("keydown", (e) => {
-				if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-					e.preventDefault();
-					const searchInput = document.querySelector(
-						".site-search-input",
-					) as HTMLInputElement;
-					if (searchInput) {
-						searchInput.focus();
-					}
-				}
-			});
-		</script>
 
 		<script>
 			// 核心公开 UI 的中文兜底（评论/搜索/归档 widget），实现见 src/scripts/zh-copy.ts
@@ -1021,7 +1026,9 @@ const isLoggedIn = !!Astro.locals.user;
 						// 服务端 comment:afterCreate 据此把评论记进会员名下
 						const identity = data.commentIdentity;
 						if (identity?.email) {
-							for (const form of document.querySelectorAll(".ec-comment-form")) {
+							for (const form of document.querySelectorAll(
+								".ec-comment-form",
+							)) {
 								const nameInput = form.querySelector<HTMLInputElement>(
 									'input[name="authorName"]',
 								);
@@ -1044,16 +1051,34 @@ const isLoggedIn = !!Astro.locals.user;
 								}
 							}
 						}
-						host.innerHTML = `
-							<button type="button" class="nav-member-btn" aria-haspopup="true" aria-expanded="false">
-								${m.avatarUrl ? `<img src="${m.avatarUrl}" alt="" class="nav-member-avatar" />` : ""}
-								<span class="nav-member-name">${m.displayName}</span>
-							</button>
-							<div class="nav-member-menu" hidden>
-								<a href="/member">${m.displayName}</a>
-								<button type="button" class="nav-member-logout">退出登录</button>
-							</div>`;
-						const btn = host.querySelector<HTMLButtonElement>(".nav-member-btn");
+						const toggle = document.createElement("button");
+						toggle.type = "button";
+						toggle.className = "nav-member-btn";
+						toggle.setAttribute("aria-haspopup", "true");
+						toggle.setAttribute("aria-expanded", "false");
+						const avatar = document.createElement("img");
+						avatar.src = m.avatarUrl || "/defaults/user-avatar.png";
+						avatar.alt = "";
+						avatar.className = "nav-member-avatar";
+						toggle.append(avatar);
+						const name = document.createElement("span");
+						name.className = "nav-member-name";
+						name.textContent = m.displayName;
+						toggle.append(name);
+						const dropdown = document.createElement("div");
+						dropdown.className = "nav-member-menu";
+						dropdown.hidden = true;
+						const memberLink = document.createElement("a");
+						memberLink.href = "/member";
+						memberLink.textContent = m.displayName;
+						const logout = document.createElement("button");
+						logout.type = "button";
+						logout.className = "nav-member-logout";
+						logout.textContent = "退出登录";
+						dropdown.append(memberLink, logout);
+						host.replaceChildren(toggle, dropdown);
+						const btn =
+							host.querySelector<HTMLButtonElement>(".nav-member-btn");
 						const menu = host.querySelector<HTMLElement>(".nav-member-menu");
 						btn?.addEventListener("click", () => {
 							if (!menu) return;
@@ -1066,10 +1091,12 @@ const isLoggedIn = !!Astro.locals.user;
 							menu.hidden = true;
 							btn?.setAttribute("aria-expanded", "false");
 						});
-						host.querySelector(".nav-member-logout")?.addEventListener("click", async () => {
-							await fetch(`${base}/auth/logout`, { method: "POST" });
-							location.reload();
-						});
+						host
+							.querySelector(".nav-member-logout")
+							?.addEventListener("click", async () => {
+								await fetch(`${base}/auth/logout`, { method: "POST" });
+								location.reload();
+							});
 					} catch {
 						// 状态获取失败保持登录链接
 					}

@@ -11,12 +11,12 @@
 import { Button } from "@cloudflare/kumo";
 import { offset } from "@floating-ui/react";
 import { useLingui } from "@lingui/react/macro";
-import { DotsSixVertical, Plus } from "@phosphor-icons/react";
 import type { Editor } from "@tiptap/core";
 import { DragHandle } from "@tiptap/extension-drag-handle-react";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import * as React from "react";
 
+import { DotsSixVertical, Plus } from "../../lib/icons.js";
 import { cn } from "../../lib/utils";
 import { getLocaleDir } from "../../locales/config.js";
 import { BlockMenu } from "./BlockMenu";

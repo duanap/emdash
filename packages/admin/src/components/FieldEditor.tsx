@@ -10,6 +10,19 @@ import {
 	Tooltip,
 } from "@cloudflare/kumo";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { useQuery } from "@tanstack/react-query";
+import { Link as RouterLink } from "@tanstack/react-router";
+import * as React from "react";
+
+import { fetchCollections, fetchRelations } from "../lib/api";
+import type { FieldType, CreateFieldInput, SchemaField } from "../lib/api";
+import type {
+	CreateRelationInput,
+	RelationDef,
+	RelationSide,
+	RelationWithUsage,
+} from "../lib/api/relations.js";
+import { fetchBlockTypes } from "../lib/api/schema.js";
 import {
 	TextT,
 	TextAlignLeft,
@@ -32,20 +45,7 @@ import {
 	Info,
 	ArrowUp,
 	ArrowDown,
-} from "@phosphor-icons/react";
-import { useQuery } from "@tanstack/react-query";
-import { Link as RouterLink } from "@tanstack/react-router";
-import * as React from "react";
-
-import { fetchCollections, fetchRelations } from "../lib/api";
-import type { FieldType, CreateFieldInput, SchemaField } from "../lib/api";
-import type {
-	CreateRelationInput,
-	RelationDef,
-	RelationSide,
-	RelationWithUsage,
-} from "../lib/api/relations.js";
-import { fetchBlockTypes } from "../lib/api/schema.js";
+} from "../lib/icons.js";
 import { singularize } from "../lib/singularize.js";
 import { cn } from "../lib/utils";
 import { AllowedTypesEditor } from "./AllowedTypesEditor";
@@ -183,6 +183,7 @@ interface FieldFormState {
 	max: string;
 	pattern: string;
 	options: string;
+	allowCustom: boolean;
 	subFields: RepeaterSubFieldState[];
 	minItems: string;
 	maxItems: string;
@@ -217,6 +218,7 @@ function getInitialFormState(field?: SchemaField): FieldFormState {
 			max: field.validation?.max?.toString() ?? "",
 			pattern: field.validation?.pattern ?? "",
 			options: field.validation?.options?.join("\n") ?? "",
+			allowCustom: field.validation?.allowCustom ?? false,
 			subFields: (field.validation as Record<string, unknown>)?.subFields
 				? ((field.validation as Record<string, unknown>).subFields as RepeaterSubFieldState[])
 				: [],
@@ -255,6 +257,7 @@ function getInitialFormState(field?: SchemaField): FieldFormState {
 		max: "",
 		pattern: "",
 		options: "",
+		allowCustom: false,
 		subFields: [],
 		minItems: "",
 		maxItems: "",
@@ -566,6 +569,7 @@ export function FieldEditor({
 			if (optionList.length > 0) {
 				validation.options = optionList;
 			}
+			if (selectedType === "multiSelect") validation.allowCustom = formState.allowCustom;
 		}
 
 		if (selectedType === "repeater") {
@@ -920,6 +924,14 @@ export function FieldEditor({
 								onChange={(e) => setField("options", e.target.value)}
 								placeholder={t`Option 1\nOption 2\nOption 3`}
 								rows={5}
+							/>
+						)}
+
+						{selectedType === "multiSelect" && (
+							<Switch
+								label={t`Allow custom values`}
+								checked={formState.allowCustom}
+								onCheckedChange={(checked) => setField("allowCustom", checked)}
 							/>
 						)}
 

@@ -7,11 +7,11 @@
 
 import { Banner, Button, Loader, useKumoToastManager } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Plus } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
 import { deletePasskey, fetchManifest, fetchPasskeys, renamePasskey } from "../../lib/api";
+import { Plus } from "../../lib/icons.js";
 import { PasskeyRegistration } from "../auth/PasskeyRegistration.js";
 import { PasskeyList } from "./PasskeyList.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";

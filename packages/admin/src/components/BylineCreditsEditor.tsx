@@ -30,20 +30,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useLingui } from "@lingui/react/macro";
-import {
-	DotsSixVertical,
-	DotsThree,
-	PencilSimple,
-	Plus,
-	Tag,
-	UserMinus,
-	X,
-} from "@phosphor-icons/react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
 import { fetchBylines, type BylineCreditInput, type BylineSummary } from "../lib/api";
 import { useDebouncedValue } from "../lib/hooks.js";
+import { DotsSixVertical, DotsThree, PencilSimple, Plus, Tag, UserMinus, X } from "../lib/icons.js";
 import { DialogError, getMutationError } from "./DialogError.js";
 import { RouterLinkButton } from "./RouterLinkButton.js";
 

@@ -245,6 +245,7 @@ export interface EmDashManifest {
 		siteName?: string;
 		footerLabel?: string | false;
 		favicon?: string;
+		messageBoardCollection?: string;
 	};
 }
 

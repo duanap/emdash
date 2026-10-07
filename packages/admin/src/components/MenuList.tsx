@@ -6,13 +6,13 @@
 
 import { Button, Dialog, Input, LayerCard, Toast } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Plus, X } from "@phosphor-icons/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as React from "react";
 
 import { fetchMenus, createMenu, deleteMenu } from "../lib/api";
 import { fetchManifest } from "../lib/api/client.js";
+import { Plus, X } from "../lib/icons.js";
 import { ADMIN_NAV_ICONS } from "./admin-navigation-icons.js";
 import { ConfirmDialog } from "./ConfirmDialog.js";
 import { DialogError, getMutationError } from "./DialogError.js";

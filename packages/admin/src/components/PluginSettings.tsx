@@ -9,7 +9,6 @@
 
 import { Button, Input, InputArea, Select, Switch, Toast } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { FloppyDisk } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -19,6 +18,7 @@ import {
 	updatePluginSettings,
 	type SettingField,
 } from "../lib/api/plugins.js";
+import { FloppyDisk } from "../lib/icons.js";
 import { ArrowPrev } from "./ArrowIcons.js";
 import { EditorHeader } from "./EditorHeader";
 import { RouterLinkButton } from "./RouterLinkButton.js";

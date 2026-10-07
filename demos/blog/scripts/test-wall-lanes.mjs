@@ -11,11 +11,7 @@
 
 import assert from "node:assert/strict";
 
-import {
-	buildLaneTrack,
-	buildWallLanes,
-	WALL_MIN_LANE_CARDS,
-} from "../src/utils/wall-lanes.ts";
+import { buildLaneTrack, buildWallLanes, WALL_MIN_LANE_CARDS } from "../src/utils/wall-lanes.ts";
 
 const results = [];
 let failures = 0;
@@ -30,7 +26,8 @@ async function test(name, fn) {
 	}
 }
 
-const letters = (count) => Array.from({ length: count }, (_, index) => String.fromCharCode(65 + index));
+const letters = (count) =>
+	Array.from({ length: count }, (_, index) => String.fromCharCode(65 + index));
 
 await test("没有留言时没有轨道", () => {
 	assert.deepEqual(buildWallLanes([]), []);

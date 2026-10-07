@@ -10,6 +10,10 @@
 
 import { Button, DropdownMenu, Label, LayerCard, Text, Tooltip } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
+import { useQuery } from "@tanstack/react-query";
+import * as React from "react";
+
+import { fetchMediaItem, type MediaItem } from "../lib/api";
 import {
 	Image as ImageIcon,
 	ImageBroken,
@@ -18,11 +22,7 @@ import {
 	Moon,
 	PencilSimple,
 	X,
-} from "@phosphor-icons/react";
-import { useQuery } from "@tanstack/react-query";
-import * as React from "react";
-
-import { fetchMediaItem, type MediaItem } from "../lib/api";
+} from "../lib/icons.js";
 import {
 	canonicalMediaProviderId,
 	getMediaObjectPosition,

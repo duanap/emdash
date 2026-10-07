@@ -28,13 +28,71 @@
 import { definePlugin, pluginResponse } from "emdash";
 import type { PluginDescriptor, PluginContext, ResolvedPlugin } from "emdash";
 
+import { isQqSiteOrigin, qqReturnTarget } from "./qq-navigation.js";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isMember(value: unknown): value is Member {
+	return (
+		isRecord(value) &&
+		typeof value.displayName === "string" &&
+		typeof value.avatarUrl === "string" &&
+		(value.status === "active" || value.status === "disabled") &&
+		typeof value.qqOpenid === "string" &&
+		typeof value.createdAt === "string" &&
+		typeof value.updatedAt === "string" &&
+		(value.bio === undefined || typeof value.bio === "string") &&
+		(value.customizedFields === undefined ||
+			(Array.isArray(value.customizedFields) &&
+				value.customizedFields.every(
+					(field: unknown) => field === "displayName" || field === "avatarUrl" || field === "bio",
+				)))
+	);
+}
+
+function isSession(value: unknown): value is Session {
+	return (
+		isRecord(value) &&
+		typeof value.memberId === "string" &&
+		typeof value.expiresAt === "string" &&
+		(value.createdAt === undefined || typeof value.createdAt === "string") &&
+		Number.isFinite(Date.parse(value.expiresAt))
+	);
+}
+
+function isActivityRecord(value: unknown): value is ActivityRecord {
+	return (
+		isRecord(value) &&
+		(value.kind === "like" || value.kind === "favorite") &&
+		typeof value.memberOpenid === "string" &&
+		typeof value.targetType === "string" &&
+		typeof value.targetId === "string" &&
+		typeof value.createdAt === "string"
+	);
+}
+
+function isMemberCommentRecord(value: unknown): value is MemberCommentRecord {
+	return (
+		isRecord(value) &&
+		typeof value.memberRef === "string" &&
+		typeof value.collection === "string" &&
+		typeof value.contentId === "string" &&
+		typeof value.createdAt === "string" &&
+		(value.targetTitle === null || typeof value.targetTitle === "string") &&
+		(value.targetSlug === null || typeof value.targetSlug === "string")
+	);
+}
+
 const PLUGIN_ID = "duanap-members";
-const VERSION = "0.3.0";
+const VERSION = "0.3.1";
 
 export const SESSION_COOKIE = "dm_session";
 export const STATE_COOKIE = "dm_state";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const STATE_TTL_MS = 10 * 60 * 1000;
+const BRIDGE_TICKET = /^[a-f0-9]{64}$/;
 /** QQ /oauth2.0/me 可能仍返回 JSONP 包装 */
 const QQ_JSONP_PATTERN = /^[^(]*\(\s*(\{[\s\S]*\})\s*\)\s*;?$/;
 
@@ -58,7 +116,7 @@ export interface Member {
 interface Session {
 	memberId: string;
 	expiresAt: string;
-	createdAt: string;
+	createdAt?: string;
 }
 
 interface QqConfig {
@@ -93,7 +151,7 @@ export function duanapMembersPlugin(): PluginDescriptor {
 			sessions: { indexes: ["memberId"] },
 			// 点赞与收藏共用一张表：kind 区分，记录 id 为 kind:openid:type:id，
 			// 主键即唯一约束，重复点赞天然幂等（无需复合唯一索引）
-			activity: { indexes: ["targetId", "targetType", "kind", "memberOpenid"] },
+			activity: { indexes: ["targetId", "targetType", "kind", "memberOpenid", "createdAt"] },
 			// 会员评论归属：id 为评论 id，memberRef 为派生身份邮箱
 			memberComments: { indexes: ["memberRef"] },
 		},
@@ -120,7 +178,7 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 			members: { indexes: ["status"] as const, uniqueIndexes: ["qqOpenid"] as const },
 			sessions: { indexes: ["memberId"] as const },
 			activity: {
-				indexes: ["targetId", "targetType", "kind", "memberOpenid"] as const,
+				indexes: ["targetId", "targetType", "kind", "memberOpenid", "createdAt"] as const,
 			},
 			memberComments: { indexes: ["memberRef"] as const },
 		},
@@ -132,7 +190,8 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 				qqCallbackUrl: {
 					type: "string",
 					label: "QQ 回调地址",
-					description: "填到 QQ 互联的 redirect_uri，如 https://blog.duanap.cn/_emdash/api/plugins/duanap-members/auth/qq/callback",
+					description:
+						"填到 QQ 互联的 redirect_uri，如 https://blog.duanap.cn/_emdash/api/plugins/duanap-members/auth/qq/callback",
 				},
 				siteOrigin: {
 					type: "string",
@@ -212,24 +271,34 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 				handler: async (ctx) => {
 					const config = await readQqConfig(ctx);
 					const url = new URL(ctx.request.url);
-					const returnTo = sanitizeReturnTo(url.searchParams.get("returnTo"), config);
+					const returnTo = qqReturnTarget(url.searchParams.get("returnTo"), url);
 
 					if (!config) {
 						// 未配置：跳回登录页带错误码（同源 302 合规）
-						return redirectResponse(
-							loginUrlWith(url, "error=not_configured"),
-							[
-								clearCookieHeader(STATE_COOKIE),
-							],
+						return redirectResponse(loginUrlWith(url, "error=not_configured"), [
+							clearCookieHeader(STATE_COOKIE),
+						]);
+					}
+
+					const callback = new URL(config.callbackUrl);
+					if (url.origin !== callback.origin) {
+						const start = new URL(
+							"/_emdash/api/plugins/duanap-members/auth/qq/start",
+							callback.origin,
 						);
+						start.searchParams.set("returnTo", returnTo);
+						return redirectResponse(start.href, []);
 					}
 
 					// state：32 字节随机 + KV 存储一次性值 + Cookie 双校验
 					const state = randomToken();
-					await ctx.kv.set(`oauth:state:${state}`, JSON.stringify({
-						returnTo,
-						expiresAt: new Date(Date.now() + STATE_TTL_MS).toISOString(),
-					}));
+					await ctx.kv.set(
+						`oauth:state:${state}`,
+						JSON.stringify({
+							returnTo,
+							expiresAt: new Date(Date.now() + STATE_TTL_MS).toISOString(),
+						}),
+					);
 
 					const authorizeUrl = new URL("https://graph.qq.com/oauth2.0/authorize");
 					authorizeUrl.searchParams.set("response_type", "code");
@@ -240,9 +309,7 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 
 					// trusted 插件的 raw 路由允许跨域 Location（见 changeset
 					// trusted-plugin-route-cookies），直接 302 到 QQ 授权页。
-					return redirectResponse(authorizeUrl.toString(), [
-						stateCookieHeader(ctx.request, state),
-					]);
+					return redirectResponse(authorizeUrl.toString(), [stateCookieHeader(ctx.request, state)]);
 				},
 			},
 
@@ -254,7 +321,10 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 				handler: async (ctx) => {
 					const url = new URL(ctx.request.url);
 					const config = await readQqConfig(ctx);
-					if (!config) return redirectResponse(loginUrlWith(url, "error=not_configured"), [clearCookieHeader(STATE_COOKIE)]);
+					if (!config)
+						return redirectResponse(loginUrlWith(url, "error=not_configured"), [
+							clearCookieHeader(STATE_COOKIE),
+						]);
 
 					const stateParam = url.searchParams.get("state") ?? "";
 					const code = url.searchParams.get("code") ?? "";
@@ -277,7 +347,15 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 					if (!storedRaw) return fail("state_expired");
 					let stored: { returnTo: string; expiresAt: string };
 					try {
-						stored = JSON.parse(storedRaw) as { returnTo: string; expiresAt: string };
+						const parsed: unknown = JSON.parse(storedRaw);
+						if (
+							!isRecord(parsed) ||
+							typeof parsed.returnTo !== "string" ||
+							typeof parsed.expiresAt !== "string" ||
+							!Number.isFinite(Date.parse(parsed.expiresAt))
+						)
+							return fail("state_corrupt");
+						stored = { returnTo: parsed.returnTo, expiresAt: parsed.expiresAt };
 					} catch {
 						return fail("state_corrupt");
 					}
@@ -296,9 +374,63 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 
 					// 建会话 + 种 cookie，回 returnTo（同源）
 					const session = await createSession(ctx, member);
-					return redirectResponse(stored.returnTo, [
+					const target = new URL(qqReturnTarget(stored.returnTo, url));
+					if (target.origin !== url.origin) {
+						const ticket = randomToken();
+						await ctx.kv.set(`oauth:bridge:${ticket}`, {
+							sessionId: session.id,
+							origin: target.origin,
+							returnTo: target.href,
+							expiresAt: Date.now() + 60_000,
+						});
+						const complete = new URL(
+							"/_emdash/api/plugins/duanap-members/auth/qq/complete",
+							target.origin,
+						);
+						complete.searchParams.set("ticket", ticket);
+						return redirectResponse(complete.href, [clearCookieHeader(STATE_COOKIE)]);
+					}
+					return redirectResponse(target.pathname + target.search + target.hash, [
 						sessionCookieHeader(ctx.request, session.id),
 						clearCookieHeader(STATE_COOKIE),
+					]);
+				},
+			},
+
+			"auth/qq/complete": {
+				public: true,
+				methods: ["GET"],
+				request: { body: "none" },
+				response: "raw",
+				handler: async (ctx) => {
+					const url = new URL(ctx.request.url);
+					const ticket = url.searchParams.get("ticket") ?? "";
+					const fail = () => redirectResponse(loginUrlWith(url, "error=state_expired"), []);
+					if (!BRIDGE_TICKET.test(ticket) || !isQqSiteOrigin(url.origin)) return fail();
+					const key = `oauth:bridge:${ticket}`;
+					const entry = await ctx.kv.getVersioned<{
+						sessionId: string;
+						origin: string;
+						returnTo: string;
+						expiresAt: number;
+					}>(key);
+					if (!entry || entry.value.origin !== url.origin || entry.value.expiresAt <= Date.now())
+						return fail();
+					const consumed = await ctx.kv.compareAndDelete(key, entry.revision);
+					if (!consumed.applied) return fail();
+					const session = await ctx.storage.sessions.get(entry.value.sessionId);
+					if (
+						!session ||
+						typeof session !== "object" ||
+						!("expiresAt" in session) ||
+						typeof session.expiresAt !== "string" ||
+						!(new Date(session.expiresAt).getTime() > Date.now())
+					)
+						return fail();
+					const target = new URL(qqReturnTarget(entry.value.returnTo, url));
+					if (target.origin !== url.origin) return fail();
+					return redirectResponse(target.pathname + target.search + target.hash, [
+						sessionCookieHeader(ctx.request, entry.value.sessionId),
 					]);
 				},
 			},
@@ -373,7 +505,7 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 				methods: ["POST"],
 				request: { body: "json" },
 				handler: async (ctx) => {
-					const input = (ctx.input ?? {}) as Record<string, unknown>;
+					const input = isRecord(ctx.input) ? ctx.input : {};
 					const kind: ActivityKind | null =
 						input.kind === "favorite" ? "favorite" : input.kind === "like" ? "like" : null;
 					const targetType = typeof input.targetType === "string" ? input.targetType : "";
@@ -407,7 +539,7 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 					const entry = await resolveMemberEntry(ctx.storage, ctx.request);
 					if (!entry) return { ok: false, reason: "unauthorized" };
 
-					const input = (ctx.input ?? {}) as Record<string, unknown>;
+					const input = isRecord(ctx.input) ? ctx.input : {};
 					const validated = validateProfileUpdate(input);
 					if (!validated.ok) {
 						return { ok: false, reason: "invalid_profile", errors: validated.errors };
@@ -443,7 +575,8 @@ export function createPlugin(_options: Record<string, never> = {}): ResolvedPlug
 				handler: async (ctx) => {
 					const member = await resolveMemberRecord(ctx.storage, ctx.request);
 					if (!member) return { ok: false, reason: "unauthorized" };
-					return { ok: true, ...(await readMemberOverview(ctx, member)) };
+					const cursor = new URL(ctx.request.url).searchParams.get("favoritesCursor") ?? undefined;
+					return { ok: true, ...(await readMemberOverview(ctx, member, cursor)) };
 				},
 			},
 		},
@@ -459,23 +592,39 @@ async function readQqConfig(ctx: PluginContext): Promise<QqConfig | null> {
 		ctx.settings.get<string>("qqCallbackUrl"),
 		ctx.settings.get<string>("siteOrigin"),
 	]);
-	if (!clientId || !clientSecret || !callbackUrl) return null;
+	if (!clientId?.trim() || !clientSecret?.trim() || !callbackUrl?.trim()) return null;
 	let callback: URL;
 	try {
-		callback = new URL(callbackUrl);
+		callback = new URL(callbackUrl.trim());
 	} catch {
 		return null;
 	}
 	// 回调必须 https（本地开发例外），且指向本站插件回调路由
 	if (
-		!(callback.protocol === "https:" ||
-			(callback.protocol === "http:" && ["localhost", "127.0.0.1"].includes(callback.hostname)))
-	) return null;
-	if (!callback.pathname.endsWith("/auth/qq/callback")) return null;
+		!(
+			callback.protocol === "https:" ||
+			(callback.protocol === "http:" && ["localhost", "127.0.0.1"].includes(callback.hostname))
+		)
+	)
+		return null;
+	if (
+		!isQqSiteOrigin(callback.origin) ||
+		callback.username ||
+		callback.password ||
+		callback.search ||
+		callback.hash
+	)
+		return null;
+	if (
+		!["/_emdash/api/plugins/duanap-members/auth/qq/callback", "/oauth/qq/callback"].includes(
+			callback.pathname,
+		)
+	)
+		return null;
 	return {
-		clientId,
-		clientSecret,
-		callbackUrl: callbackUrl,
+		clientId: clientId.trim(),
+		clientSecret: clientSecret.trim(),
+		callbackUrl: callback.href,
 		siteOrigin: (siteOrigin ?? "").trim(),
 	};
 }
@@ -490,8 +639,18 @@ async function qqFetch(ctx: PluginContext, target: URL): Promise<Response> {
 function parseTokenResponse(value: string): Record<string, string> {
 	const trimmed = value.trim();
 	if (trimmed.startsWith("{")) {
-		const parsed = JSON.parse(trimmed) as Record<string, unknown>;
-		return Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, String(v ?? "")]));
+		const parsed: unknown = JSON.parse(trimmed);
+		if (!isRecord(parsed)) throw new Error("Invalid token response");
+		return Object.fromEntries(
+			Object.entries(parsed).map(([key, tokenValue]) => [
+				key,
+				typeof tokenValue === "string"
+					? tokenValue
+					: typeof tokenValue === "number" || typeof tokenValue === "boolean"
+						? String(tokenValue)
+						: "",
+			]),
+		);
 	}
 	return Object.fromEntries(new URLSearchParams(trimmed).entries());
 }
@@ -532,8 +691,8 @@ async function fetchQqProfile(
 	const meText = (await (await qqFetch(ctx, meUrl)).text()).trim();
 	// QQ 可能仍回 JSONP 包装；两种都兼容
 	const jsonp = meText.match(QQ_JSONP_PATTERN);
-	const meJson = JSON.parse(jsonp?.[1] ?? meText) as { openid?: unknown };
-	const subject = typeof meJson.openid === "string" ? meJson.openid.trim() : "";
+	const meJson: unknown = JSON.parse(jsonp?.[1] ?? meText);
+	const subject = isRecord(meJson) && typeof meJson.openid === "string" ? meJson.openid.trim() : "";
 	if (!subject) throw new Error("no openid");
 
 	const profileUrl = new URL("https://graph.qq.com/user/get_user_info");
@@ -543,14 +702,18 @@ async function fetchQqProfile(
 		openid: subject,
 		format: "json",
 	}).toString();
-	const profile = (await (await qqFetch(ctx, profileUrl)).json()) as Record<string, unknown>;
+	const profile: unknown = await (await qqFetch(ctx, profileUrl)).json();
+	if (!isRecord(profile)) throw new Error("Invalid profile response");
 	if (Number(profile.ret) !== 0) throw new Error(`profile ret=${String(profile.ret)}`);
 	const nickname = typeof profile.nickname === "string" ? profile.nickname.trim().slice(0, 40) : "";
 	return {
 		subject,
 		nickname: nickname || "QQ 用户",
 		avatarUrl: normalizeAvatar(
-			profile.figureurl_qq_2 ?? profile.figureurl_2 ?? profile.figureurl_qq_1 ?? profile.figureurl_1,
+			profile.figureurl_qq_2 ??
+				profile.figureurl_2 ??
+				profile.figureurl_qq_1 ??
+				profile.figureurl_1,
 		),
 	};
 }
@@ -567,8 +730,9 @@ async function upsertMember(
 	});
 	const now = new Date().toISOString();
 	if (existing.items.length > 0) {
-		const record = existing.items[0]!;
-		const member = record.data as Member;
+		const record = existing.items[0];
+		const member = record.data;
+		if (!isMember(member)) return null;
 		if (member.status === "disabled") return null;
 		// 昵称/头像默认跟随 QQ 资料，但用户手动改过的字段不再被覆盖
 		const customized = new Set(member.customizedFields ?? []);
@@ -577,7 +741,9 @@ async function upsertMember(
 			displayName: customized.has("displayName")
 				? member.displayName
 				: profile.nickname || member.displayName,
-			avatarUrl: customized.has("avatarUrl") ? member.avatarUrl : profile.avatarUrl || member.avatarUrl,
+			avatarUrl: customized.has("avatarUrl")
+				? member.avatarUrl
+				: profile.avatarUrl || member.avatarUrl,
 			updatedAt: now,
 		};
 		await ctx.storage.members.put(record.id, updated);
@@ -620,8 +786,8 @@ async function resolveMemberEntry(
 ): Promise<{ id: string; member: Member } | null> {
 	const sessionId = readCookie(request.headers.get("cookie"), SESSION_COOKIE);
 	if (!sessionId) return null;
-	const session = (await storage.sessions.get(sessionId)) as Session | null;
-	if (!session) return null;
+	const session = await storage.sessions.get(sessionId);
+	if (!isSession(session)) return null;
 	if (new Date(session.expiresAt).getTime() < Date.now()) {
 		await storage.sessions.delete(sessionId).catch(() => {});
 		return null;
@@ -631,8 +797,9 @@ async function resolveMemberEntry(
 		limit: 1,
 	});
 	if (found.items.length === 0) return null;
-	const record = found.items[0]!;
-	const member = record.data as Member;
+	const record = found.items[0];
+	const member = record.data;
+	if (!isMember(member)) return null;
 	if (member.status !== "active") return null;
 	return { id: record.id, member };
 }
@@ -679,24 +846,6 @@ function clearCookieHeader(name: string): string {
 	return `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
-function sanitizeReturnTo(value: string | null, config: QqConfig | null): string {
-	const fallback = "/";
-	if (!value) return fallback;
-	try {
-		const target = new URL(value, "https://example.invalid");
-		// 仅允许同源路径（相对或同 origin 绝对），拒绝外站跳转
-		if (target.origin !== "https://example.invalid") {
-			const allowed = config?.siteOrigin ? new URL(config.siteOrigin).origin : null;
-			if (!allowed || target.origin !== allowed) return fallback;
-			return target.pathname + target.search;
-		}
-		if (!target.pathname.startsWith("/") || target.pathname.startsWith("//")) return fallback;
-		return target.pathname + target.search;
-	} catch {
-		return fallback;
-	}
-}
-
 function randomToken(bytes = 32): string {
 	const arr = new Uint8Array(bytes);
 	crypto.getRandomValues(arr);
@@ -719,9 +868,7 @@ function redirectResponse(location: string, cookies: string[]) {
 }
 
 function rawJson(status: number, payload: unknown, cookies: string[]) {
-	const headers: Array<[string, string]> = [
-		["content-type", "application/json; charset=utf-8"],
-	];
+	const headers: Array<[string, string]> = [["content-type", "application/json; charset=utf-8"]];
 	for (const cookie of cookies) headers.push(["set-cookie", cookie]);
 	return pluginResponse({
 		status,
@@ -801,9 +948,7 @@ async function readActivityState(
 	if (member) {
 		const [like, favorite] = await Promise.all([
 			ctx.storage.activity.get(activityRecordId("like", member.qqOpenid, targetType, targetId)),
-			ctx.storage.activity.get(
-				activityRecordId("favorite", member.qqOpenid, targetType, targetId),
-			),
+			ctx.storage.activity.get(activityRecordId("favorite", member.qqOpenid, targetType, targetId)),
 		]);
 		liked = like !== null;
 		favorited = favorite !== null;
@@ -874,7 +1019,8 @@ export interface MemberOverview {
 	};
 	counts: { likes: number; favorites: number };
 	favorites: MemberFavoriteItem[];
-	/** 收藏过但内容已下线/删除的条数（列表里不会出现） */
+	favoritesCursor?: string;
+	/** 本页中内容已下线或删除的收藏条数（列表里不会出现） */
 	unavailableFavorites: number;
 }
 
@@ -900,7 +1046,9 @@ interface MemberCommentRecord {
 
 async function memberIdentityEmail(openid: string): Promise<string> {
 	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(openid));
-	const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+	const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(
+		"",
+	);
 	return `member-${hex.slice(0, 16)}@${MEMBER_IDENTITY_DOMAIN}`;
 }
 
@@ -967,15 +1115,22 @@ function validateProfileUpdate(
 	return { ok: true, values, changed };
 }
 
-async function readMemberOverview(ctx: PluginContext, member: Member): Promise<MemberOverview> {
-	// 单次查询取回该会员的全部互动行（按 kind 在内存里分流，避免多轮查询）
-	const rows = await ctx.storage.activity.query({
-		where: { memberOpenid: member.qqOpenid },
-		limit: 100,
-	});
-	const records = rows.items.map((row) => row.data as ActivityRecord);
-	const likes = records.filter((record) => record.kind === "like");
-	const favorites = records.filter((record) => record.kind === "favorite");
+async function readMemberOverview(
+	ctx: PluginContext,
+	member: Member,
+	cursor?: string,
+): Promise<MemberOverview> {
+	const [likeCount, favoriteCount, rows] = await Promise.all([
+		ctx.storage.activity.count({ memberOpenid: member.qqOpenid, kind: "like" }),
+		ctx.storage.activity.count({ memberOpenid: member.qqOpenid, kind: "favorite" }),
+		ctx.storage.activity.query({
+			where: { memberOpenid: member.qqOpenid, kind: "favorite" },
+			orderBy: { createdAt: "desc" },
+			limit: 20,
+			cursor,
+		}),
+	]);
+	const favorites = rows.items.map((row) => row.data).filter(isActivityRecord);
 
 	const items: MemberFavoriteItem[] = [];
 	for (const favorite of favorites) {
@@ -1002,8 +1157,9 @@ async function readMemberOverview(ctx: PluginContext, member: Member): Promise<M
 			createdAt: member.createdAt,
 			customizedFields: member.customizedFields ?? [],
 		},
-		counts: { likes: likes.length, favorites: favorites.length },
+		counts: { likes: likeCount, favorites: favoriteCount },
 		favorites: items,
+		favoritesCursor: rows.cursor,
 		unavailableFavorites: favorites.length - items.length,
 	};
 }
@@ -1038,7 +1194,8 @@ async function readMemberComments(
 
 	const items: MemberCommentItem[] = [];
 	for (const record of records.items) {
-		const attribution = record.data as MemberCommentRecord;
+		const attribution = record.data;
+		if (!isMemberCommentRecord(attribution)) continue;
 		// 以评论当前状态为准（可能已被审核、隐藏或清理）
 		const comment = await ctx.comments.get(record.id);
 		if (!comment) continue;
@@ -1054,7 +1211,8 @@ async function readMemberComments(
 				COMMENT_TARGET_LABELS[attribution.collection] ??
 				attribution.targetSlug ??
 				attribution.collection,
-			targetPath: singlePage || !attribution.targetSlug ? prefix : `${prefix}${attribution.targetSlug}`,
+			targetPath:
+				singlePage || !attribution.targetSlug ? prefix : `${prefix}${attribution.targetSlug}`,
 			createdAt: comment.createdAt,
 		});
 	}

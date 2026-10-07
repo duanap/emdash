@@ -9,10 +9,10 @@ import type {
 	EditorDraftPatchEffect,
 } from "@emdash-cms/blocks";
 import { useLingui } from "@lingui/react/macro";
-import { CaretDown } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { apiFetch } from "../lib/api/client.js";
+import { CaretDown } from "../lib/icons.js";
 import { resolvePluginLinkTarget } from "../lib/plugin-links.js";
 import { editorExtensionUrl } from "../lib/sandboxed-editor-extensions.js";
 import type { EditorDraftAccessDeclaration } from "../lib/sandboxed-editor-extensions.js";

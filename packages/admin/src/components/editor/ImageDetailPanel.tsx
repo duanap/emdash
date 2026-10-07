@@ -16,6 +16,10 @@ import {
 	Text,
 } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
+import * as React from "react";
+
+import type { MediaItem } from "../../lib/api";
+import { useStableCallback } from "../../lib/hooks";
 import {
 	X,
 	ArrowSquareOut,
@@ -25,11 +29,7 @@ import {
 	PencilSimple,
 	LinkSimple,
 	LinkBreak,
-} from "@phosphor-icons/react";
-import * as React from "react";
-
-import type { MediaItem } from "../../lib/api";
-import { useStableCallback } from "../../lib/hooks";
+} from "../../lib/icons.js";
 import { canonicalMediaProviderId, metaString } from "../../lib/media-utils.js";
 import { cn } from "../../lib/utils.js";
 import { ConfirmDialog } from "../ConfirmDialog";

@@ -1,4 +1,5 @@
 ---
+import { htmlPageUrl } from "../utils/public-page-url.js";
 import type { ArchiveItem } from "../utils/archive-items";
 import { MONTH_LABELS } from "../utils/archive-items";
 
@@ -40,7 +41,7 @@ const years = [...byYear.keys()].toSorted((a, b) => b - a);
 									<span class:list={["kind", { life: item.kind === "life" }]}>
 										{item.kind === "post" ? "文章" : "生活"}
 									</span>
-									<a href={item.href} class="item-link">
+									<a href={htmlPageUrl(item.href)} class="item-link">
 										{item.title}
 									</a>
 									<time class="item-date">

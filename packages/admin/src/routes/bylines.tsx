@@ -13,7 +13,6 @@ import {
 	Toast,
 } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { DotsThree, IdentificationCard, Pencil, Plus, Trash, X } from "@phosphor-icons/react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import * as React from "react";
@@ -42,6 +41,7 @@ import { listBylineFields, type BylineFieldDefinition } from "../lib/api/byline-
 import { fetchManifest } from "../lib/api/client.js";
 import { useCurrentUser } from "../lib/api/current-user.js";
 import { useDebouncedValue } from "../lib/hooks.js";
+import { DotsThree, IdentificationCard, Pencil, Plus, Trash, X } from "../lib/icons.js";
 
 interface BylineFormState {
 	slug: string;

@@ -434,6 +434,8 @@ export interface EmDashConfig {
 	 * ```
 	 */
 	maxUploadSize?: number;
+	/** Optional suffix for public content URLs. Existing URL patterns stay unchanged in storage. */
+	publicPageSuffix?: ".html";
 
 	/**
 	 * Public browser-facing origin for the site.
@@ -652,6 +654,8 @@ export interface EmDashConfig {
 		footerLabel?: string | false;
 		/** URL or path to a custom favicon for the admin panel. */
 		favicon?: string;
+		/** Treat this collection's oldest published entry as a fixed message-board container. */
+		messageBoardCollection?: string;
 	};
 
 	/**

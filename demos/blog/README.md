@@ -2,7 +2,7 @@
 
 基于 [EmDash](https://emdashcms.com)（Astro 全栈 CMS）的个人博客，从旧版
 `blog-front`（Vue 3 + Fastify）逐步迁移而来。**迁移计划与进度见
-[MIGRATION.md](./MIGRATION.md)**。
+[MIGRATION.md](./MIGRATION.md)**，当前状态见 [PROGRESS.md](./PROGRESS.md)，部署步骤见 [DEPLOY.md](./DEPLOY.md)。
 
 ## 本地开发
 
@@ -22,20 +22,20 @@ cd demos/blog
 pnpm dev        # http://localhost:4321（注意：绑定 localhost/IPv6，不是 127.0.0.1）
 ```
 
-| 入口 | 地址 |
-|---|---|
-| 前台 | http://localhost:4321 |
-| 管理后台 | http://localhost:4321/_emdash/admin |
-| dev 跳过 passkey 引导 | `/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin` |
-| REST API | `/_emdash/api/*`（OpenAPI: `/_emdash/api/openapi.json`） |
-| 搜索 | `/search?q=关键词` |
+| 入口                  | 地址                                                     |
+| --------------------- | -------------------------------------------------------- |
+| 前台                  | http://localhost:4321                                    |
+| 管理后台              | http://localhost:4321/_emdash/admin                      |
+| dev 跳过 passkey 引导 | `/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`  |
+| REST API              | `/_emdash/api/*`（OpenAPI: `/_emdash/api/openapi.json`） |
+| 搜索                  | `/search?q=关键词`                                       |
 
 本地 curl 测试记得 `--noproxy "*"`（本机代理会拦 localhost）。
 
 ## 内容维护
 
-内容模型存在数据库（4 个集合：文章/页面/生活记录/作品 + 4 套分类法），
-定义在 [seed/seed.json](./seed/seed.json)。改了模型后需重建本地库：
+内容模型存在数据库（文章/页面/生活记录/作品 + 留言墙专用 wall 集合，以及 4 套分类法），
+定义在 [seed/seed.json](./seed/seed.json)。模型可在后台调整。下列重建命令仅用于可丢弃的本地演示库；如有需要保留的内容，先备份并通过后台调整模型。
 
 ```bash
 # 停掉 dev server（Windows 下 pnpm 的 node 子进程会残留，需 kill astro 进程）
@@ -49,7 +49,7 @@ Windows 下 `emdash`/`em` bin shim 不可用，一律用
 
 ## 旧站内容迁移（blog-front → 本站）
 
-工具已就绪（合成数据 + 本地 e2e 全链路验证过）：
+站长已决定不迁移旧数据。当前完整工具 `scripts/migrate-old-site.mjs` 保留备用，使用前检查脚本参数与 dry-run 报告。下面是早期工具的历史调用示例，不属于上线流程。
 
 ```bash
 # 1. 生成合成旧库，验证转换与映射逻辑（不触网、不写入）
@@ -82,7 +82,18 @@ MIGRATION.md      迁移计划、决策与进度
 
 - 文章卡片沿用 EmDash 模板样式（用户点名保留）；品牌色（米白/墨绿/赭石）
   通过 `theme.css` token 覆盖沿用旧站
-- 评论 UI 的英文文案用 `Base.astro` 内的 DOM 翻译脚本转中文（core 尚无前台
+- 评论 UI 的英文文案用 `src/scripts/zh-copy.ts` 的 DOM 翻译脚本转中文（core 尚无前台
   i18n 的停止性方案，上游支持后移除）
-- 文章 URL 暂为 `/posts/{slug}`；真实内容导入完成后再切 `/article/{slug}`
-  保住旧站 SEO（见 MIGRATION.md Phase 3）
+- 文章 URL 保持 `/posts/{slug}`；旧数字入口通过映射表跳转，没有映射时返回 404
+
+## 本轮修复的回归验证
+
+从仓库根目录执行以下检查；浏览器测试使用本机 Chrome 的独立临时配置，不复用个人浏览器会话。
+
+```bash
+pnpm --filter emdash exec vitest run tests/integration/blog-member-overview.test.ts
+node demos/blog/scripts/test-deploy.mjs
+node --experimental-strip-types demos/blog/scripts/test-member-ui.mjs
+```
+
+会员分页测试使用真实 SQLite；设置 EMDASH_TEST_PG 后同时验证 PostgreSQL。部署脚本测试使用临时目录和模拟系统命令，不操作生产服务。

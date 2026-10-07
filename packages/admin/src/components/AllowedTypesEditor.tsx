@@ -1,8 +1,8 @@
 import { Button, Input, Label } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Plus, X } from "@phosphor-icons/react";
 import * as React from "react";
 
+import { Plus, X } from "../lib/icons.js";
 import { EXTENSION_TO_MIME, VALID_MIME_RE } from "../lib/mime-utils.js";
 import { cn } from "../lib/utils";
 

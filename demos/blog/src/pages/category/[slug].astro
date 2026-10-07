@@ -1,15 +1,16 @@
 ---
+import { pageSlug } from "../../utils/page-slug.js";
+import { htmlPageUrl } from "../../utils/public-page-url.js";
 import {
 	getTaxonomyTermsWithCacheHint,
 	getEmDashCollection,
 	getTermsForEntries,
-	decodeSlug,
 } from "emdash";
 import Base from "../../layouts/Base.astro";
 import PostCard from "../../components/PostCard.astro";
 import { getReadingTime } from "../../utils/reading-time";
 
-const slug = decodeSlug(Astro.params.slug);
+const slug = pageSlug(Astro.params.slug);
 const termsResult = await getTaxonomyTermsWithCacheHint("category", {
 	includeCounts: false,
 });
@@ -67,7 +68,7 @@ const filteredPosts = posts.map((post) => ({
 							title={post.data.title}
 							excerpt={post.data.excerpt}
 							featuredImage={post.data.featured_image}
-							href={`/posts/${post.id}`}
+							href={htmlPageUrl(`/posts/${post.id}`)}
 							date={post.data.publishedAt ?? undefined}
 							readingTime={getReadingTime(post.data.content)}
 							tags={tags.map((t) => ({ slug: t.slug, label: t.label }))}
@@ -78,11 +79,11 @@ const filteredPosts = posts.map((post) => ({
 			)
 		}
 		<nav class="pagination" aria-label="Pagination">
-			{cursor && <a href={`/category/${term.slug}`}>First page</a>}
+			{cursor && <a href={htmlPageUrl(`/category/${term.slug}`)}>First page</a>}
 			{
 				nextCursor && (
 					<a
-						href={`/category/${term.slug}?cursor=${encodeURIComponent(nextCursor)}`}
+						href={htmlPageUrl(`/category/${term.slug}?cursor=${encodeURIComponent(nextCursor)}`)}
 					>
 						Next page
 					</a>

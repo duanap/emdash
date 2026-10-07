@@ -9,13 +9,23 @@
  * 轨道里只有第一半是"真"卡片（可读、可点赞），补位与副本 `aria-hidden`；
  * `prefers-reduced-motion` 下不滚动，并去掉补位与副本。
  */
-import { getComments, getEmDashEntry, getSeoMeta, getSiteSettings } from "emdash";
+import {
+	getComments,
+	getEmDashCollection,
+	getSeoMeta,
+	getSiteSettings,
+} from "emdash";
 import { CommentForm } from "emdash/ui/comments";
 import Base from "../layouts/Base.astro";
+import { DEFAULT_AVATAR } from "../utils/default-images";
 import { resolveBlogSiteIdentity } from "../utils/site-identity";
 import { buildLaneTrack, buildWallLanes } from "../utils/wall-lanes";
 
-const { entry, cacheHint } = await getEmDashEntry("wall", "wall");
+const { entries, cacheHint } = await getEmDashCollection("wall", {
+	limit: 1,
+	orderBy: { created_at: "asc" },
+});
+const entry = entries[0];
 
 if (!entry) {
 	return Astro.rewrite("/404");
@@ -23,7 +33,10 @@ if (!entry) {
 
 if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
 
-const { items, total } = await getComments({ collection: "wall", contentId: entry.data.id });
+const { items, total } = await getComments({
+	collection: "wall",
+	contentId: entry.data.id,
+});
 const lanes = buildWallLanes(items).map((lane) => buildLaneTrack(lane));
 
 const { siteTitle } = resolveBlogSiteIdentity(await getSiteSettings());
@@ -47,7 +60,7 @@ const formatDate = (value: string) =>
 	description={seo.description}
 	canonical={seo.canonical}
 	robots={seo.robots}
-	content={{ collection: "wall", id: entry.data.id, slug: "wall" }}
+	content={{ collection: "wall", id: entry.data.id, slug: entry.id }}
 >
 	<div class="wall-page">
 		<header class="page-header">
@@ -72,12 +85,23 @@ const formatDate = (value: string) =>
 							<div class:list={["lane-track", laneIndex === 1 && "reverse"]}>
 								{lane.map((card) =>
 									card.readable ? (
-										<article class="message-card" data-comment-id={card.item.id}>
+										<article
+											class="message-card"
+											data-comment-id={card.item.id}
+										>
 											<span class="quote-mark" aria-hidden="true">
 												“
 											</span>
 											<p class="wall-body">{card.item.body}</p>
 											<footer class="wall-meta">
+												<img
+													src={DEFAULT_AVATAR}
+													alt=""
+													class="wall-avatar"
+													width="28"
+													height="28"
+													loading="lazy"
+												/>
 												<span class="wall-author">{card.item.authorName}</span>
 												<span class="dot" aria-hidden="true">
 													·
@@ -88,12 +112,24 @@ const formatDate = (value: string) =>
 											</footer>
 										</article>
 									) : (
-										<article class="message-card" aria-hidden="true" data-wall-extra="true">
+										<article
+											class="message-card"
+											aria-hidden="true"
+											data-wall-extra="true"
+										>
 											<span class="quote-mark" aria-hidden="true">
 												“
 											</span>
 											<p class="wall-body">{card.item.body}</p>
 											<footer class="wall-meta">
+												<img
+													src={DEFAULT_AVATAR}
+													alt=""
+													class="wall-avatar"
+													width="28"
+													height="28"
+													loading="lazy"
+												/>
 												<span class="wall-author">{card.item.authorName}</span>
 												<span class="dot" aria-hidden="true">
 													·
@@ -126,17 +162,25 @@ const formatDate = (value: string) =>
 	// 只有第一半的卡片会拿到点赞按钮；副本与补位对读屏隐藏，也不该被点到
 	installCommentLikes({
 		targets: () =>
-			[...document.querySelectorAll<HTMLElement>(".message-card[data-comment-id]")].flatMap(
-				(card) => {
-					const id = card.dataset.commentId;
-					const meta = card.querySelector<HTMLElement>(".wall-meta");
-					return id && meta ? [{ id, container: meta }] : [];
-				},
-			),
+			[
+				...document.querySelectorAll<HTMLElement>(
+					".message-card[data-comment-id]",
+				),
+			].flatMap((card) => {
+				const id = card.dataset.commentId;
+				const meta = card.querySelector<HTMLElement>(".wall-meta");
+				return id && meta ? [{ id, container: meta }] : [];
+			}),
 	});
 </script>
 
 <style>
+	.wall-avatar {
+		border-radius: 50%;
+		object-fit: contain;
+		flex-shrink: 0;
+	}
+
 	.wall-page {
 		max-width: var(--wide-width);
 		margin: 0 auto;
@@ -171,7 +215,13 @@ const formatDate = (value: string) =>
 		gap: var(--spacing-4);
 		margin-bottom: var(--spacing-12);
 		/* 两侧渐隐，避免卡片从硬边切出去 */
-		mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+		mask-image: linear-gradient(
+			to right,
+			transparent,
+			black 6%,
+			black 94%,
+			transparent
+		);
 	}
 
 	.lane {

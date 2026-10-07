@@ -20,23 +20,6 @@ import {
 } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	ArrowLeft,
-	ArrowCounterClockwise,
-	ArrowsClockwise,
-	X,
-	Trash,
-	Calendar,
-	CaretDown,
-	File,
-	Folder,
-	HardDrive,
-	ImagesSquare,
-	LinkSimple,
-	Ruler,
-	Info,
-	WarningCircle,
-} from "@phosphor-icons/react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as React from "react";
@@ -66,6 +49,23 @@ import {
 	type PixelCrop,
 } from "../lib/crop-image.js";
 import { useDebouncedValue, useStableCallback } from "../lib/hooks";
+import {
+	ArrowLeft,
+	ArrowCounterClockwise,
+	ArrowsClockwise,
+	X,
+	Trash,
+	Calendar,
+	CaretDown,
+	File,
+	Folder,
+	HardDrive,
+	ImagesSquare,
+	LinkSimple,
+	Ruler,
+	Info,
+	WarningCircle,
+} from "../lib/icons.js";
 import {
 	getFileIcon,
 	formatFileSize,

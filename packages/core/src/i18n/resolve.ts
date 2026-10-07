@@ -101,7 +101,8 @@ export function interpolateUrlPattern(options: {
 	path = path.replace(REPEATED_SLASHES, "/");
 	if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
 	if (!path.startsWith("/")) path = `/${path}`;
-	return path;
+	const suffix = getRequestContext()?.publicPageSuffix;
+	return suffix && path !== "/" && !path.endsWith(suffix) ? `${path}${suffix}` : path;
 }
 
 export interface ContentRoutePathOptions {

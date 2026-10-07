@@ -18,12 +18,11 @@
     "@astrojs/react": "catalog:",
     "astro": "catalog:",
     "emdash": "workspace:*",
+    "lucide": "^1.49.0",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
   "devDependencies": {
     "@astrojs/check": "catalog:"
-  },
-  "peerDependencies": {},
-  "optionalDependencies": {}
+  }
 }

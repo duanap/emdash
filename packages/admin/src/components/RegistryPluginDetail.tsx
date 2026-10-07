@@ -21,7 +21,6 @@ import { evaluateRegistryReleaseWithdrawal } from "@emdash-cms/registry-client/w
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Warning } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
@@ -54,6 +53,7 @@ import {
 	type RegistryReleaseView,
 	type SectionKey,
 } from "../lib/api/registry.js";
+import { Warning } from "../lib/icons.js";
 import { renderMarkdown } from "../lib/markdown.js";
 import { registryIdentity } from "../lib/registry-identity.js";
 import { ArrowPrev } from "./ArrowIcons.js";

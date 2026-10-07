@@ -25,8 +25,7 @@ const MONTHS = [
 ];
 
 /** core 输出的容器范围：只在这里做替换 */
-export const ZH_COPY_SCOPE =
-	".ec-comments, .ec-comment-form, .widget-search, .widget-archives";
+export const ZH_COPY_SCOPE = ".ec-comments, .ec-comment-form, .widget-search, .widget-archives";
 
 const EXACT_TEXT: Record<string, string> = {
 	Name: "昵称",
@@ -74,11 +73,11 @@ export function translateText(text: string): string | null {
 	if (commentCount) return `${commentCount[1]} 条评论`;
 
 	const archiveMonth = ARCHIVE_MONTH_PATTERN.exec(text);
-	if (archiveMonth) return `${archiveMonth[2]} 年 ${MONTHS.indexOf(archiveMonth[1]!) + 1} 月`;
+	if (archiveMonth) return `${archiveMonth[2]} 年 ${MONTHS.indexOf(archiveMonth[1]) + 1} 月`;
 
 	const date = COMMENT_DATE_PATTERN.exec(text);
 	if (date) {
-		const month = MONTHS.indexOf(date[1]!) + 1;
+		const month = MONTHS.indexOf(date[1]) + 1;
 		const hour24 = (Number(date[4]) % 12) + (date[6] === "PM" ? 12 : 0);
 		return `${date[3]}年${month}月${Number(date[2])}日 ${pad(hour24)}:${date[5]}`;
 	}
@@ -131,9 +130,7 @@ export function installZhCopy(document: Document): void {
 	const observer = new MutationObserver((mutations) => {
 		for (const mutation of mutations) {
 			const target =
-				mutation.target instanceof Element
-					? mutation.target
-					: mutation.target.parentElement;
+				mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
 			const container = target?.closest(ZH_COPY_SCOPE);
 			if (container) applyZhCopy(container);
 		}

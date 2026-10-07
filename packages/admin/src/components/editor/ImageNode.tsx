@@ -11,7 +11,6 @@
 
 import { Button, Input } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Trash, Pencil, X, Check, SlidersHorizontal } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import type { NodeViewProps } from "@tiptap/react";
 import { Node, mergeAttributes } from "@tiptap/react";
@@ -19,6 +18,7 @@ import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
 import * as React from "react";
 
 import { fetchMediaItem } from "../../lib/api/media.js";
+import { Trash, Pencil, X, Check, SlidersHorizontal } from "../../lib/icons.js";
 import { canonicalMediaProviderId, getMediaPreviewUrl } from "../../lib/media-utils.js";
 import { cn } from "../../lib/utils";
 import type { ImageAttributes, ImagePanelAttributes } from "./ImageDetailPanel";

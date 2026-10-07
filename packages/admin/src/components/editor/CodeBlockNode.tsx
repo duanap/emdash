@@ -26,7 +26,6 @@
 
 import { Autocomplete, Popover, Toolbar, Tooltip, TooltipProvider } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { CaretDown, Check, Copy, X } from "@phosphor-icons/react";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
@@ -34,6 +33,7 @@ import dockerfile from "highlight.js/lib/languages/dockerfile";
 import { common, createLowlight } from "lowlight";
 import * as React from "react";
 
+import { CaretDown, Check, Copy, X } from "../../lib/icons.js";
 import {
 	CODE_BLOCK_LANGUAGES,
 	languageLabelDescriptor,

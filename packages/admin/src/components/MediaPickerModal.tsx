@@ -13,19 +13,6 @@ import { ScrollArea } from "@cloudflare/kumo/primitives/scroll-area";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import {
-	ArrowLeft,
-	Globe,
-	Image,
-	ImagesSquare,
-	List,
-	LinkSimple,
-	Paperclip,
-	PencilSimple,
-	SquaresFour,
-	Upload,
-	X,
-} from "@phosphor-icons/react";
-import {
 	keepPreviousData,
 	useInfiniteQuery,
 	useMutation,
@@ -52,6 +39,19 @@ import {
 } from "../lib/api.js";
 import { useCurrentUser } from "../lib/api/current-user.js";
 import { useDebouncedValue } from "../lib/hooks.js";
+import {
+	ArrowLeft,
+	Globe,
+	Image,
+	ImagesSquare,
+	List,
+	LinkSimple,
+	Paperclip,
+	PencilSimple,
+	SquaresFour,
+	Upload,
+	X,
+} from "../lib/icons.js";
 import { canonicalMediaProviderId, providerItemToMediaItem } from "../lib/media-utils.js";
 import { matchesMimeAllowlist, mimeFromUrl } from "../lib/mime-utils.js";
 import {

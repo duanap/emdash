@@ -1,7 +1,7 @@
 import { Button } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Sun, Moon } from "@phosphor-icons/react";
 
+import { Sun, Moon } from "../lib/icons.js";
 import { useTheme } from "./ThemeProvider";
 
 export function ThemeToggle() {

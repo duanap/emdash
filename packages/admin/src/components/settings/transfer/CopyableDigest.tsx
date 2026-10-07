@@ -1,7 +1,8 @@
 import { Button } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Check, Copy } from "@phosphor-icons/react";
 import * as React from "react";
+
+import { Check, Copy } from "../../../lib/icons.js";
 
 /** Copy `text` to the clipboard, reporting success for two seconds. */
 export function useCopyToClipboard(): [boolean, (text: string) => Promise<void>] {

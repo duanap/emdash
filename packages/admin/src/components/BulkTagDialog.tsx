@@ -1,6 +1,5 @@
 import { Badge, Button, Dialog, Input, InputArea, Select } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { CheckCircle, MinusCircle, Question, WarningCircle, X } from "@phosphor-icons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -12,6 +11,7 @@ import {
 	type BulkTagSource,
 	type TaxonomyTerm,
 } from "../lib/api/taxonomies.js";
+import { CheckCircle, MinusCircle, Question, WarningCircle, X } from "../lib/icons.js";
 import { inlineLabel } from "../lib/inline-label.js";
 import { DialogError } from "./DialogError.js";
 

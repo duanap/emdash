@@ -1,5 +1,4 @@
-import { ArrowRightIcon, CaretRightIcon, type IconProps } from "@phosphor-icons/react";
-
+import { ArrowRightIcon, CaretRightIcon, type IconProps } from "../lib/icons.js";
 import { cn } from "../lib/utils";
 
 /** Caret pointing in the "forward" direction — right in LTR, left in RTL. */

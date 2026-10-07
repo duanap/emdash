@@ -2,7 +2,7 @@
 /**
  * 会员登录页（Phase 5.1）。QQ 授权流：
  *   登录按钮 → GET /_emdash/api/plugins/duanap-members/auth/qq/start?returnTo=…
- *   → HTML 跳转页到 graph.qq.com → 授权后回 callback → 种会话 → 302 回 returnTo
+ *   → 302 到 graph.qq.com → 授权后回 callback → 种会话 → 302 回 returnTo
  * 登录态检测在客户端完成（fetch auth/status），错误码从 query 读取。
  */
 import Base from "../layouts/Base.astro";
@@ -34,13 +34,18 @@ const ERROR_MESSAGES: Record<string, string> = {
 			)
 		}
 
-		<div class="login-card" id="login-card" data-plugin-base="/_emdash/api/plugins/duanap-members">
+		<div
+			class="login-card"
+			id="login-card"
+			data-plugin-base="/_emdash/api/plugins/duanap-members"
+		>
 			<div class="loading">正在检查登录状态…</div>
 		</div>
 	</section>
 </Base>
 
 <script>
+	import { safeReturnTo } from "../utils/return-to.js";
 	interface StatusData {
 		loggedIn: boolean;
 		member: { displayName: string; avatarUrl: string } | null;
@@ -55,24 +60,44 @@ const ERROR_MESSAGES: Record<string, string> = {
 			const res = await fetch(`${pluginBase}/auth/status`);
 			// 宿主信封 { success, data } 会再包一层 handler 返回值
 			const json = (await res.json()) as any;
-			const data = json?.data?.data ?? json?.data as StatusData | undefined;
+			const data = json?.data?.data ?? (json?.data as StatusData | undefined);
 			if (!data) throw new Error("bad status payload");
 
 			if (data.loggedIn && data.member) {
-				const returnTo = new URLSearchParams(location.search).get("returnTo") || "/";
-				card.innerHTML = `
-					<div class="logged-in">
-						${data.member.avatarUrl ? `<img class="avatar" src="${data.member.avatarUrl}" alt="" />` : ""}
-						<div class="who">
-							<p class="name">${data.member.displayName}</p>
-							<p class="hint">已登录</p>
-						</div>
-					</div>
-					<div class="actions">
-						<a class="btn ghost" href="${returnTo}">继续浏览</a>
-						<button type="button" class="btn" id="logout-btn">退出登录</button>
-					</div>`;
-				const logoutBtn = document.getElementById("logout-btn");
+				const returnTo = safeReturnTo(
+					new URLSearchParams(location.search).get("returnTo"),
+					location.origin,
+				);
+				const identity = document.createElement("div");
+				identity.className = "logged-in";
+				const avatar = document.createElement("img");
+				avatar.className = "avatar";
+				avatar.src = data.member.avatarUrl || "/defaults/user-avatar.png";
+				avatar.alt = "";
+				identity.append(avatar);
+				const who = document.createElement("div");
+				who.className = "who";
+				const name = document.createElement("p");
+				name.className = "name";
+				name.textContent = data.member.displayName;
+				const hint = document.createElement("p");
+				hint.className = "hint";
+				hint.textContent = "已登录";
+				who.append(name, hint);
+				identity.append(who);
+				const actions = document.createElement("div");
+				actions.className = "actions";
+				const continueLink = document.createElement("a");
+				continueLink.className = "btn ghost";
+				continueLink.href = returnTo;
+				continueLink.textContent = "继续浏览";
+				const logoutBtn = document.createElement("button");
+				logoutBtn.type = "button";
+				logoutBtn.className = "btn";
+				logoutBtn.id = "logout-btn";
+				logoutBtn.textContent = "退出登录";
+				actions.append(continueLink, logoutBtn);
+				card.replaceChildren(identity, actions);
 				logoutBtn?.addEventListener("click", async () => {
 					await fetch(`${pluginBase}/auth/logout`, { method: "POST" });
 					location.reload();

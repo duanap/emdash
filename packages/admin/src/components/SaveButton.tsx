@@ -1,9 +1,9 @@
 import { Button, Loader } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { Check, FloppyDisk } from "@phosphor-icons/react";
 import { isValidElement, useEffect, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 
+import { Check, FloppyDisk } from "../lib/icons.js";
 import { cn } from "../lib/utils";
 
 type SaveState = "save" | "saving" | "saved";

@@ -1,9 +1,9 @@
 import { Button, Loader, Select } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { UserPlus, Prohibit, CheckCircle } from "@phosphor-icons/react";
 import * as React from "react";
 
 import type { UserListItem } from "../../lib/api";
+import { UserPlus, Prohibit, CheckCircle } from "../../lib/icons.js";
 import { cn } from "../../lib/utils";
 import { TableToolbar, TableToolbarSearch } from "../TableToolbar.js";
 import { RoleBadge } from "./RoleBadge";

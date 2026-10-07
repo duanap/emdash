@@ -14,6 +14,11 @@ import type { Element } from "@emdash-cms/blocks";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
+import { Node, mergeAttributes } from "@tiptap/core";
+import type { NodeViewProps } from "@tiptap/react";
+import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
+import * as React from "react";
+
 import {
 	DotsSixVertical,
 	Trash,
@@ -27,12 +32,7 @@ import {
 	Copy,
 	Cube,
 	ListBullets,
-} from "@phosphor-icons/react";
-import { Node, mergeAttributes } from "@tiptap/core";
-import type { NodeViewProps } from "@tiptap/react";
-import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
-import * as React from "react";
-
+} from "../../lib/icons.js";
 import { cn } from "../../lib/utils";
 
 /**

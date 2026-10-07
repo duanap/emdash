@@ -348,7 +348,9 @@ describe("Dashboard", () => {
 
 		const screen = await render(<Dashboard manifest={manifest} />);
 
-		await expect.element(screen.getByText("Content")).toBeInTheDocument();
+		await expect
+			.element(screen.getByRole("heading", { name: "Content", exact: true }))
+			.toBeInTheDocument();
 		await expect
 			.element(screen.getByText("Scheduled publishing needs attention"))
 			.not.toBeInTheDocument();
@@ -373,7 +375,7 @@ describe("Dashboard", () => {
 		const screen = await render(<Dashboard manifest={manifest} />);
 
 		await expect
-			.element(screen.getByRole("link", { name: "Page" }))
+			.element(screen.getByRole("link", { name: "Page", exact: true }))
 			.toHaveAttribute("href", "/content/pages/new");
 	});
 
@@ -390,7 +392,9 @@ describe("Dashboard", () => {
 
 		const screen = await render(<Dashboard manifest={withOptOuts} />);
 
-		await expect.element(screen.getByRole("link", { name: "Page" })).toBeInTheDocument();
+		await expect
+			.element(screen.getByRole("link", { name: "Page", exact: true }))
+			.toBeInTheDocument();
 		await expect.element(screen.getByRole("link", { name: "Sync run" })).not.toBeInTheDocument();
 		await expect.element(screen.getByRole("link", { name: "Setting" })).not.toBeInTheDocument();
 	});

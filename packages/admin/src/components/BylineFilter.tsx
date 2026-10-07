@@ -1,12 +1,12 @@
 import { Badge, Button, Checkbox, Input, Popover, Switch } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { CaretDown } from "@phosphor-icons/react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
 import { fetchBylines, type BylineSummary } from "../lib/api";
 import { useDebouncedValue } from "../lib/hooks.js";
+import { CaretDown } from "../lib/icons.js";
 import { FieldHelpLabel } from "./FieldHelpLabel.js";
 
 /**

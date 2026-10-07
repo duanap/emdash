@@ -8,10 +8,10 @@
 
 import { Button } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { X } from "@phosphor-icons/react";
 import * as React from "react";
 
 import type { ContentSeo, ContentSeoInput, MediaItem } from "../lib/api";
+import { X } from "../lib/icons.js";
 import { FieldHelpLabel } from "./FieldHelpLabel.js";
 import { ImageDropTarget } from "./media/ImageDropTarget.js";
 import { MediaPickerModal } from "./MediaPickerModal";

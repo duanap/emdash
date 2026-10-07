@@ -23,7 +23,6 @@ import { Button, Dialog, Input, InputArea, Select, Switch } from "@cloudflare/ku
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { X } from "@phosphor-icons/react";
 import * as React from "react";
 
 import type {
@@ -33,6 +32,7 @@ import type {
 	CreateBylineFieldInput,
 	UpdateBylineFieldInput,
 } from "../lib/api/byline-fields.js";
+import { X } from "../lib/icons.js";
 import { DialogError, getMutationError } from "./DialogError.js";
 
 // Slug auto-generation: lowercase + replace non-alphanumeric with `_` +

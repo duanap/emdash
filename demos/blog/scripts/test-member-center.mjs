@@ -67,7 +67,10 @@ function createHarness(content = {}, comments = {}) {
 			},
 			async query(queryOptions = {}) {
 				assertIndexed(queryOptions.where);
-				let items = Array.from(store.entries(), ([id, data]) => ({ id, data: structuredClone(data) }));
+				let items = Array.from(store.entries(), ([id, data]) => ({
+					id,
+					data: structuredClone(data),
+				}));
 				if (queryOptions.where) {
 					items = items.filter((item) =>
 						Object.entries(queryOptions.where).every(
@@ -233,8 +236,20 @@ await test("收藏列表：解析标题/链接、按收藏时间倒序，点赞�
 		"projects:pr1": { status: "published", slug: "tool", title: "小工具" },
 	});
 	await harness.seedMember(MEMBER);
-	await harness.seedActivity("favorite", "posts", "p1", "2026-09-20T10:00:00.000Z", MEMBER.qqOpenid);
-	await harness.seedActivity("favorite", "projects", "pr1", "2026-09-25T10:00:00.000Z", MEMBER.qqOpenid);
+	await harness.seedActivity(
+		"favorite",
+		"posts",
+		"p1",
+		"2026-09-20T10:00:00.000Z",
+		MEMBER.qqOpenid,
+	);
+	await harness.seedActivity(
+		"favorite",
+		"projects",
+		"pr1",
+		"2026-09-25T10:00:00.000Z",
+		MEMBER.qqOpenid,
+	);
 	await harness.seedActivity("like", "posts", "p1", "2026-09-21T10:00:00.000Z", MEMBER.qqOpenid);
 
 	const result = await overview(harness, `${SESSION_COOKIE}=sess_a`);
@@ -256,9 +271,27 @@ await test("内容下线/未发布：列表隐藏但计入 unavailableFavorites"
 		"posts:draft": { status: "draft", slug: "secret", title: "草稿" },
 	});
 	await harness.seedMember(MEMBER);
-	await harness.seedActivity("favorite", "posts", "p1", "2026-09-20T10:00:00.000Z", MEMBER.qqOpenid);
-	await harness.seedActivity("favorite", "posts", "draft", "2026-09-26T10:00:00.000Z", MEMBER.qqOpenid);
-	await harness.seedActivity("favorite", "life", "gone", "2026-09-27T10:00:00.000Z", MEMBER.qqOpenid);
+	await harness.seedActivity(
+		"favorite",
+		"posts",
+		"p1",
+		"2026-09-20T10:00:00.000Z",
+		MEMBER.qqOpenid,
+	);
+	await harness.seedActivity(
+		"favorite",
+		"posts",
+		"draft",
+		"2026-09-26T10:00:00.000Z",
+		MEMBER.qqOpenid,
+	);
+	await harness.seedActivity(
+		"favorite",
+		"life",
+		"gone",
+		"2026-09-27T10:00:00.000Z",
+		MEMBER.qqOpenid,
+	);
 
 	const result = await overview(harness, `${SESSION_COOKIE}=sess_a`);
 	assert.equal(result.counts.favorites, 3);
@@ -312,7 +345,11 @@ await test("昵称校验：空、纯空格、超 40 字都拒绝，且不落库"
 
 	for (const displayName of ["", "   ", "x".repeat(41)]) {
 		const result = await profile(harness, cookie, { displayName });
-		assert.deepEqual(result, { ok: false, reason: "invalid_profile", errors: ["display_name_invalid"] });
+		assert.deepEqual(result, {
+			ok: false,
+			reason: "invalid_profile",
+			errors: ["display_name_invalid"],
+		});
 	}
 	assert.equal((await currentMember(harness)).displayName, "会员甲", "校验失败不应改到资料");
 });
@@ -322,9 +359,17 @@ await test("头像必须是 https，且长度受限", async () => {
 	await harness.seedMember(MEMBER);
 	const cookie = `${SESSION_COOKIE}=sess_a`;
 
-	for (const avatarUrl of ["http://example.com/a.png", "not-a-url", `https://example.com/${"a".repeat(2100)}`]) {
+	for (const avatarUrl of [
+		"http://example.com/a.png",
+		"not-a-url",
+		`https://example.com/${"a".repeat(2100)}`,
+	]) {
 		const result = await profile(harness, cookie, { avatarUrl });
-		assert.deepEqual(result, { ok: false, reason: "invalid_profile", errors: ["avatar_url_invalid"] });
+		assert.deepEqual(result, {
+			ok: false,
+			reason: "invalid_profile",
+			errors: ["avatar_url_invalid"],
+		});
 	}
 	assert.equal((await currentMember(harness)).avatarUrl, MEMBER.avatarUrl, "校验失败不应改到头像");
 });
@@ -443,7 +488,8 @@ await test("派生身份稳定且与 openid 一一对应", async () => {
 	harness.ctx.request = new Request(`${PLUGIN_BASE}/auth/status`, {
 		headers: { cookie: `${SESSION_COOKIE}=sess_b` },
 	});
-	const second = (await plugin.routes["auth/status"].handler(harness.ctx)).data.commentIdentity.email;
+	const second = (await plugin.routes["auth/status"].handler(harness.ctx)).data.commentIdentity
+		.email;
 
 	assert.notEqual(first, second);
 	assert.equal(await memberIdentityEmail(harness), first, "同一 openid 应得到同一身份");
@@ -479,7 +525,12 @@ await test("comment:afterCreate：非会员邮箱被忽略", async () => {
 	const harness = createHarness();
 	await harness.seedMember(MEMBER);
 
-	const outsiders = ["guest@example.com", "", "member-0123456789abcdef@example.com", "member-x@members.duanap.cn"];
+	const outsiders = [
+		"guest@example.com",
+		"",
+		"member-0123456789abcdef@example.com",
+		"member-x@members.duanap.cn",
+	];
 	for (const [index, authorEmail] of outsiders.entries()) {
 		await fireCommentCreated(harness, {
 			id: `c-outsider-${index}`,

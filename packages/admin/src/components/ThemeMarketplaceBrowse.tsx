@@ -9,15 +9,6 @@ import { Button, Input, Select } from "@cloudflare/kumo";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	MagnifyingGlass,
-	Palette,
-	Warning,
-	ArrowsClockwise,
-	ArrowSquareOut,
-	Eye,
-	ShieldCheck,
-} from "@phosphor-icons/react";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
@@ -28,6 +19,15 @@ import {
 	type ThemeSummary,
 	type ThemeSearchOpts,
 } from "../lib/api/theme-marketplace.js";
+import {
+	MagnifyingGlass,
+	Palette,
+	Warning,
+	ArrowsClockwise,
+	ArrowSquareOut,
+	Eye,
+	ShieldCheck,
+} from "../lib/icons.js";
 
 type SortOption = "updated" | "created" | "name";
 

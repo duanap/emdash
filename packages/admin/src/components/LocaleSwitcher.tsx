@@ -8,9 +8,9 @@
  */
 
 import { useLingui } from "@lingui/react/macro";
-import { CaretDown, GlobeSimple } from "@phosphor-icons/react";
 import React from "react";
 
+import { CaretDown, GlobeSimple } from "../lib/icons.js";
 import { cn } from "../lib/utils.js";
 
 interface LocaleSwitcherProps {

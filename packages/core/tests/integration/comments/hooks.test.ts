@@ -71,6 +71,32 @@ describe("Comment Service with CommentHookRunner", () => {
 		};
 	}
 
+	it("requires approval even when a moderation hook approves public board messages", async () => {
+		const result = await createComment(
+			db,
+			{ ...defaultInput, requireApproval: true },
+			defaultSettings({ commentsModeration: "none" }),
+			makeHookRunner(),
+		);
+		expect(result?.comment.status).toBe("pending");
+		const stored = await db
+			.selectFrom("_emdash_comments")
+			.select("status")
+			.where("id", "=", result!.comment.id)
+			.executeTakeFirstOrThrow();
+		expect(stored.status).toBe("pending");
+	});
+
+	it("keeps spam decisions when board submissions require approval", async () => {
+		const result = await createComment(
+			db,
+			{ ...defaultInput, requireApproval: true },
+			defaultSettings(),
+			makeHookRunner({ runModerate: async () => ({ status: "spam", reason: "Spam detected" }) }),
+		);
+		expect(result?.comment.status).toBe("spam");
+	});
+
 	it("creates comment with status from runModerate", async () => {
 		const hooks = makeHookRunner({
 			runModerate: vi.fn(async () => ({ status: "pending" as const, reason: "Held" })),

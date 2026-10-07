@@ -474,7 +474,12 @@ export function injectCoreRoutes(
 		entrypoint: resolveRoute("api/settings.ts"),
 	});
 
-	// Email settings route
+	// Sitemap settings route
+	injectRoute({
+		pattern: "/_emdash/api/settings/sitemap",
+		entrypoint: resolveRoute("api/settings/sitemap.ts"),
+		prerender: false,
+	});
 	injectRoute({
 		pattern: "/_emdash/api/settings/email",
 		entrypoint: resolveRoute("api/settings/email.ts"),

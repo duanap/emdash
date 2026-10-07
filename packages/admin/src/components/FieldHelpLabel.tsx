@@ -1,6 +1,7 @@
 import { Button, Label, Tooltip } from "@cloudflare/kumo";
-import { Info } from "@phosphor-icons/react";
 import { useState, type ComponentProps, type ReactNode } from "react";
+
+import { Info } from "../lib/icons.js";
 
 export function FieldHelpLabel({
 	children,

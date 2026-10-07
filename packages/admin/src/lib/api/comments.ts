@@ -12,6 +12,7 @@ import {
 	throwResponseError,
 	type FindManyResult,
 } from "./client.js";
+import { fetchContentList } from "./content.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,7 +39,7 @@ export interface AdminComment {
 
 export type CommentCounts = Record<CommentStatus, number>;
 
-export type BulkAction = "approve" | "spam" | "trash" | "delete";
+export type BulkAction = "approve" | "spam" | "trash" | "delete" | "restore";
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -118,10 +119,66 @@ export async function bulkCommentAction(
 	ids: string[],
 	action: BulkAction,
 ): Promise<{ affected: number }> {
-	const response = await apiFetch(`${API_BASE}/admin/comments/bulk`, {
+	let affected = 0;
+	for (let offset = 0; offset < ids.length; offset += 100) {
+		const response = await apiFetch(`${API_BASE}/admin/comments/bulk`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ ids: ids.slice(offset, offset + 100), action }),
+		});
+		const result = await parseApiResponse<{ affected: number }>(
+			response,
+			"Failed to perform bulk action",
+		);
+		affected += result.affected;
+	}
+	return { affected };
+}
+
+/**
+ * Create a stored comment directly (admin message-board entries).
+ * status defaults to approved on the server.
+ */
+export async function createAdminComment(input: {
+	collection: string;
+	contentId: string;
+	authorName: string;
+	body: string;
+	parentId?: string;
+}): Promise<AdminComment> {
+	const response = await apiFetch(`${API_BASE}/admin/comments`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ ids, action }),
+		body: JSON.stringify({
+			...input,
+			authorEmail: "wall-admin@duanap.local",
+		}),
 	});
-	return parseApiResponse<{ affected: number }>(response, "Failed to perform bulk action");
+	return parseApiResponse<AdminComment>(response, "Failed to create message");
+}
+
+/**
+ * Edit an existing stored comment (body / author name).
+ */
+export async function updateAdminComment(
+	id: string,
+	fields: { body?: string; authorName?: string },
+): Promise<AdminComment> {
+	const response = await apiFetch(`${API_BASE}/admin/comments/${id}`, {
+		method: "PATCH",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(fields),
+	});
+	return parseApiResponse<AdminComment>(response, "Failed to update message");
+}
+
+export async function fetchMessageBoardContainer(collection: string, locale?: string) {
+	const page = await fetchContentList(collection, {
+		limit: 1,
+		locale,
+		status: "published",
+		orderBy: "createdAt",
+		order: "asc",
+	});
+	return page.items[0];
 }

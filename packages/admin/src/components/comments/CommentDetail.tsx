@@ -7,11 +7,11 @@
 
 import { Badge, Button } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { X, Check, Trash, Warning, UserCircle, EnvelopeSimple } from "@phosphor-icons/react";
 import * as React from "react";
 import type { ComponentProps } from "react";
 
 import type { AdminComment, CommentStatus } from "../../lib/api/comments.js";
+import { X, Check, Trash, Warning, UserCircle, EnvelopeSimple } from "../../lib/icons.js";
 
 export interface CommentDetailProps {
 	comment: AdminComment;

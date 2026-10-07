@@ -205,6 +205,7 @@ export async function submitPublicComment(
 				authorEmail,
 				authorUserId: user?.id ?? null,
 				body: body.body,
+				requireApproval: runtime.config.admin?.messageBoardCollection === collection,
 				ipHash,
 				userAgent: meta.userAgent,
 			},

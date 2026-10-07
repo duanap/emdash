@@ -303,7 +303,10 @@ await test("callback 成功：建会员 + 建会话 + 302 回 returnTo", async (
 	assert.ok(session, "expected the session record");
 	assert.equal(session.memberId, "OPENID-1");
 	const ttl = new Date(session.expiresAt).getTime() - Date.now();
-	assert.ok(ttl > 6.9 * 24 * 3600_000 && ttl <= 7 * 24 * 3600_000, `session TTL out of range: ${ttl}`);
+	assert.ok(
+		ttl > 6.9 * 24 * 3600_000 && ttl <= 7 * 24 * 3600_000,
+		`session TTL out of range: ${ttl}`,
+	);
 
 	assert.ok(
 		setCookies(response).some((value) => value.startsWith(`${STATE_COOKIE}=;`)),
@@ -534,7 +537,11 @@ await test("过期会话既不解出会员，也会被清掉", async () => {
 		statusRequest(`${SESSION_COOKIE}=sess_expired`),
 	);
 	assert.equal(status.data.loggedIn, false);
-	assert.equal(harness.rows("sessions").has("sess_expired"), false, "expired session should be pruned");
+	assert.equal(
+		harness.rows("sessions").has("sess_expired"),
+		false,
+		"expired session should be pruned",
+	);
 });
 
 await test("会员被停用后既有会话立即失效", async () => {

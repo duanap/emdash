@@ -1,7 +1,6 @@
 import { Badge, Banner, Button, Loader, Meter } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { CheckCircle, FileArrowUp } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -19,6 +18,7 @@ import {
 	type TransferOperation,
 	type TransferPage,
 } from "../../../lib/api/transfer.js";
+import { CheckCircle, FileArrowUp } from "../../../lib/icons.js";
 import { formatFileSize } from "../../../lib/media-utils.js";
 import {
 	EarlierImportWroteError,

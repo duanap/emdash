@@ -368,14 +368,46 @@ db.prepare(
 const insertMember = db.prepare(
 	"insert into members (id, display_name, avatar_url, bio, status, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?)",
 );
-insertMember.run(1, "老会员甲", "https://thirdqq.qlogo.cn/a.png", "旧站就注册了", "active", at("2025-06-01T08:00:00Z"), at("2026-01-01T08:00:00Z"));
-insertMember.run(2, "老会员乙", "", "", "disabled", at("2025-07-01T08:00:00Z"), at("2026-01-02T08:00:00Z"));
+insertMember.run(
+	1,
+	"老会员甲",
+	"https://thirdqq.qlogo.cn/a.png",
+	"旧站就注册了",
+	"active",
+	at("2025-06-01T08:00:00Z"),
+	at("2026-01-01T08:00:00Z"),
+);
+insertMember.run(
+	2,
+	"老会员乙",
+	"",
+	"",
+	"disabled",
+	at("2025-07-01T08:00:00Z"),
+	at("2026-01-02T08:00:00Z"),
+);
 db.prepare(
 	"insert into member_identities (id, member_id, provider, provider_subject, nickname, avatar_url, created_at, updated_at) values (?, ?, 'qq', ?, ?, ?, ?, ?)",
-).run(1, 1, "QQ-OPENID-OLD-1", "老会员甲", "https://thirdqq.qlogo.cn/a.png", at("2025-06-01T08:00:00Z"), at("2026-01-01T08:00:00Z"));
+).run(
+	1,
+	1,
+	"QQ-OPENID-OLD-1",
+	"老会员甲",
+	"https://thirdqq.qlogo.cn/a.png",
+	at("2025-06-01T08:00:00Z"),
+	at("2026-01-01T08:00:00Z"),
+);
 db.prepare(
 	"insert into member_identities (id, member_id, provider, provider_subject, nickname, avatar_url, created_at, updated_at) values (?, ?, 'qq', ?, ?, ?, ?, ?)",
-).run(2, 2, "QQ-OPENID-OLD-2", "老会员乙", "", at("2025-07-01T08:00:00Z"), at("2026-01-02T08:00:00Z"));
+).run(
+	2,
+	2,
+	"QQ-OPENID-OLD-2",
+	"老会员乙",
+	"",
+	at("2025-07-01T08:00:00Z"),
+	at("2026-01-02T08:00:00Z"),
+);
 
 const insertLike = db.prepare(
 	"insert into member_likes (id, member_id, target_type, target_id, created_at) values (?, ?, ?, ?, ?)",
@@ -395,17 +427,115 @@ const insertComment = db.prepare(
 	`insert into comments (id, target_type, target_id, parent_id, member_id, author, initials, time_label, content, likes, is_author, status, created_at, updated_at)
 	 values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 );
-insertComment.run(1, "article", 1, null, 1, "老会员甲", "老", "2026-03-01", "写得不错，收藏了。", 2, 0, "published", at("2026-03-01T12:00:00Z"), at("2026-03-01T12:00:00Z"));
-insertComment.run(2, "article", 1, 1, null, "路人", "路", "2026-03-01", "同感。", 0, 0, "published", at("2026-03-01T13:00:00Z"), at("2026-03-01T13:00:00Z"));
-insertComment.run(3, "article", 1, null, null, "待审核的人", "待", "2026-03-02", "这条还在审核。", 0, 0, "pending", at("2026-03-02T12:00:00Z"), at("2026-03-02T12:00:00Z"));
-insertComment.run(4, "article", 1, null, null, "被隐藏的人", "隐", "2026-03-02", "这条被隐藏了。", 0, 0, "hidden", at("2026-03-02T13:00:00Z"), at("2026-03-02T13:00:00Z"));
-insertComment.run(5, "message", 0, null, 1, "老会员甲", "老", "2026-03-03", "留言墙上的第一条。", 1, 0, "published", at("2026-03-03T12:00:00Z"), at("2026-03-03T12:00:00Z"));
-insertComment.run(6, "life", 1, null, null, "路人", "路", "2026-03-08", "照片拍得好。", 0, 0, "published", at("2026-03-08T12:00:00Z"), at("2026-03-08T12:00:00Z"));
+insertComment.run(
+	1,
+	"article",
+	1,
+	null,
+	1,
+	"老会员甲",
+	"老",
+	"2026-03-01",
+	"写得不错，收藏了。",
+	2,
+	0,
+	"published",
+	at("2026-03-01T12:00:00Z"),
+	at("2026-03-01T12:00:00Z"),
+);
+insertComment.run(
+	2,
+	"article",
+	1,
+	1,
+	null,
+	"路人",
+	"路",
+	"2026-03-01",
+	"同感。",
+	0,
+	0,
+	"published",
+	at("2026-03-01T13:00:00Z"),
+	at("2026-03-01T13:00:00Z"),
+);
+insertComment.run(
+	3,
+	"article",
+	1,
+	null,
+	null,
+	"待审核的人",
+	"待",
+	"2026-03-02",
+	"这条还在审核。",
+	0,
+	0,
+	"pending",
+	at("2026-03-02T12:00:00Z"),
+	at("2026-03-02T12:00:00Z"),
+);
+insertComment.run(
+	4,
+	"article",
+	1,
+	null,
+	null,
+	"被隐藏的人",
+	"隐",
+	"2026-03-02",
+	"这条被隐藏了。",
+	0,
+	0,
+	"hidden",
+	at("2026-03-02T13:00:00Z"),
+	at("2026-03-02T13:00:00Z"),
+);
+insertComment.run(
+	5,
+	"message",
+	0,
+	null,
+	1,
+	"老会员甲",
+	"老",
+	"2026-03-03",
+	"留言墙上的第一条。",
+	1,
+	0,
+	"published",
+	at("2026-03-03T12:00:00Z"),
+	at("2026-03-03T12:00:00Z"),
+);
+insertComment.run(
+	6,
+	"life",
+	1,
+	null,
+	null,
+	"路人",
+	"路",
+	"2026-03-08",
+	"照片拍得好。",
+	0,
+	0,
+	"published",
+	at("2026-03-08T12:00:00Z"),
+	at("2026-03-08T12:00:00Z"),
+);
 
 // ─── 其它 ─────────────────────────────────────────────────────────
 
-db.prepare("insert into settings (key, value, updated_at) values (?, ?, ?)").run("site.title", "duanap的小破站", at("2026-01-01T00:00:00Z"));
-db.prepare("insert into settings (key, value, updated_at) values (?, ?, ?)").run("comment.enabled", "true", at("2026-01-01T00:00:00Z"));
+db.prepare("insert into settings (key, value, updated_at) values (?, ?, ?)").run(
+	"site.title",
+	"duanap的小破站",
+	at("2026-01-01T00:00:00Z"),
+);
+db.prepare("insert into settings (key, value, updated_at) values (?, ?, ?)").run(
+	"comment.enabled",
+	"true",
+	at("2026-01-01T00:00:00Z"),
+);
 db.prepare("insert into settings (key, value, updated_at) values (?, ?, ?)").run(
 	"friends.items",
 	JSON.stringify([
@@ -415,8 +545,13 @@ db.prepare("insert into settings (key, value, updated_at) values (?, ?, ?)").run
 	]),
 	at("2026-01-01T00:00:00Z"),
 );
-db.prepare("insert into content_id_tombstones (target_type, target_id) values (?, ?)").run("article", 99);
-db.prepare("insert into admin_users (id, username, password_hash, created_at, updated_at) values (?, ?, ?, ?, ?)").run(1, "duanap", "scrypt$placeholder", at("2025-01-01T00:00:00Z"), at("2025-01-01T00:00:00Z"));
+db.prepare("insert into content_id_tombstones (target_type, target_id) values (?, ?)").run(
+	"article",
+	99,
+);
+db.prepare(
+	"insert into admin_users (id, username, password_hash, created_at, updated_at) values (?, ?, ?, ?, ?)",
+).run(1, "duanap", "scrypt$placeholder", at("2025-01-01T00:00:00Z"), at("2025-01-01T00:00:00Z"));
 
 const counts = {};
 for (const table of [

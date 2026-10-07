@@ -22,7 +22,6 @@
 import { Button, Loader, Toast } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { ArrowDown, ArrowUp, IdentificationCard, Pencil, Plus, Trash } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -40,6 +39,7 @@ import {
 	type UpdateBylineFieldInput,
 } from "../lib/api/byline-fields.js";
 import { useCurrentUser } from "../lib/api/current-user.js";
+import { ArrowDown, ArrowUp, IdentificationCard, Pencil, Plus, Trash } from "../lib/icons.js";
 
 // Mirror of `packages/auth/src/rbac.ts:Role.ADMIN`. Inline here for the
 // same reason the existing routes inline `ROLE_EDITOR` / `ROLE_ADMIN`:

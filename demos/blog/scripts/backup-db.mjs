@@ -45,9 +45,9 @@ try {
 		.map((row) => row.name);
 	const mismatches = [];
 	for (const table of tables) {
-		const before = source.prepare(`select count(*) as n from "${table}"`).get().n;
-		const after = backup.prepare(`select count(*) as n from "${table}"`).get().n;
-		if (before !== after) mismatches.push(`${table}: ${before} → ${after}`);
+		const before = source.prepare(`select count(*) as n from "${String(table)}"`).get().n;
+		const after = backup.prepare(`select count(*) as n from "${String(table)}"`).get().n;
+		if (before !== after) mismatches.push(`${String(table)}: ${String(before)} → ${String(after)}`);
 	}
 	if (mismatches.length > 0) {
 		console.error(`备份校验失败：\n  ${mismatches.join("\n  ")}`);

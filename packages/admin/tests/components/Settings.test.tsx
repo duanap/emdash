@@ -80,15 +80,17 @@ describe("Settings", () => {
 			.toBeInTheDocument();
 	});
 
-	it("shows links to General, Social, and SEO sub-pages", async () => {
+	it("shows links to site identity, social, and search engine settings", async () => {
 		const screen = await render(
 			<Wrapper>
 				<Settings />
 			</Wrapper>,
 		);
-		await expect.element(screen.getByText("General")).toBeInTheDocument();
+		await expect.element(screen.getByText("Site Identity", { exact: true })).toBeInTheDocument();
 		await expect.element(screen.getByText("Social Links")).toBeInTheDocument();
-		await expect.element(screen.getByText("SEO")).toBeInTheDocument();
+		await expect
+			.element(screen.getByText("Search engine settings", { exact: true }))
+			.toBeInTheDocument();
 	});
 
 	it("shows links to API Tokens and Email sub-pages", async () => {
@@ -127,7 +129,14 @@ describe("Settings", () => {
 			</Wrapper>,
 		);
 
-		for (const name of ["Site", "Security Settings", "API Tokens", "Email Settings", "Language"]) {
+		for (const name of [
+			"Site information",
+			"Website appearance",
+			"Accounts and content models",
+			"Services and extensions",
+			"Backups and migration",
+			"Personal preferences and access",
+		]) {
 			await expect
 				.element(screen.getByRole("heading", { name, level: 2, exact: true }))
 				.toBeInTheDocument();
@@ -155,9 +164,9 @@ describe("Settings", () => {
 			</Wrapper>,
 		);
 
-		expect(screen.getByRole("link", { name: /General/ }).element()).toHaveAttribute(
+		expect(screen.getByRole("link", { name: /Site Identity/ }).element()).toHaveAttribute(
 			"href",
-			"/settings/general",
+			"/settings/identity",
 		);
 		expect(screen.getByRole("link", { name: /API Tokens/ }).element()).toHaveAttribute(
 			"href",
@@ -187,8 +196,8 @@ describe("Settings", () => {
 			</Wrapper>,
 		);
 		// Wait for the page to render by checking a link that's always visible
-		await expect.element(screen.getByText("General")).toBeInTheDocument();
-		expect(screen.getByText("Security").query()).toBeNull();
+		await expect.element(screen.getByText("Site Identity", { exact: true })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: /^Security / }).query()).toBeNull();
 		expect(screen.getByText("Self-Signup Domains").query()).toBeNull();
 	});
 });

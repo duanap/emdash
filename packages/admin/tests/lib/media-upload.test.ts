@@ -7,6 +7,16 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
+async function pngFile() {
+	const canvas = document.createElement("canvas");
+	canvas.width = 4;
+	canvas.height = 2;
+	const blob = await new Promise<Blob>((resolve) =>
+		canvas.toBlob((value) => resolve(value!), "image/png"),
+	);
+	return new File([blob], "cropped.png", { type: "image/png" });
+}
+
 function mediaItemResponse(id: string, filename: string, mimeType = "application/pdf") {
 	return Response.json({
 		success: true,
@@ -99,13 +109,15 @@ it("forces a distinct signed upload when deduplication is disabled", async () =>
 		return new Response(null, { status: 500 });
 	});
 
-	const item = await uploadMedia(new File(["png"], "cropped.png", { type: "image/png" }), {
+	const item = await uploadMedia(await pngFile(), {
 		deduplicate: false,
 		ensureUniqueFilename: true,
 		folderId: "folder-1",
 	});
 
 	expect(uploadUrlBody).toMatchObject({
+		filename: "cropped.webp",
+		contentType: "image/webp",
 		deduplicate: false,
 		ensureUniqueFilename: true,
 		folderId: "folder-1",
@@ -128,7 +140,7 @@ it("forces a distinct direct upload when deduplication is disabled", async () =>
 		return new Response(null, { status: 500 });
 	});
 
-	await uploadMedia(new File(["png"], "cropped.png", { type: "image/png" }), {
+	await uploadMedia(await pngFile(), {
 		deduplicate: false,
 		ensureUniqueFilename: true,
 		folderId: "folder-1",
@@ -137,6 +149,8 @@ it("forces a distinct direct upload when deduplication is disabled", async () =>
 	expect(directBody?.get("deduplicate")).toBe("false");
 	expect(directBody?.get("ensureUniqueFilename")).toBe("true");
 	expect(directBody?.get("folderId")).toBe("folder-1");
+	expect(directBody?.get("file")).toBeInstanceOf(File);
+	expect((directBody!.get("file") as File).type).toBe("image/webp");
 });
 
 it("replaces an image through the same-key media endpoint", async () => {
@@ -388,7 +402,7 @@ it("does not start an upload with an already-aborted signal", async () => {
 	expect(fetch).not.toHaveBeenCalled();
 });
 
-it("aborts image probing when cancellation races object URL creation", async () => {
+it("aborts conversion before any upload when cancellation races object URL creation", async () => {
 	const controller = new AbortController();
 	let failPendingImage: (() => void) | undefined;
 	class PendingImage {
@@ -431,7 +445,7 @@ it("aborts image probing when cancellation races object URL creation", async () 
 		]);
 		expect(outcome).toBe("AbortError");
 		expect(revokeObjectUrl).toHaveBeenCalledWith("blob:pending-image");
-		expect(fetch).toHaveBeenCalledOnce();
+		expect(fetch).not.toHaveBeenCalled();
 	} finally {
 		failPendingImage?.();
 		await upload.catch(() => undefined);

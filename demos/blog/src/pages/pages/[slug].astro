@@ -1,15 +1,15 @@
 ---
+import { pageSlug } from "../../utils/page-slug.js";
 import {
 	getEmDashEntry,
 	getSeoMeta,
-	decodeSlug,
 	getSiteSettings,
 } from "emdash";
 import { PortableText } from "emdash/ui";
 import Base from "../../layouts/Base.astro";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
 
-const slug = decodeSlug(Astro.params.slug);
+const slug = pageSlug(Astro.params.slug);
 
 if (!slug) {
 	return Astro.rewrite("/404");

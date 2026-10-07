@@ -19,21 +19,6 @@ import {
 } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	ArrowDown,
-	ArrowUp,
-	CaretDown,
-	CaretUp,
-	DotsThree,
-	MagnifyingGlass,
-	Plus,
-	Pencil,
-	StackSimple,
-	Tag,
-	Translate,
-	Trash,
-	X,
-} from "@phosphor-icons/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -51,6 +36,21 @@ import {
 	deleteTaxonomy,
 	deleteTerm,
 } from "../lib/api/taxonomies.js";
+import {
+	ArrowDown,
+	ArrowUp,
+	CaretDown,
+	CaretUp,
+	DotsThree,
+	MagnifyingGlass,
+	Plus,
+	Pencil,
+	StackSimple,
+	Tag,
+	Translate,
+	Trash,
+	X,
+} from "../lib/icons.js";
 import { inlineLabel } from "../lib/inline-label.js";
 import { slugify } from "../lib/utils";
 import { ADMIN_NAV_ICONS } from "./admin-navigation-icons.js";

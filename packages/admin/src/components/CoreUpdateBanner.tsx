@@ -1,11 +1,11 @@
 import { Banner, Button, LinkButton } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { ArrowCircleUp } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { fetchCoreUpdateStatus } from "../lib/api/core-update.js";
 import { useCurrentUser } from "../lib/api/current-user.js";
+import { ArrowCircleUp } from "../lib/icons.js";
 
 /** Matches Role.ADMIN in @emdash-cms/auth (same constant as Sidebar). */
 const ROLE_ADMIN = 50;

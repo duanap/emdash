@@ -152,19 +152,38 @@
 					"label": "技术栈",
 					"type": "multiSelect",
 					"validation": {
+						"allowCustom": true,
 						"options": [
 							"Vue",
 							"React",
 							"Astro",
+							"Svelte",
 							"TypeScript",
 							"JavaScript",
 							"Node.js",
+							"Deno",
+							"Bun",
 							"Fastify",
+							"Express",
 							"Vite",
 							"Rust",
 							"Python",
 							"Go",
-							"SQLite"
+							"Java",
+							"C#",
+							"C++",
+							"Swift",
+							"Kotlin",
+							"PHP",
+							"Ruby",
+							"SQLite",
+							"PostgreSQL",
+							"MySQL",
+							"Redis",
+							"MongoDB",
+							"Docker",
+							"Cloudflare Workers",
+							"WeChat Mini Program"
 						]
 					}
 				},
@@ -542,9 +561,7 @@
 								}
 							],
 							"_key": "frk2",
-							"markDefs": [
-								{ "_key": "link-1", "_type": "link", "href": "https://example.com" }
-							]
+							"markDefs": [{ "_key": "link-1", "_type": "link", "href": "https://example.com" }]
 						},
 						{
 							"_type": "block",
@@ -559,9 +576,7 @@
 								}
 							],
 							"_key": "frk5",
-							"markDefs": [
-								{ "_key": "link-2", "_type": "link", "href": "https://example.org" }
-							]
+							"markDefs": [{ "_key": "link-2", "_type": "link", "href": "https://example.org" }]
 						}
 					]
 				}

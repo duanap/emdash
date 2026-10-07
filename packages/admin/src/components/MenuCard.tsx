@@ -1,10 +1,10 @@
 import { Badge, Button, LayerCard } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { Pencil, Trash } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 
 import type { Menu } from "../lib/api/menus.js";
+import { Pencil, Trash } from "../lib/icons.js";
 import { RouterLinkButton } from "./RouterLinkButton.js";
 
 interface MenuCardProps {

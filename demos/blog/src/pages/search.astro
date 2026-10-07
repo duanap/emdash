@@ -1,4 +1,5 @@
 ---
+import { htmlPageUrl } from "../utils/public-page-url.js";
 export const prerender = false;
 
 import { search } from "emdash";
@@ -68,7 +69,7 @@ const hrefFor = (result: (typeof results)[number]) =>
 				<ol class="search-results">
 					{results.map((result) => (
 						<li class="search-result">
-							<a href={hrefFor(result)} class="result-link">
+							<a href={htmlPageUrl(hrefFor(result))} class="result-link">
 								<span class="result-collection">
 									{COLLECTION_LABELS[result.collection] ?? result.collection}
 								</span>

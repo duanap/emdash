@@ -7,7 +7,6 @@
 
 import { Button, Dialog } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { X } from "@phosphor-icons/react";
 
 import type { SchemaCollection } from "../lib/api";
 import type {
@@ -15,6 +14,7 @@ import type {
 	RelationWithUsage,
 	UpdateRelationInput,
 } from "../lib/api/relations.js";
+import { X } from "../lib/icons.js";
 import {
 	RELATION_DIALOG_CLASS,
 	RELATION_DIALOG_STYLE,

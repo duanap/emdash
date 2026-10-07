@@ -18,7 +18,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useLingui } from "@lingui/react/macro";
-import { DotsSixVertical } from "@phosphor-icons/react";
 import * as React from "react";
 
 import {
@@ -28,6 +27,7 @@ import {
 	type ContentSettingsLayout,
 	type ContentSettingsSectionId,
 } from "../lib/content-settings-layout.js";
+import { DotsSixVertical } from "../lib/icons.js";
 import { cn } from "../lib/utils.js";
 
 const STORAGE_PREFIX = "emdash:content-settings-layout:v1";

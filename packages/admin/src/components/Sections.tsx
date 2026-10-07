@@ -19,18 +19,6 @@ import {
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	Plus,
-	MagnifyingGlass,
-	Trash,
-	PencilSimple,
-	Copy,
-	DotsThree,
-	Globe,
-	User,
-	FileArrowDown,
-	X,
-} from "@phosphor-icons/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as React from "react";
@@ -42,6 +30,18 @@ import {
 	type Section,
 	type SectionSource,
 } from "../lib/api";
+import {
+	Plus,
+	MagnifyingGlass,
+	Trash,
+	PencilSimple,
+	Copy,
+	DotsThree,
+	Globe,
+	User,
+	FileArrowDown,
+	X,
+} from "../lib/icons.js";
 import { slugify } from "../lib/utils";
 import { ADMIN_NAV_ICONS } from "./admin-navigation-icons.js";
 import { ConfirmDialog } from "./ConfirmDialog.js";

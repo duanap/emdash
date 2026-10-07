@@ -16,7 +16,6 @@ import {
 	useKumoToastManager,
 } from "@cloudflare/kumo";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Pencil, Plus, Trash, X } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -28,6 +27,7 @@ import {
 	updateAllowedDomain,
 	type AllowedDomain,
 } from "../../lib/api";
+import { Pencil, Plus, Trash, X } from "../../lib/icons.js";
 import { ConfirmDialog } from "../ConfirmDialog.js";
 import { DialogError, getMutationError } from "../DialogError.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";

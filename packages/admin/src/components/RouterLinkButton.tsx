@@ -24,10 +24,10 @@
  */
 
 import { type LinkButtonProps, buttonVariants } from "@cloudflare/kumo";
-import { type Icon } from "@phosphor-icons/react";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import * as React from "react";
 
+import { type Icon } from "../lib/icons.js";
 import { cn } from "../lib/utils";
 
 type ButtonStyleProps = Pick<LinkButtonProps, "variant" | "size" | "shape" | "icon">;

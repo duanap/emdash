@@ -12,7 +12,6 @@
 
 import { Badge, Button } from "@cloudflare/kumo";
 import { useLingui } from "@lingui/react/macro";
-import { DownloadSimple, GithubLogo, Globe, ShieldCheck, Warning, X } from "@phosphor-icons/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
@@ -26,6 +25,7 @@ import {
 	describeCapability,
 	type PluginMcpConsentTool,
 } from "../lib/api/marketplace.js";
+import { DownloadSimple, GithubLogo, Globe, ShieldCheck, Warning, X } from "../lib/icons.js";
 import { renderMarkdown } from "../lib/markdown.js";
 import { isSafeUrl, safeIconUrl } from "../lib/url.js";
 import { ArrowPrev, CaretNext, CaretPrev } from "./ArrowIcons.js";

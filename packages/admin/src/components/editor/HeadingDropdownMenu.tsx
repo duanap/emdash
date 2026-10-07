@@ -2,6 +2,10 @@ import { Button, DropdownMenu, Tooltip } from "@cloudflare/kumo";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
+import type { Editor } from "@tiptap/core";
+import { useEditorState } from "@tiptap/react";
+import * as React from "react";
+
 import {
 	CaretDown,
 	TextH,
@@ -12,11 +16,7 @@ import {
 	TextHThree,
 	TextHTwo,
 	type Icon,
-} from "@phosphor-icons/react";
-import type { Editor } from "@tiptap/core";
-import { useEditorState } from "@tiptap/react";
-import * as React from "react";
-
+} from "../../lib/icons.js";
 import { cn } from "../../lib/utils.js";
 import { selectionTouchesTable } from "./TableExtensions.js";
 

@@ -16,18 +16,6 @@ import {
 } from "@cloudflare/kumo";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import {
-	ArrowSquareOut,
-	Faders,
-	Paperclip,
-	X,
-	ArrowsInSimple,
-	ArrowsOutSimple,
-	CaretUp,
-	CaretDown,
-	Plus,
-	Trash,
-} from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 import type { Editor } from "@tiptap/react";
 import * as React from "react";
@@ -51,6 +39,18 @@ import { getContentPublishingState } from "../lib/content-publishing-state.js";
 import { fromDatetimeLocalInputValue, toDatetimeLocalInputValue } from "../lib/datetime-local.js";
 import { getEntryTitle } from "../lib/entryTitle.js";
 import { getFieldLabel } from "../lib/field-label.js";
+import {
+	ArrowSquareOut,
+	Faders,
+	Paperclip,
+	X,
+	ArrowsInSimple,
+	ArrowsOutSimple,
+	CaretUp,
+	CaretDown,
+	Plus,
+	Trash,
+} from "../lib/icons.js";
 import { formatFileSize, getFileIcon, localMediaFileUrl } from "../lib/media-utils";
 import { usePluginAdmins } from "../lib/plugin-context.js";
 import {
@@ -97,6 +97,39 @@ const EDITOR_SETTINGS_DEFAULT_WIDTH_PX = 368;
 const EDITOR_SETTINGS_MAX_WIDTH_PX = 480;
 const EDITOR_SETTINGS_KEYBOARD_STEP_PX = 10;
 const LIST_FIELD_KINDS = new Set(["repeater", "portableText", "multiSelect", "blocks"]);
+
+/**
+ * Free-form entry for multi-select fields: typing a value that is not one of
+ * the declared options (e.g. a new tech-stack label) and pressing Enter or
+ * clicking Add appends it to the selection.
+ */
+function CustomMultiSelectInput({ onAdd }: { onAdd: (entry: string) => void }) {
+	const { t } = useLingui();
+	const [entry, setEntry] = React.useState("");
+	const submit = () => {
+		if (entry.trim()) onAdd(entry);
+		setEntry("");
+	};
+	return (
+		<div className="mt-2 flex items-center gap-2">
+			<Input
+				value={entry}
+				onChange={(event) => setEntry(event.target.value)}
+				placeholder={t`Add custom value...`}
+				className="max-w-xs"
+				onKeyDown={(event) => {
+					if (event.key === "Enter") {
+						event.preventDefault();
+						submit();
+					}
+				}}
+			/>
+			<Button type="button" variant="secondary" size="sm" disabled={!entry.trim()} onClick={submit}>
+				{t`Add`}
+			</Button>
+		</div>
+	);
+}
 
 function serializeEditorState(input: {
 	data: Record<string, unknown>;
@@ -2322,6 +2355,10 @@ function FieldRenderer({
 		case "multiSelect": {
 			const multiSelectOptions = Array.isArray(field.options) ? field.options : [];
 			const selected: string[] = Array.isArray(value) ? (value as string[]) : [];
+			const optionValues = new Set(multiSelectOptions.map((opt) => opt.value));
+			// Values outside the declared options (custom entries) render as
+			// removable chips so free-form additions stay visible and editable.
+			const customValues = selected.filter((v) => !optionValues.has(v));
 			return (
 				<fieldset>
 					<Label className={labelClass}>{label}</Label>
@@ -2343,6 +2380,33 @@ function FieldRenderer({
 							);
 						})}
 					</div>
+					{customValues.length > 0 && (
+						<div className="mt-2 flex flex-wrap gap-2">
+							{customValues.map((v) => (
+								<Badge key={v}>
+									<span>{v}</span>
+									<button
+										type="button"
+										className="text-kumo-subtle hover:text-kumo-danger"
+										aria-label={t`Remove ${v}`}
+										onClick={() => handleChange(selected.filter((item) => item !== v))}
+									>
+										×
+									</button>
+								</Badge>
+							))}
+						</div>
+					)}
+					{field.validation?.allowCustom === true && (
+						<CustomMultiSelectInput
+							onAdd={(entry) => {
+								const trimmed = entry.trim();
+								if (trimmed && !selected.includes(trimmed)) {
+									handleChange([...selected, trimmed]);
+								}
+							}}
+						/>
+					)}
 				</fieldset>
 			);
 		}

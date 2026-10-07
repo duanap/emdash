@@ -40,7 +40,7 @@ export const commentStatusBody = z
 export const commentBulkBody = z
 	.object({
 		ids: z.array(z.string().min(1)).min(1).max(100),
-		action: z.enum(["approve", "spam", "trash", "delete"]),
+		action: z.enum(["approve", "spam", "trash", "delete", "restore"]),
 	})
 	.meta({ id: "CommentBulkBody" });
 
@@ -131,3 +131,23 @@ export const commentCountsResponseSchema = z
 export const commentBulkResponseSchema = z
 	.object({ affected: z.number().int() })
 	.meta({ id: "CommentBulkResponse" });
+
+export const adminCommentCreateBody = z
+	.object({
+		collection: z.string().min(1).max(64),
+		contentId: z.string().min(1).max(64),
+		authorName: z.string().min(1).max(100),
+		authorEmail: z.email(),
+		body: z.string().min(1).max(5000),
+		parentId: z.string().optional(),
+		status: z.enum(["approved", "pending"]).optional(),
+	})
+	.meta({ id: "AdminCommentCreateBody" });
+
+export const adminCommentUpdateBody = z
+	.object({
+		body: z.string().min(1).max(5000).optional(),
+		authorName: z.string().min(1).max(100).optional(),
+		authorEmail: z.email().optional(),
+	})
+	.meta({ id: "AdminCommentUpdateBody" });
