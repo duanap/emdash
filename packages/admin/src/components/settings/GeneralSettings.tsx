@@ -6,60 +6,37 @@
  */
 
 import { Autocomplete, Banner, Button, Input, Loader, useKumoToastManager } from "@cloudflare/kumo";
+import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, type Locale } from "date-fns";
-import { enUS } from "date-fns/locale/en-US";
 import * as React from "react";
 
 import {
+	createSignInHandover,
+	fetchEmailSettings,
+	fetchManifest,
 	fetchSettings,
+	fetchSiteDomain,
+	notifyUsersOfDomain,
 	updateSettings,
 	type MediaItem,
 	type SiteSettings,
 	type SiteSettingsUpdate,
 } from "../../lib/api";
 import { generalSettingsPayload, type GeneralSettingsSection } from "../../lib/general-settings.js";
-import { WarningCircle, Upload, X } from "../../lib/icons.js";
+import { ArrowSquareOut, WarningCircle, Upload, X } from "../../lib/icons.js";
+import { useDateLocale } from "../../locales/date-locale.js";
+import { ConfirmDialog } from "../ConfirmDialog.js";
 import { MediaPickerModal } from "../MediaPickerModal";
 import { SaveButton } from "../SaveButton.js";
+import { ChangeDomainDialog } from "./ChangeDomainDialog.js";
 import { FooterLinksEditor } from "./FooterLinksEditor.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";
 import { SitemapControls } from "./SitemapControls.js";
 
 const timezones = ["UTC", ...Intl.supportedValuesOf("timeZone")];
 const exampleDate = new Date(2026, 0, 23);
-const previewLocaleLoaders: Record<string, () => Promise<Locale>> = {
-	ar: () => import("date-fns/locale/ar").then(({ ar }) => ar),
-	eu: () => import("date-fns/locale/eu").then(({ eu }) => eu),
-	bn: () => import("date-fns/locale/bn").then(({ bn }) => bn),
-	ca: () => import("date-fns/locale/ca").then(({ ca }) => ca),
-	"zh-CN": () => import("date-fns/locale/zh-CN").then(({ zhCN }) => zhCN),
-	"zh-TW": () => import("date-fns/locale/zh-TW").then(({ zhTW }) => zhTW),
-	cs: () => import("date-fns/locale/cs").then(({ cs }) => cs),
-	da: () => import("date-fns/locale/da").then(({ da }) => da),
-	nl: () => import("date-fns/locale/nl").then(({ nl }) => nl),
-	"en-GB": () => import("date-fns/locale/en-GB").then(({ enGB }) => enGB),
-	fa: () => import("date-fns/locale/fa-IR").then(({ faIR }) => faIR),
-	fr: () => import("date-fns/locale/fr").then(({ fr }) => fr),
-	ka: () => import("date-fns/locale/ka").then(({ ka }) => ka),
-	de: () => import("date-fns/locale/de").then(({ de }) => de),
-	hi: () => import("date-fns/locale/hi").then(({ hi }) => hi),
-	hu: () => import("date-fns/locale/hu").then(({ hu }) => hu),
-	id: () => import("date-fns/locale/id").then(({ id }) => id),
-	ja: () => import("date-fns/locale/ja").then(({ ja }) => ja),
-	nb: () => import("date-fns/locale/nb").then(({ nb }) => nb),
-	pl: () => import("date-fns/locale/pl").then(({ pl }) => pl),
-	"pt-BR": () => import("date-fns/locale/pt-BR").then(({ ptBR }) => ptBR),
-	"sr-Latn": () => import("date-fns/locale/sr-Latn").then(({ srLatn }) => srLatn),
-	"es-419": () => import("date-fns/locale/es").then(({ es }) => es),
-	"es-ES": () => import("date-fns/locale/es").then(({ es }) => es),
-	sv: () => import("date-fns/locale/sv").then(({ sv }) => sv),
-	th: () => import("date-fns/locale/th").then(({ th }) => th),
-	tr: () => import("date-fns/locale/tr").then(({ tr }) => tr),
-	uk: () => import("date-fns/locale/uk").then(({ uk }) => uk),
-};
-
 function datePreview(pattern: string, locale: Locale): string | null {
 	try {
 		return pattern.trim() ? format(exampleDate, pattern, { locale }) : null;
@@ -82,7 +59,6 @@ function generalSettingsSnapshot(settings: SiteSettingsUpdate, section: GeneralS
 	return JSON.stringify({
 		title: settings.title ?? "",
 		tagline: settings.tagline ?? "",
-		url: settings.url ?? "",
 		logo: settings.logo ?? null,
 		favicon: settings.favicon ?? null,
 		footerLinks: settings.footerLinks ?? [],
@@ -93,7 +69,7 @@ function generalSettingsSnapshot(settings: SiteSettingsUpdate, section: GeneralS
 }
 
 export function GeneralSettings({ section = "all" }: { section?: GeneralSettingsSection } = {}) {
-	const { t, i18n } = useLingui();
+	const { t } = useLingui();
 	const queryClient = useQueryClient();
 	const toastManager = useKumoToastManager();
 
@@ -106,37 +82,32 @@ export function GeneralSettings({ section = "all" }: { section?: GeneralSettings
 		queryFn: fetchSettings,
 		staleTime: Infinity,
 	});
+	const { data: siteDomain } = useQuery({
+		queryKey: ["site-domain"],
+		queryFn: fetchSiteDomain,
+	});
+	const { data: manifest } = useQuery({
+		queryKey: ["manifest"],
+		queryFn: fetchManifest,
+	});
+	const { data: emailSettings } = useQuery({
+		queryKey: ["email-settings"],
+		queryFn: fetchEmailSettings,
+	});
+	const siteHost =
+		siteDomain?.siteOrigin && manifest && (!manifest.authMode || manifest.authMode === "passkey")
+			? new URL(siteDomain.siteOrigin).host
+			: null;
+	const handoverHost = siteDomain?.siteOrigin !== window.location.origin ? siteHost : null;
 
 	const [formData, setFormData] = React.useState<SiteSettingsUpdate>({});
 	const [savedFormData, setSavedFormData] = React.useState<SiteSettingsUpdate>({});
 	const [logoPickerOpen, setLogoPickerOpen] = React.useState(false);
 	const [faviconPickerOpen, setFaviconPickerOpen] = React.useState(false);
+	const [domainDialogOpen, setDomainDialogOpen] = React.useState(false);
+	const [notifyDialogOpen, setNotifyDialogOpen] = React.useState(false);
 	const [showTimezoneError, setShowTimezoneError] = React.useState(false);
-	const [previewLocale, setPreviewLocale] = React.useState<{ code: string; value: Locale | null }>({
-		code: "en",
-		value: enUS,
-	});
-
-	React.useEffect(() => {
-		const code = i18n.locale;
-		const load = previewLocaleLoaders[code];
-		if (!load) {
-			setPreviewLocale({ code, value: enUS });
-			return;
-		}
-		let active = true;
-		void (async () => {
-			try {
-				const value = await load();
-				if (active) setPreviewLocale({ code, value });
-			} catch {
-				if (active) setPreviewLocale({ code, value: null });
-			}
-		})();
-		return () => {
-			active = false;
-		};
-	}, [i18n.locale]);
+	const dateLocale = useDateLocale();
 
 	React.useEffect(() => {
 		if (settings) {
@@ -174,10 +145,40 @@ export function GeneralSettings({ section = "all" }: { section?: GeneralSettings
 		},
 	});
 
+	const handoverMutation = useMutation({
+		mutationFn: createSignInHandover,
+		onSuccess: ({ url }) => window.location.assign(url),
+		onError: (error) => {
+			toastManager.add({
+				title: t`Failed to create a sign-in link`,
+				description: error instanceof Error ? error.message : t`An error occurred`,
+				variant: "error",
+				timeout: 3000,
+			});
+		},
+	});
+
+	const notifyMutation = useMutation({
+		mutationFn: notifyUsersOfDomain,
+		onSuccess: ({ sent, failed }) => {
+			setNotifyDialogOpen(false);
+			toastManager.add({
+				title: plural(sent, { one: "Emailed # user", other: "Emailed # users" }),
+				description:
+					failed > 0
+						? plural(failed, {
+								one: "# email could not be sent. Check the email provider.",
+								other: "# emails could not be sent. Check the email provider.",
+							})
+						: undefined,
+				variant: failed > 0 ? "warning" : "success",
+				timeout: 8000,
+			});
+		},
+	});
+
 	const pattern = formData.dateFormat ?? "MMMM d, yyyy";
-	const previewLoading = previewLocale.code !== i18n.locale;
-	const preview =
-		previewLoading || !previewLocale.value ? null : datePreview(pattern, previewLocale.value);
+	const preview = datePreview(pattern, dateLocale);
 	const timezone = formData.timezone ?? "UTC";
 	const recognizedTimezone = isValidTimezone(timezone);
 	const savedTimezoneUnchanged = timezone === savedFormData.timezone;
@@ -187,6 +188,7 @@ export function GeneralSettings({ section = "all" }: { section?: GeneralSettings
 		e.preventDefault();
 		setShowTimezoneError(true);
 		if (section !== "identity" && !canSaveTimezone) return;
+		// The Change domain dialog owns the Site URL.
 		saveMutation.mutate(generalSettingsPayload(formData, section));
 	};
 
@@ -210,6 +212,20 @@ export function GeneralSettings({ section = "all" }: { section?: GeneralSettings
 		setFaviconPickerOpen(false);
 	};
 
+	const handleDomainChanged = (url: string, checked: boolean) => {
+		setDomainDialogOpen(false);
+		setFormData((prev) => ({ ...prev, url }));
+		// Refetching now would reset unsaved edits in this form.
+		void queryClient.invalidateQueries({ queryKey: ["settings"], refetchType: "none" });
+		void queryClient.invalidateQueries({ queryKey: ["site-domain"] });
+		toastManager.add({
+			title: checked ? t`Domain changed to ${url}` : t`Site URL set to ${url}`,
+			description: t`Passkeys only work at the address where they were created.`,
+			variant: "success",
+			timeout: 8000,
+		});
+	};
+
 	const handleLogoRemove = () => {
 		setFormData((prev) => ({ ...prev, logo: null }));
 	};
@@ -224,12 +240,7 @@ export function GeneralSettings({ section = "all" }: { section?: GeneralSettings
 			: section === "reading"
 				? t`Reading`
 				: t`General Settings`;
-	const description =
-		section === "identity"
-			? t`Site title, description, address, logo, and favicon`
-			: section === "reading"
-				? t`Pagination, date format, and timezone`
-				: t`Site identity, logo, favicon, and reading preferences`;
+	const description = t`Site identity, logo, favicon, and reading preferences`;
 
 	if (isLoading) {
 		return (
@@ -291,13 +302,71 @@ export function GeneralSettings({ section = "all" }: { section?: GeneralSettings
 							/>
 						</SettingRow>
 						<SettingRow>
-							<Input
-								label={t`Site URL`}
-								type="url"
-								value={formData.url ?? ""}
-								onChange={(e) => handleChange("url", e.target.value)}
-								description={t`The public URL of your site (used for canonical links and sitemaps)`}
-							/>
+							<div className="grid gap-4 sm:grid-cols-2 sm:items-center">
+								<div className="grid gap-1">
+									<div className="text-base font-medium">{t`Site URL`}</div>
+									<p className="text-sm text-kumo-subtle">
+										{t`The public address of your site, used for links in emails and plugins, sitemaps, and absolute URLs in search and social metadata`}
+									</p>
+									{siteDomain?.configuredUrl && (
+										<p className="text-sm text-kumo-subtle">
+											{t`Links in emails and plugins use ${siteDomain.configuredUrl}, set by the deployment configuration.`}
+										</p>
+									)}
+								</div>
+								<div className="flex min-w-0 flex-wrap items-center gap-3 sm:justify-end">
+									<span className="min-w-0 break-all font-mono text-sm" dir="ltr" translate="no">
+										{formData.url || t`Not set`}
+									</span>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => setDomainDialogOpen(true)}
+									>
+										{t`Change domain`}
+									</Button>
+								</div>
+							</div>
+							{handoverHost && (
+								<Banner
+									className="mt-4"
+									title={t`You're signed in at ${window.location.host}`}
+									description={t`Passkeys only work at the address where they were created. Continue on ${handoverHost} to sign in there without a passkey, then add one for that address.`}
+									action={
+										<Button
+											type="button"
+											size="sm"
+											icon={<ArrowSquareOut />}
+											loading={handoverMutation.isPending || handoverMutation.isSuccess}
+											onClick={() => handoverMutation.mutate()}
+										>
+											{t`Continue on ${handoverHost}`}
+										</Button>
+									}
+								/>
+							)}
+							{siteHost && (
+								<div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-kumo-line pt-4">
+									<div className="grid min-w-0 gap-1">
+										<div className="text-sm font-medium">{t`Tell users where to sign in`}</div>
+										<p className="text-sm text-kumo-subtle">
+											{emailSettings?.available === false
+												? t`Set up an email provider in Email settings to email users.`
+												: t`Email every other user a link to the sign-in page at ${siteHost}.`}
+										</p>
+									</div>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										disabled={!emailSettings?.available}
+										onClick={() => setNotifyDialogOpen(true)}
+									>
+										{t`Email users`}
+									</Button>
+								</div>
+							)}
 						</SettingRow>
 
 						<SettingRow>
@@ -441,11 +510,9 @@ export function GeneralSettings({ section = "all" }: { section?: GeneralSettings
 								value={pattern}
 								onChange={(e) => handleChange("dateFormat", e.target.value)}
 								description={
-									previewLoading
-										? t`Loading preview…`
-										: preview === null
-											? t`Preview unavailable for this format`
-											: t`Example: ${pattern} → ${preview}`
+									preview === null
+										? t`Preview unavailable for this format`
+										: t`Example: ${pattern} → ${preview}`
 								}
 							/>
 						</SettingRow>
@@ -483,7 +550,6 @@ export function GeneralSettings({ section = "all" }: { section?: GeneralSettings
 						</SettingRow>
 					</SettingsSection>
 				)}
-
 				{section === "all" && (
 					<>
 						<SettingsSection title={t`Sitemap`}>
@@ -524,6 +590,31 @@ export function GeneralSettings({ section = "all" }: { section?: GeneralSettings
 				localOnly
 				title={t`Select favicon`}
 			/>
+			<ChangeDomainDialog
+				open={domainDialogOpen}
+				currentUrl={formData.url || undefined}
+				configuredUrl={siteDomain?.configuredUrl ?? undefined}
+				onClose={() => setDomainDialogOpen(false)}
+				onChanged={handleDomainChanged}
+			/>
+			{siteHost && (
+				<ConfirmDialog
+					open={notifyDialogOpen}
+					onClose={() => {
+						setNotifyDialogOpen(false);
+						notifyMutation.reset();
+					}}
+					variant="primary"
+					title={t`Email all users?`}
+					description={t`Every other user with an active account gets an email saying the site is now at ${siteHost}, with a link to sign in there. Passkeys from another address don't work at ${siteHost}, so users sign in with an email link and add a new passkey.`}
+					confirmLabel={t`Send emails`}
+					pendingLabel={t`Sending...`}
+					preventCloseWhilePending
+					isPending={notifyMutation.isPending}
+					error={notifyMutation.error}
+					onConfirm={() => notifyMutation.mutate()}
+				/>
+			)}
 		</SettingsFrame>
 	);
 }

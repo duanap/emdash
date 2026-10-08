@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 
 import baseConfig from "./vitest.config.js";
 
-const resolvedConfig = await baseConfig;
+const resolvedConfig = baseConfig;
 
 export default defineConfig({
 	...resolvedConfig,

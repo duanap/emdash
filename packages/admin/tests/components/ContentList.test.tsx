@@ -3,6 +3,7 @@ import * as React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { ContentList } from "../../src/components/ContentList";
+import type { ListPagination } from "../../src/components/ListPaginationFooter";
 import type { ContentItem, TrashedContentItem } from "../../src/lib/api";
 import type {
 	ContentListColumnCellContext,
@@ -11,6 +12,7 @@ import type {
 import { PluginAdminProvider, type PluginAdmins } from "../../src/lib/plugin-context.js";
 import { render } from "../utils/render.tsx";
 
+const TRASH_TAB_PATTERN = /^Trash/;
 const NO_RESULTS_PATTERN = /No results for/;
 const HAS_MORE_ITEMS_PATTERN = /21\+ items/;
 
@@ -367,6 +369,19 @@ describe("ContentList", () => {
 			const screen = await render(<ContentList {...defaultProps} items={items} />);
 			const badge = screen.getByText("Pending changes").element();
 			expect(badge.querySelector("svg")).not.toBeNull();
+		});
+
+		it("does not show pending badge when the entry has never been published", async () => {
+			const items = [
+				makeItem({
+					id: "1",
+					status: "scheduled",
+					draftRevisionId: "rev_draft",
+					liveRevisionId: null,
+				}),
+			];
+			const screen = await render(<ContentList {...defaultProps} items={items} />);
+			expect(screen.getByText("Pending changes").query()).toBeNull();
 		});
 
 		it("does not show pending badge when revisions match", async () => {
@@ -901,6 +916,192 @@ describe("ContentList", () => {
 		});
 	});
 
+	describe("legacy selection", () => {
+		it("drops a selected row that leaves the loaded list", async () => {
+			const first = makeItem({ id: "a", data: { title: "Alpha" } });
+			const second = makeItem({ id: "b", data: { title: "Bravo" } });
+			const screen = await render(
+				<ContentList {...defaultProps} items={[first, second]} onBulkDelete={vi.fn()} />,
+			);
+			await screen.getByRole("checkbox", { name: "Select Alpha" }).click();
+			await screen.getByRole("checkbox", { name: "Select Bravo" }).click();
+
+			await screen.rerender(
+				<ContentList {...defaultProps} items={[second]} onBulkDelete={vi.fn()} />,
+			);
+
+			await expect.element(screen.getByText("1 selected")).toBeInTheDocument();
+		});
+	});
+
+	describe("numbered pages", () => {
+		function makePagination(overrides: Partial<ListPagination> = {}): ListPagination {
+			return {
+				page: 1,
+				perPage: 20,
+				totalCount: 143,
+				isPending: false,
+				onPageChange: vi.fn(),
+				onPageSizeChange: vi.fn(),
+				...overrides,
+			};
+		}
+
+		function makePosts(from: number, count: number) {
+			return Array.from({ length: count }, (_, index) =>
+				makeItem({ id: `post_${from + index}`, data: { title: `Post ${from + index}` } }),
+			);
+		}
+
+		it("renders the whole server page with the media footer", async () => {
+			const screen = await render(
+				<ContentList
+					{...defaultProps}
+					items={makePosts(1, 50)}
+					pagination={makePagination({ perPage: 50 })}
+					hasMore
+					onLoadMore={vi.fn()}
+				/>,
+			);
+
+			await expect.element(screen.getByText("Showing 1-50 of 143")).toBeInTheDocument();
+			await expect.element(screen.getByText("Post 50")).toBeInTheDocument();
+			await expect
+				.element(screen.getByRole("navigation", { name: "Posts pagination" }))
+				.toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "Load More" }).query()).toBeNull();
+		});
+
+		it("shows the loading row, not the empty state, while an empty page loads", async () => {
+			const screen = await render(
+				<ContentList
+					{...defaultProps}
+					items={[]}
+					pagination={makePagination({ totalCount: 0, isPending: true })}
+				/>,
+			);
+
+			await expect.element(screen.getByText("Loading...")).toBeInTheDocument();
+			expect(screen.getByText(NO_POSTS_YET_REGEX).query()).toBeNull();
+			expect(screen.getByRole("navigation", { name: "Posts pagination" }).query()).toBeNull();
+		});
+
+		it("keeps the sort headers usable but locks the rows while a page loads", async () => {
+			const posts = makePosts(1, 2);
+			const props = {
+				...defaultProps,
+				items: posts,
+				sort: { field: "updatedAt", direction: "desc" } as const,
+				onSortChange: vi.fn(),
+				onBulkDelete: vi.fn(),
+			};
+			const screen = await render(<ContentList {...props} pagination={makePagination()} />);
+			const sortByTitle = screen.getByRole("button", { name: "Title" });
+			sortByTitle.element().focus();
+
+			await screen.rerender(
+				<ContentList {...props} pagination={makePagination({ isPending: true })} />,
+			);
+			// The browser moves focus out of an inert subtree on its next rendering update.
+			await new Promise(requestAnimationFrame);
+			await new Promise(requestAnimationFrame);
+
+			expect(document.activeElement).toBe(sortByTitle.element());
+			const rowCheckbox = screen.getByRole("checkbox", { name: "Select Post 1" }).element();
+			rowCheckbox.focus();
+			expect(document.activeElement).not.toBe(rowCheckbox);
+		});
+
+		it("keeps selections from other pages for bulk actions", async () => {
+			const onBulkPublish = vi.fn().mockResolvedValue([]);
+			const props = { ...defaultProps, onBulkPublish };
+			const screen = await render(
+				<ContentList {...props} items={makePosts(1, 20)} pagination={makePagination()} />,
+			);
+			await screen.getByRole("checkbox", { name: "Select Post 3" }).click();
+
+			await screen.rerender(
+				<ContentList
+					{...props}
+					items={makePosts(21, 20)}
+					pagination={makePagination({ page: 2 })}
+				/>,
+			);
+			await screen.getByRole("checkbox", { name: "Select Post 22" }).click();
+			await screen.getByRole("button", { name: "Publish", exact: true }).click();
+
+			expect(onBulkPublish).toHaveBeenCalledWith(["post_3", "post_22"]);
+		});
+
+		it.each([
+			["the status filter", { statusFilter: "draft" as const }],
+			["the collection", { collection: "pages", collectionLabel: "Pages" }],
+		])("clears selections when %s changes", async (_change, changedProps) => {
+			const props = {
+				...defaultProps,
+				items: makePosts(1, 2),
+				onBulkDelete: vi.fn(),
+				onStatusFilterChange: vi.fn(),
+				pagination: makePagination(),
+			};
+			const screen = await render(<ContentList {...props} />);
+			await screen.getByRole("checkbox", { name: "Select Post 1" }).click();
+			await expect.element(screen.getByText("1 selected")).toBeInTheDocument();
+
+			await screen.rerender(<ContentList {...props} {...changedProps} />);
+
+			await expect.element(screen.getByText("1 selected")).not.toBeInTheDocument();
+		});
+
+		it("lists rows selected on another page in the bulk-tag dialog", async () => {
+			const props = {
+				...defaultProps,
+				bulkTagTaxonomies: [{ name: "tag", label: "Tags", labelSingular: "Tag" }],
+			};
+			const screen = await render(
+				<ContentList {...props} items={makePosts(1, 20)} pagination={makePagination()} />,
+			);
+			await screen.getByRole("checkbox", { name: "Select Post 3" }).click();
+			await screen.rerender(
+				<ContentList
+					{...props}
+					items={makePosts(21, 20)}
+					pagination={makePagination({ page: 2 })}
+				/>,
+			);
+
+			await screen.getByRole("button", { name: "Add tag" }).click();
+
+			await expect
+				.element(screen.getByRole("dialog").getByText("Post 3", { exact: true }))
+				.toBeInTheDocument();
+		});
+
+		it("pages the trash with its own footer", async () => {
+			const trashedItems = Array.from({ length: 20 }, (_, index) =>
+				makeTrashedItem({ id: `trashed_${index}`, data: { title: `Old ${index}` } }),
+			);
+			const screen = await render(
+				<ContentList
+					{...defaultProps}
+					trashedItems={trashedItems}
+					trashedCount={25}
+					trashPagination={makePagination({ totalCount: 25 })}
+					hasMoreTrashed
+					onLoadMoreTrashed={vi.fn()}
+				/>,
+			);
+
+			await screen.getByRole("tab", { name: /Trash/ }).click();
+
+			await expect.element(screen.getByText("Showing 1-20 of 25")).toBeInTheDocument();
+			await expect
+				.element(screen.getByRole("navigation", { name: "Trash pagination" }))
+				.toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "Load More" }).query()).toBeNull();
+		});
+	});
+
 	describe("sortable headers", () => {
 		it("calls onSortChange when a header is clicked", async () => {
 			const onSortChange = vi.fn();
@@ -1301,4 +1502,87 @@ describe("ContentList", () => {
 			expect(screen.getByText("Plugin value").query()).toBeNull();
 		});
 	});
+});
+
+it("keeps trash selections across numbered pages and retries only failed items", async () => {
+	const batches: string[][] = [];
+	const restore = async (ids: string[]) => {
+		batches.push(ids);
+		return ["first"];
+	};
+	const pagination = (page: number): ListPagination => ({
+		page,
+		perPage: 20,
+		totalCount: 40,
+		isPending: false,
+		onPageChange: () => {},
+		onPageSizeChange: () => {},
+	});
+	const list = (page: number) => (
+		<ContentList
+			{...defaultProps}
+			userRole={50}
+			onBulkRestore={restore}
+			trashPagination={pagination(page)}
+			trashedCount={40}
+			trashedItems={[
+				makeTrashedItem({
+					id: page === 1 ? "first" : "second",
+					data: { title: page === 1 ? "First" : "Second" },
+				}),
+			]}
+		/>
+	);
+	const screen = await render(list(1));
+	await screen.getByRole("tab", { name: TRASH_TAB_PATTERN }).click();
+	await screen.getByRole("checkbox", { name: "Select First", exact: true }).click();
+	await screen.rerender(list(2));
+	await expect.element(screen.getByText("1 selected", { exact: true })).toBeVisible();
+	await screen.getByRole("checkbox", { name: "Select Second", exact: true }).click();
+	await expect.element(screen.getByText("2 selected", { exact: true })).toBeVisible();
+	await screen.getByRole("button", { name: "Restore selected", exact: true }).click();
+	await expect.poll(() => batches[0]).toEqual(["first", "second"]);
+	await expect.element(screen.getByText("1 selected", { exact: true })).toBeVisible();
+	await screen.getByRole("button", { name: "Restore selected", exact: true }).click();
+	await expect.poll(() => batches[1]).toEqual(["first"]);
+});
+it("blocks trash page selection until the requested page finishes loading", async () => {
+	const batches: string[][] = [];
+	const list = (pending: boolean) => (
+		<ContentList
+			{...defaultProps}
+			userRole={50}
+			onBulkRestore={async (ids) => {
+				batches.push(ids);
+				return [];
+			}}
+			trashPagination={{
+				page: 2,
+				perPage: 20,
+				totalCount: 40,
+				isPending: pending,
+				onPageChange: () => {},
+				onPageSizeChange: () => {},
+			}}
+			trashedCount={40}
+			trashedItems={[
+				makeTrashedItem({
+					id: pending ? "previous" : "requested",
+					data: { title: pending ? "Previous" : "Requested" },
+				}),
+			]}
+		/>
+	);
+	const screen = await render(list(true));
+	await screen.getByRole("tab", { name: TRASH_TAB_PATTERN }).click();
+	await expect
+		.element(screen.getByRole("button", { name: "Select all loaded items", exact: true }))
+		.toBeDisabled();
+	await expect
+		.element(screen.getByRole("checkbox", { name: "Select all trashed items", exact: true }))
+		.toBeDisabled();
+	await screen.rerender(list(false));
+	await screen.getByRole("button", { name: "Select all loaded items", exact: true }).click();
+	await screen.getByRole("button", { name: "Restore selected", exact: true }).click();
+	await expect.poll(() => batches[0]).toEqual(["requested"]);
 });

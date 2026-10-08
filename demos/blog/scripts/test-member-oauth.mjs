@@ -264,19 +264,19 @@ await test("auth/qq/start 302 到 QQ 授权页 + 一次性 state（cookie 与 KV
 await test("returnTo 拒绝外站绝对地址，回落到 /", async () => {
 	const harness = createHarness({ settings: CONFIGURED_SETTINGS });
 	const { state } = await startFlow(harness, "https://evil.example/steal");
-	assert.equal(JSON.parse(harness.kv.get(`oauth:state:${state}`)).returnTo, "/");
+	assert.equal(JSON.parse(harness.kv.get(`oauth:state:${state}`)).returnTo, "http://localhost:4321/");
 });
 
 await test("returnTo 拒绝协议相对地址 //evil.example", async () => {
 	const harness = createHarness({ settings: CONFIGURED_SETTINGS });
 	const { state } = await startFlow(harness, "//evil.example/steal");
-	assert.equal(JSON.parse(harness.kv.get(`oauth:state:${state}`)).returnTo, "/");
+	assert.equal(JSON.parse(harness.kv.get(`oauth:state:${state}`)).returnTo, "http://localhost:4321/");
 });
 
 await test("returnTo 允许配置的 siteOrigin 绝对地址并保留路径与查询", async () => {
 	const harness = createHarness({ settings: CONFIGURED_SETTINGS });
 	const { state } = await startFlow(harness, "https://blog.duanap.cn/posts?tag=astro");
-	assert.equal(JSON.parse(harness.kv.get(`oauth:state:${state}`)).returnTo, "/posts?tag=astro");
+	assert.equal(JSON.parse(harness.kv.get(`oauth:state:${state}`)).returnTo, "https://blog.duanap.cn/posts?tag=astro");
 });
 
 // ─── callback：成功路径 ────────────────────────────────────────────

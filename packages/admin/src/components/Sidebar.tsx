@@ -13,6 +13,8 @@ import { resolvePluginPagePath, usePluginAdmins } from "../lib/plugin-context";
 import { isSettingsPath, settingsSection } from "../lib/settings-section.js";
 import {
 	groupNavItems,
+	joinsContentFolder,
+	normalizeGroup,
 	taxonomyGroup,
 	type GroupableNavItem,
 	type NavEntry,
@@ -38,6 +40,7 @@ export { resolveNavIcon, toPhosphorIconName };
 // Role levels (matching @emdash-cms/auth)
 const ROLE_ADMIN = 50;
 const ROLE_EDITOR = 40;
+const ROLE_CONTRIBUTOR = 20;
 
 /** Minimum role for the byline schema settings entry. */
 export const BYLINE_SCHEMA_NAV_ITEM = {
@@ -87,6 +90,7 @@ export interface SidebarNavProps {
 					path: string;
 					label?: string;
 					icon?: string;
+					group?: string;
 				}>;
 				dashboardWidgets?: Array<{ id: string; title?: string }>;
 				version?: string;
@@ -137,8 +141,8 @@ export interface NavItem extends GroupableNavItem {
 	badge?: number;
 }
 
-/** Folder member order: collections, then their taxonomies. */
-const GROUP_RANK = { collection: 0, taxonomy: 1 } as const;
+/** Folder member order: collections, then their taxonomies, then plugin pages. */
+const GROUP_RANK = { collection: 0, taxonomy: 1, pluginPage: 2 } as const;
 
 const FOLDER_STATE_STORAGE_KEY = "emdash-sidebar-folders";
 
@@ -333,6 +337,21 @@ export function resolvePluginPageLabel(
 		.join(" ");
 }
 
+/**
+ * Resolve the display title for a plugin dashboard widget. Declared titles
+ * are run through the shared Lingui instance so a plugin-provided catalog
+ * localizes dashboard card headings the same way it localizes sidebar nav
+ * labels. Widgets without a title fall back to the raw widget id.
+ */
+export function resolvePluginWidgetTitle(
+	title: string | undefined,
+	widgetId: string,
+	translate: (id: string) => string,
+): string {
+	if (title) return translate(title);
+	return widgetId;
+}
+
 /** Resolves a nav item's route path by substituting $param placeholders. */
 export function resolveItemPath(item: NavItem): string {
 	let path = item.to;
@@ -403,6 +422,9 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 	const collectionGroups = new Map(
 		visibleCollectionEntries(manifest.collections).map(([name, config]) => [name, config.group]),
 	);
+	const contentGroups = new Set(
+		Array.from(collectionGroups.values(), normalizeGroup).filter((group) => group !== undefined),
+	);
 
 	const manageItems: NavItem[] = [
 		{ to: "/sections", label: t`Sections`, icon: ADMIN_NAV_ICONS.sections, minRole: ROLE_EDITOR },
@@ -462,11 +484,16 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 				if (!isBlocksMode && !resolvePluginPagePath(pluginPages, page.path)) continue;
 				if (!isSafePluginPagePath(page.path)) continue;
 				const label = resolvePluginPageLabel(page.label, pluginId, (id) => i18n._(id));
-				pluginItems.push({
+				const group = normalizeGroup(page.group);
+				const item: NavItem = {
 					to: `/plugins/${pluginId}${normalizePluginPagePath(page.path)}`,
 					label,
 					icon: resolveNavIcon(page.icon),
-				});
+					iconName: page.icon,
+					group,
+					groupRank: GROUP_RANK.pluginPage,
+				};
+				(joinsContentFolder(group, contentGroups) ? contentItems : pluginItems).push(item);
 			}
 		}
 	}
@@ -476,7 +503,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 	);
 	const visibleManage = filterNavItemsByRole(manageItems, userRole);
 	const visibleAdmin = filterNavItemsByRole(adminItems, userRole);
-	const visiblePlugins = filterNavItemsByRole(pluginItems, userRole);
+	const visiblePlugins = groupNavItems(filterNavItemsByRole(pluginItems, userRole));
 
 	const folders = useFolderState();
 
@@ -546,6 +573,12 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 							item={{ to: "/", label: t`Dashboard`, icon: ADMIN_NAV_ICONS.dashboard }}
 							isActive={isItemActive("/", currentPath)}
 						/>
+						{userRole >= ROLE_CONTRIBUTOR && (
+							<NavMenuLink
+								item={{ to: "/calendar", label: t`Calendar`, icon: ADMIN_NAV_ICONS.calendar }}
+								isActive={isItemActive("/calendar", currentPath)}
+							/>
+						)}
 					</KumoSidebar.Menu>
 				</KumoSidebar.Group>
 
@@ -594,7 +627,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 				{visiblePlugins.length > 0 && (
 					<KumoSidebar.Group>
 						<KumoSidebar.GroupLabel>{t`Extensions`}</KumoSidebar.GroupLabel>
-						<KumoSidebar.Menu>{renderNavItems(visiblePlugins)}</KumoSidebar.Menu>
+						<KumoSidebar.Menu>{renderNavEntries(visiblePlugins)}</KumoSidebar.Menu>
 					</KumoSidebar.Group>
 				)}
 			</KumoSidebar.Content>

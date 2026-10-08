@@ -9,7 +9,6 @@ export function generalSettingsPayload(
 	const identity = {
 		title: settings.title,
 		tagline: settings.tagline,
-		url: settings.url,
 		logo: settings.logo,
 		favicon: settings.favicon,
 	};
@@ -21,6 +20,7 @@ export function generalSettingsPayload(
 	if (section === "identity") return identity;
 	if (section === "reading") return reading;
 	const general = { ...settings };
+	delete general.url;
 	delete general.heroSlides;
 	delete general.heroCarousel;
 	return general;

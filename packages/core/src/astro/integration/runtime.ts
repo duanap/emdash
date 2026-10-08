@@ -656,6 +656,21 @@ export interface EmDashConfig {
 		favicon?: string;
 		/** Treat this collection's oldest published entry as a fixed message-board container. */
 		messageBoardCollection?: string;
+		/**
+		 * Build-time allowlist of admin UI locales to ship.
+		 *
+		 * Only the listed locales are bundled and offered in the language
+		 * switcher; other locales fall back to English. `en` is always
+		 * included. Unknown codes fail the build.
+		 *
+		 * @example
+		 * ```ts
+		 * emdash({
+		 *   admin: { locales: ["en", "de"] },
+		 * })
+		 * ```
+		 */
+		locales?: string[];
 	};
 
 	/**

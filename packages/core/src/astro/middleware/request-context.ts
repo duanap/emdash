@@ -68,24 +68,39 @@ function isHtmlResponse(response: Response): boolean {
 	return response.headers.get("content-type")?.includes("text/html") ?? false;
 }
 
+const DOCUMENT_START_RE = /^\s*<(?:!doctype|html)\b/i;
+
 /**
- * Inject HTML before `</body>` if the response is an HTML page with a body
- * end tag. Does not touch cache headers — callers decide whether the result
- * is still shareable. `injected` tells the caller whether anything changed.
+ * Inject HTML before the page's closing `</body>` if the response is a whole
+ * HTML document with one. Does not touch cache headers — callers decide
+ * whether the result is still shareable. `injected` tells the caller whether
+ * the result carries the injected HTML.
+ *
+ * `Astro.rewrite()` runs this middleware again for the rewritten route inside
+ * the original request, so the response can already contain the HTML; `marker`
+ * identifies it so it is injected only once.
  */
 async function injectBeforeBodyEnd(
 	response: Response,
 	htmlToInject: string,
+	marker: string,
 ): Promise<{ response: Response; injected: boolean }> {
 	if (!isHtmlResponse(response)) return { response, injected: false };
 
 	const html = await response.text();
-	if (!html.includes("</body>")) {
+	if (html.includes(marker)) {
+		return { response: new Response(html, response), injected: true };
+	}
+	// The page's own closing tag is its last `</body>`. Astro leaves `<` and `>`
+	// unescaped in attribute values, so an earlier one, or one in a fragment
+	// such as a server island, can be author text inside an attribute.
+	const bodyEnd = DOCUMENT_START_RE.test(html) ? html.lastIndexOf("</body>") : -1;
+	if (bodyEnd === -1) {
 		// Body already consumed — rebuild the response unchanged.
 		return { response: new Response(html, response), injected: false };
 	}
 
-	const injected = html.replace("</body>", `${htmlToInject}</body>`);
+	const injected = html.slice(0, bodyEnd) + htmlToInject + html.slice(bodyEnd);
 	return {
 		response: new Response(injected, {
 			status: response.status,
@@ -107,7 +122,11 @@ async function injectToolbar(
 	routeCache: RouteCache,
 ): Promise<Response> {
 	if (!isHtmlResponse(response)) return response;
-	const result = await injectBeforeBodyEnd(response, await renderToolbarHtml());
+	const result = await injectBeforeBodyEnd(
+		response,
+		await renderToolbarHtml(),
+		'id="emdash-toolbar"',
+	);
 	if (result.injected) {
 		// Toolbar-injected HTML is session-specific (its presence reveals an
 		// active editor session); it must never be stored in a shared CDN cache
@@ -127,7 +146,11 @@ async function injectToolbar(
  * stays fully shareable.
  */
 async function injectBootstrap(response: Response): Promise<Response> {
-	const result = await injectBeforeBodyEnd(response, renderToolbarBootstrap());
+	const result = await injectBeforeBodyEnd(
+		response,
+		renderToolbarBootstrap(),
+		"<!-- EmDash Toolbar Bootstrap -->",
+	);
 	return result.response;
 }
 
@@ -254,8 +277,9 @@ export const onRequest: MiddlewareHandler = defineMiddleware(async (context, nex
 	// Verify preview token if present.
 	// The preview secret is resolved via `resolveSecretsCached`: env wins,
 	// otherwise a DB-stored value is read (or generated on first need).
-	// `emdash.db` is set by the runtime middleware which runs first; the
-	// only path where it's missing is a runtime-init failure.
+	// `emdash.db` is set by the runtime middleware which runs first; it is
+	// missing after a runtime-init failure and on signed-out requests to the
+	// image endpoint EmDash installs, which skip runtime init.
 	let preview: { collection: string; id: string } | undefined;
 	if (hasPreviewToken) {
 		const db = context.locals.emdash?.db;

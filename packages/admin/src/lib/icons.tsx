@@ -1,4 +1,21 @@
 import {
+	Video as UpgradeVideoCamera,
+	VideoOff as UpgradeVideoCameraSlash,
+	AlignLeft as UpgradeAlignLeft,
+	AlignCenter as UpgradeAlignCenterHorizontal,
+	AlignRight as UpgradeAlignRight,
+	Type as UpgradeTextAa,
+	Scan as UpgradeFrameCorners,
+	Eraser as UpgradeEraser,
+	Contrast as UpgradeCircleHalf,
+	Filter as UpgradeFunnel,
+	EllipsisVertical as UpgradeDotsThreeVertical,
+	FileCode as UpgradeFileCss,
+	FileCode as UpgradeFileHtml,
+	FileCode as UpgradeFileJs,
+	Play as UpgradePlay,
+} from "lucide-react";
+import {
 	Scan as LucideScan,
 	Package as LucidePackage,
 	Combine as LucideCombine,
@@ -412,3 +429,19 @@ export const X = /* @__PURE__ */ wrap(LucideX);
 export const XCircle = /* @__PURE__ */ wrap(LucideCircleX);
 export const XIcon = /* @__PURE__ */ wrap(LucideX);
 export const YoutubeLogo = /* @__PURE__ */ wrap(LucideExternalLink);
+
+export const VideoCamera = /* @__PURE__ */ wrap(UpgradeVideoCamera);
+export const VideoCameraSlash = /* @__PURE__ */ wrap(UpgradeVideoCameraSlash);
+export const AlignLeft = /* @__PURE__ */ wrap(UpgradeAlignLeft);
+export const AlignCenterHorizontal = /* @__PURE__ */ wrap(UpgradeAlignCenterHorizontal);
+export const AlignRight = /* @__PURE__ */ wrap(UpgradeAlignRight);
+export const TextAa = /* @__PURE__ */ wrap(UpgradeTextAa);
+export const FrameCorners = /* @__PURE__ */ wrap(UpgradeFrameCorners);
+export const Eraser = /* @__PURE__ */ wrap(UpgradeEraser);
+export const CircleHalf = /* @__PURE__ */ wrap(UpgradeCircleHalf);
+export const Funnel = /* @__PURE__ */ wrap(UpgradeFunnel);
+export const DotsThreeVertical = /* @__PURE__ */ wrap(UpgradeDotsThreeVertical);
+export const FileCss = /* @__PURE__ */ wrap(UpgradeFileCss);
+export const FileHtml = /* @__PURE__ */ wrap(UpgradeFileHtml);
+export const FileJs = /* @__PURE__ */ wrap(UpgradeFileJs);
+export const Play = /* @__PURE__ */ wrap(UpgradePlay);

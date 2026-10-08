@@ -46,6 +46,7 @@ import type { Icon } from "../lib/icons.js";
 /** Shared icon vocabulary for first-party admin entities and navigation surfaces. */
 export const ADMIN_NAV_ICONS = {
 	dashboard: SquaresFour,
+	calendar: CalendarBlank,
 	collection: Files,
 	pages: Browser,
 	posts: Newspaper,

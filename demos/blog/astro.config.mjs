@@ -87,6 +87,7 @@ export default defineConfig({
 		emdash({
 			siteUrl,
 			publicPageSuffix: ".html",
+			fonts: false,
 			admin: { messageBoardCollection: "wall" },
 			database: sqlite({ url: databaseUrl }),
 			storage: local({

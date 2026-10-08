@@ -128,7 +128,7 @@ export async function bulkCommentAction(
 		});
 		const result = await parseApiResponse<{ affected: number }>(
 			response,
-			"Failed to perform bulk action",
+			i18n._(msg`Failed to perform bulk action`),
 		);
 		affected += result.affected;
 	}
@@ -154,7 +154,7 @@ export async function createAdminComment(input: {
 			authorEmail: "wall-admin@duanap.local",
 		}),
 	});
-	return parseApiResponse<AdminComment>(response, "Failed to create message");
+	return parseApiResponse<AdminComment>(response, i18n._(msg`Failed to create message`));
 }
 
 /**
@@ -169,7 +169,7 @@ export async function updateAdminComment(
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(fields),
 	});
-	return parseApiResponse<AdminComment>(response, "Failed to update message");
+	return parseApiResponse<AdminComment>(response, i18n._(msg`Failed to update message`));
 }
 
 export async function fetchMessageBoardContainer(collection: string, locale?: string) {
