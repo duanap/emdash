@@ -56,7 +56,7 @@ export function htmlPages() {
 									id === "virtual:blog/html-routes" ? "\0blog-html-routes" : undefined,
 								load: (id) =>
 									id === "\0blog-html-routes"
-										? `export const patterns = ${JSON.stringify(routePatterns)}; export const siteOrigin = ${JSON.stringify(config.site?.origin ?? "")};`
+										? `export const patterns = ${JSON.stringify(routePatterns)}; export const siteOrigin = ${JSON.stringify(config.site ? new URL(config.site).origin : "")};`
 										: undefined,
 							},
 						],
