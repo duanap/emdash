@@ -429,3 +429,7 @@ In agent-browser:
 ```typescript
 await page.goto("http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin");
 ```
+
+## Codex Cloud migration
+
+Read `CODEX_CLOUD.md` for the migrated source baseline, dependency installation, startup, development configuration, and pending cloud checks.
